@@ -4,6 +4,10 @@ import task_planner # import the various path planning classes
 from uav_msgs import interop_info, task, NED_pt, NED_list
 
 class mainPlanner():
+    """
+    inputs: commands from gui
+    outputs: 
+    """
     
     def __init__(self):
         
@@ -62,4 +66,4 @@ class mainPlanner():
             
         
         
-    
+
