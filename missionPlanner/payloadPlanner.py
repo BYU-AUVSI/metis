@@ -8,7 +8,7 @@ class PayloadPlanner():
     inputs: drop gps location, wind, obstacles
     outputs: X number of waypoints with a single drop waypoint
     """
-    def __init__(self,dropLocation,wind,obstacles):
+    def __init__(self,dropLocation,obstacles,wind=[0.,0.,0.]):
         """
         initializes global variables
         """
