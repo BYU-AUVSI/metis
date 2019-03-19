@@ -1,0 +1,13 @@
+<launch>
+  <param name="ref_lat" value="40.265997"/>
+  <param name="ref_lon" value="-111.637861"/>
+  <param name="ref_h" value="0"/>
+  <param name="SEARCH" value="1"/>
+  <param name="PAYLOAD" value="2"/>
+  <param name="LOITER" value="3"/>
+  <param name="OBJECTIVE" value="4"/>
+
+  <node name="fake_interop" pkg="metis" type="FakeInterop.py" output = "screen" />
+  <node name="planner" pkg="metis" type="mainPlanner.py" output = "screen" />
+
+</launch>
