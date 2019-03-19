@@ -16,7 +16,7 @@ class PayloadPlanner():
         self.wind = wind                            # current wind vector [Wn,We,Wd]
         self.obstacles = obstacles                  # competition obstacles
         self.command_time = 0.15                    # seconds between command to drop and UGV leaves plane
-        self.drop_altitude = 100.0                  # altitude for waypoints in meters above 0.0 of ground station
+        self.drop_altitude = 45.0                  # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 0.5                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
         self.terminal_velocity = 3.59               # from experimental data [m/s]
@@ -25,6 +25,7 @@ class PayloadPlanner():
         self.course_command = 0.0                   # initialize course commmand
         self.NED_parachute_open = np.array([0.0,0.0,0.0])   # location where the parachute oepns [N, E, D]
         self.NED_release_location = np.array([0.0,0.0,0.0]) # location where the command to relase should be given [N, E, D]
+        self.waypoint_spread = 15.0                 # distance between supporting waypoints in meters
 
 
     def plan(self,wind):
@@ -36,8 +37,8 @@ class PayloadPlanner():
         displacement0_1 = self.calcClosedParachuteDrop()
         displacement1_2 = self.calcOpenParachuteDrop()
         self.calcReleaseLocation(displacement0_1,displacement1_2)
-        waypoints = self.calcSupportingPoints()
-        return waypoints
+        self.waypoints = self.calcSupportingPoints()
+        return self.waypoints
 
     def calcClosedParachuteDrop(self):
         """
@@ -101,9 +102,26 @@ class PayloadPlanner():
         waypoints = self.NED_release_location
         return waypoints
 
+    def plot(self):
+        from mpl_toolkits.mplot3d import Axes3D
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        ax.scatter(self.dropLocation.item(0),self.dropLocation.item(1),self.dropLocation.item(2),c='r', marker='o')
+        ax.quiver(0.,0.,0.,self.wind.item(0),self.wind.item(1),self.wind.item(2),length=20.0,normalize=True)
+
+        ax.scatter(self.waypoints.item(0),self.waypoints.item(1),self.waypoints.item(2), c='g', marker='^')
+        ax.quiver(self.waypoints.item(0),self.waypoints.item(1),self.waypoints.item(2),np.cos(test.course_command),np.sin(test.course_command),0.,length=20.0,color='g')
+
+        ax.set_xlabel('North')
+        ax.set_ylabel('East')
+        ax.set_zlabel('Down')
+        ax.view_init(azim=76.,elev=-162.)
+        ax.axis([-50.,50.,-50.,50.])
+        plt.show()
 
 dropLocation = np.array([0.0,0.0,0.0])
-wind = np.array([0.1,0.5,0.08])
+wind = np.array([0.3,0.5,0.1])
 obstacles = np.array([0.0,0.0,0.0])
 boundaries = np.array([0.0,0.0,0.0])
 test = PayloadPlanner(dropLocation,wind,obstacles,boundaries)
