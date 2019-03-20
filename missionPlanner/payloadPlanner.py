@@ -15,9 +15,8 @@ class PayloadPlanner():
         self.dropLocation = dropLocation            # location of where on the ground we want to hit [N, E, D]
         self.wind = wind                            # current wind vector [Wn,We,Wd]
         self.obstacles = obstacles                  # competition obstacles
-        self.command_time = 0.15                    # seconds between command to drop and UGV leaves plane
-        self.drop_altitude = 45.0                  # altitude for waypoints in meters above 0.0 of ground station
-        self.time_delay = 0.5                       # seconds between command to open and baydoor opening
+        self.drop_altitude = 45.0                   # altitude for waypoints in meters above 0.0 of ground station
+        self.time_delay = 1.4                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
         self.terminal_velocity = 3.59               # from experimental data [m/s]
         self.Va = 17.5  # pull from                 # competition design Va [m/s]
@@ -26,6 +25,7 @@ class PayloadPlanner():
         self.NED_parachute_open = np.array([0.0,0.0,0.0])   # location where the parachute oepns [N, E, D]
         self.NED_release_location = np.array([0.0,0.0,0.0]) # location where the command to relase should be given [N, E, D]
         self.waypoint_spread = 15.0                 # distance between supporting waypoints in meters
+        self.ff = 1.0                               # fudge factor for closed parachute drag
 
 
     def plan(self,wind):
@@ -34,9 +34,9 @@ class PayloadPlanner():
         """
         self.wind = wind
         self.calcCourseCommand()
-        displacement0_1 = self.calcClosedParachuteDrop()
-        displacement1_2 = self.calcOpenParachuteDrop()
-        self.calcReleaseLocation(displacement0_1,displacement1_2)
+        self.displacement0_1 = self.calcClosedParachuteDrop()
+        self.displacement1_2 = self.calcOpenParachuteDrop()
+        self.calcReleaseLocation(self.displacement0_1,self.displacement1_2)
         self.waypoints = self.calcSupportingPoints()
         return self.waypoints
 
@@ -44,13 +44,14 @@ class PayloadPlanner():
         """
         Calculates the motion between the commanded relase and the parachute opening
         """
+
         V0_north = self.Va*np.cos(self.course_command) + self.wind.item(0)  # initial north velocity in inertial frame
         V0_east = self.Va*np.sin(self.course_command) + self.wind.item(1)   # initial east velocity in inertial frame
         V0_down = self.wind.item(2)                                         # initial down velocity in inertial frame
         time0_1 = self.time_delay + self.time_to_open_parachute             # time between command and the parachute opening
-        dNorth0_1 = V0_north*time0_1                                        # time 0 to 1 north difference in inertial frame
-        dEast0_1 = V0_east*time0_1                                          # time 0 to 1 east difference in inertial frame
-        dDown0_1 = V0_down*time0_1 + 0.5*self.gravity*time0_1**2            # time 0 to 1 down difference in inertial frame (Xf = X0 + V0*t + 0.5*a*t**2)
+        dNorth0_1 = self.ff*V0_north*time0_1                                        # time 0 to 1 north difference in inertial frame
+        dEast0_1 = self.ff*V0_east*time0_1                                          # time 0 to 1 east difference in inertial frame
+        dDown0_1 = 0.5*self.gravity*self.time_to_open_parachute**2             # time 0 to 1 down difference in inertial frame (Xf = X0 + V0*t + 0.5*a*t**2)
         self.NED_parachute_open[2] = -self.drop_altitude + dDown0_1         # Down position at parachute opening
         return np.array([dNorth0_1,dEast0_1])
 
@@ -74,8 +75,8 @@ class PayloadPlanner():
         dEast0_1 = displacement0_1.item(1)                                  # region 1 east displacement
         dNorth1_2 = displacement1_2.item(0)                                 # region 2 north displacement
         dEast1_2 = displacement1_2.item(1)                                  # region 2 east displacement
-        release_north = self.dropLocation.item(0) + dNorth1_2 + dNorth0_1   # release north position
-        release_east = self.dropLocation.item(1) + dEast1_2 + dEast0_1      # release east position
+        release_north = self.dropLocation.item(0) - dNorth1_2 - dNorth0_1   # release north position
+        release_east = self.dropLocation.item(1) - dEast1_2 - dEast0_1      # release east position
         release_down = -self.drop_altitude                                  # release down position
         self.NED_release_location = np.array([release_north,release_east,release_down])
 
@@ -107,9 +108,34 @@ class PayloadPlanner():
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
+        # target location
         ax.scatter(self.dropLocation.item(0),self.dropLocation.item(1),self.dropLocation.item(2),c='r', marker='o')
         ax.quiver(0.,0.,0.,self.wind.item(0),self.wind.item(1),self.wind.item(2),length=20.0,normalize=True)
 
+        # closed baydoor movement
+        V0_north = self.Va*np.cos(self.course_command) + self.wind.item(0)  # initial north velocity in inertial frame
+        V0_east = self.Va*np.sin(self.course_command) + self.wind.item(1)   # initial east velocity in inertial frame
+        time00 = np.linspace(0.0,self.time_delay,50)
+        north00 = self.ff*V0_north*time00
+        east00 = self.ff*V0_east*time00
+        down00 = 0.0*time00
+        ax.plot(self.NED_release_location.item(0)+north00,self.NED_release_location.item(1)+east00,self.NED_release_location.item(2)+down00,c='b')
+
+        # closed parachute dropping
+        time11 = np.linspace(self.time_delay,self.time_to_open_parachute+self.time_delay,50)        # time between command and the parachute opening
+        north11 = self.ff*V0_north*time11                                        # time 0 to 1 north difference in inertial frame
+        east11 = self.ff*V0_east*time11                                          # time 0 to 1 east difference in inertial frame
+        time12 = np.linspace(0.0,self.time_to_open_parachute,50)
+        down11 = 0.5*self.gravity*time12**2             # time 0 to 1 down difference in inertial frame (Xf = X0 + V0*t + 0.5*a*t**2)
+        ax.plot(self.NED_release_location.item(0)+north11,self.NED_release_location.item(1)+east11,self.NED_release_location.item(2)+down11,c='b')
+
+        # open parachute
+        self.NED_parachute_open[0] = self.NED_release_location.item(0) + self.displacement0_1.item(0)
+        self.NED_parachute_open[1] = self.NED_release_location.item(1) + self.displacement0_1.item(1)
+        ax.scatter(self.NED_parachute_open.item(0),self.NED_parachute_open.item(1),self.NED_parachute_open.item(2),c='b',marker='+')
+        ax.plot([self.NED_parachute_open.item(0),self.dropLocation.item(0)],[self.NED_parachute_open.item(1),self.dropLocation.item(1)],[self.NED_parachute_open.item(2),self.dropLocation.item(2)],c='b')
+
+        # release Location
         ax.scatter(self.waypoints.item(0),self.waypoints.item(1),self.waypoints.item(2), c='g', marker='^')
         ax.quiver(self.waypoints.item(0),self.waypoints.item(1),self.waypoints.item(2),np.cos(test.course_command),np.sin(test.course_command),0.,length=20.0,color='g')
 
@@ -118,12 +144,13 @@ class PayloadPlanner():
         ax.set_zlabel('Down')
         ax.view_init(azim=76.,elev=-162.)
         ax.axis([-50.,50.,-50.,50.])
+        print("sup")
         plt.show()
 
 dropLocation = np.array([0.0,0.0,0.0])
-wind = np.array([0.3,0.5,0.1])
+wind = np.array([0.8,0.5,0.1])
 obstacles = np.array([0.0,0.0,0.0])
 boundaries = np.array([0.0,0.0,0.0])
 test = PayloadPlanner(dropLocation,wind,obstacles,boundaries)
 result = test.plan(wind)
-#print(result)
+test.plot()
