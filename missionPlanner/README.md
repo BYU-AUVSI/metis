@@ -16,14 +16,17 @@ This is a description about this planner
 
 The payload path planner is calculated using two distinct regions
 
+![server overview](docs/img/dropgraph.png)
+
 ### Commanded Release to Parachute Open
 The first region is between when the command to release is given to the servo to when
 the parachute is fully open.
 **Assumptions:**
 1. Time delay between the command release to the servo and the bay door opening is constant and known
 2. Time delay between the bay door opening is constant and known (through experimentation)
-3. Wind is steady state (no gusts)
-4. The only force acting on the payload is gravity (no aerodynamic drag, etc.)
+3. Height difference is calculated between when the bay door opens and when the parachute opens
+4. Wind is steady state (no gusts)
+5. The only force acting on the payload is gravity (no aerodynamic drag, etc.) 
 
 ### Parachute Open to Target
 The second region is between when the parachute opens to when the payload hits the ground target
