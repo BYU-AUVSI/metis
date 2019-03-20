@@ -28,11 +28,12 @@ class RRT():
         #save obstacles and boundaries
         self.obstaclesList = obstaclesList
         self.boundariesList = boundariesList
-        self.clearance = 1. #The minimum distance between the path and all obstacles
+        self.clearance = 5. #The minimum distance between the path and all obstacles
         self.travelDistance = 10. #Max distance between each added leaf
         self.maxIncline = .5 #Max slope the vehicle can climb or decend at
         self.maxRelChi = np.pi/2 #Max relative chi between leaves
         self.iterations = 50 #How many sets of random points it will add each time until solution is found
+        self.resolution = 1.1 #The segment lengths checked for collisions
         self.animate = animate
         pointList = []
         nList = []
@@ -94,8 +95,6 @@ class RRT():
                 self.wayMin = waypoints[0].d
 
         fullPath = []
-        if self.animate:
-            self.update_plot() #How pause and view the graph??
         for i in range(0, numWaypoints-1): #Do each segment of the path individually
             way1 = waypoints[i]
             way2 = waypoints[i+1]
@@ -122,12 +121,13 @@ class RRT():
         if self.animate:
             begEndPoints = self.ax.scatter([waypoint1.n, waypoint2.n], [waypoint1.e, waypoint2.e], [-waypoint1.d, -waypoint2.d], c='r', marker='o')
         #node state N, E, D, cost, parentIndex, connectsToGoalFlag, chi
-        startNode = np.array([waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., ])
+        startNode = np.array([waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., 8888])
         tree = np.array([startNode])
         #check for if solution at the beginning
         dist = np.sqrt((waypoint1.n-waypoint2.n)**2 + (waypoint1.e-waypoint2.e)**2 + (waypoint1.d-waypoint2.d)**2)
         incline = np.abs((waypoint2.d-waypoint1.d)/np.sqrt((waypoint2.n-waypoint1.n)**2 + (waypoint2.e-waypoint1.e)**2))
-        if dist < self.travelDistance and self.flyablePath(waypoint1, waypoint2, self.maxIncline) and incline < self.maxIncline:
+        chi = np.arctan2((waypoint2.e - waypoint1.e), (waypoint2.n - waypoint1.n))
+        if dist < self.travelDistance and self.flyablePath(waypoint1, waypoint2, self.maxIncline,startNode[6] ,chi):
             return waypoint1, waypoint2
         else:
             foundSolution = 0
@@ -155,13 +155,14 @@ class RRT():
             scaleHeight = 1.5
             distances = ((northP-tree[:,0])**2 + (eastP-tree[:,1])**2 + scaleHeight*(endN.d - tree[:,2])**2)
             minIndex = np.argmin(distances) ##could loop through a second time to try second best node??
+            chi = np.arctan2((eastP - tree[minIndex, 1]), (northP - tree[minIndex, 0]))
 
             if(tree[minIndex,2]==endN.d):
                 L = min(np.sqrt((northP-tree[minIndex,0])**2 + (eastP-tree[minIndex,1])**2), maxSegLength)
                 downP = endN.d
                 tmp = np.array([northP, eastP, downP]) - np.array([tree[minIndex,0], tree[minIndex,1], tree[minIndex,2]])
                 newPoint = np.array([tree[minIndex, 0], tree[minIndex, 1], tree[minIndex, 2]]) + L * (tmp / np.linalg.norm(tmp))
-                newNode = np.array([[newPoint.item(0), newPoint.item(1), newPoint.item(2), tree[minIndex, 3] + L, minIndex, 0.]])
+                newNode = np.array([[newPoint.item(0), newPoint.item(1), newPoint.item(2), tree[minIndex, 3] + L, minIndex, 0., chi]])
                 # scat = self.ax.scatter([northP, northP,newNode.item(0)], [eastP, eastP,newNode.item(1)], [0, -downP,-newNode.item(2)], c = 'r', marker = '+')
                 # scat.remove()
             else:
@@ -176,30 +177,27 @@ class RRT():
                 newPoint = np.array([tree[minIndex,0], tree[minIndex,1], tree[minIndex,2]]) + L*(tmp/np.linalg.norm(tmp))
                 if newPoint.item(2) < endN.d:
                     newPoint[2] = endN.d
-                newNode = np.array([[newPoint.item(0), newPoint.item(1), newPoint.item(2), tree[minIndex,3]+L,minIndex, 0.]])
+                newNode = np.array([[newPoint.item(0), newPoint.item(1), newPoint.item(2), tree[minIndex,3]+L,minIndex, 0., chi]])
                 # if self.animate:
                 #     scat = self.ax.scatter([northP, northP], [eastP, eastP], [0, -downP], c='r', marker='+')
                 #     scat.remove()
 
             #Check for Collision
-            if self.flyablePath(msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2]), msg_ned(newNode.item(0),newNode.item(1),newNode.item(2)),maxIncline):
+            if self.flyablePath(msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2]), msg_ned(newNode.item(0),newNode.item(1),newNode.item(2)),maxIncline, tree[minIndex,6] ,chi):
                 successFlag = True
-                if(endN.d==startN.d):
-                    scaler = 1
-                else:
-                    scaler = (endN.d - newNode.item(2))/(endN.d-startN.d)
-                #The lines below draw the fully explored RRT Tree
+                # # The lines below draw the fully explored RRT Tree
                 # if self.animate:
+                #     if(endN.d==startN.d):
+                #         scaler = 1
+                #     else:
+                #         scaler = (endN.d - newNode.item(2))/(endN.d-startN.d)
                 #     spider = self.ax.plot([tree[minIndex,0],newNode.item(0)], [tree[minIndex,1],newNode.item(1)], [-tree[minIndex,2],-newNode.item(2)], color=self.viridis(scaler))
                 tree = np.append(tree, newNode,axis=0)
 
             #Check to see if can connect to end node
             dist = np.sqrt((endN.n - newNode.item(0)) ** 2 + (endN.e - newNode.item(1)) ** 2 + (endN.d - newNode.item(2)) ** 2)
-            if(endN.d == newNode.item(2)):
-                incline = 0
-            else:
-                incline = np.abs((endN.d - newNode.item(2))/np.sqrt((endN.n - newNode.item(0)) ** 2 + (endN.e - newNode.item(1)) ** 2) )
-            if dist < maxSegLength and self.flyablePath(msg_ned(newNode.item(0), newNode.item(1), newNode.item(2)), endN,maxIncline) and incline < maxIncline:
+            chi = np.arctan2((endN.e - newNode.item(1)), (endN.n - newNode.item(0)))
+            if dist < maxSegLength and self.flyablePath(msg_ned(newNode.item(0), newNode.item(1), newNode.item(2)), endN,maxIncline, newNode.item(6), chi):
                 tree[np.size(tree, 0)-1, 5] = 1
                 return tree, 1
             else:
@@ -232,49 +230,27 @@ class RRT():
 
     def smoothPath(self, path, maxIncline):
         smoothedPath = [path[0]]
+        prevChi = 8888
         index = 1
         while index < len(path)-1:
-            if not self.flyablePath(smoothedPath[len(smoothedPath)-1],path[index+1],maxIncline):
+            chi = np.arctan2((path[index+1].e - smoothedPath[len(smoothedPath)-1].e), (path[index+1].n - smoothedPath[len(smoothedPath)-1].n))
+            if not self.flyablePath(smoothedPath[len(smoothedPath)-1], path[index+1], maxIncline, prevChi ,chi):
                 smoothedPath.append(path[index])
+            prevChi = chi
             index += 1
 
         smoothedPath.append(path[len(path)-1])
-        #remove the first node
-        # smoothedPath = smoothedPath[1:len(smoothedPath)]
         reversePath = smoothedPath[::-1]
         # if self.animate:
         #     self.drawPath(reversePath, 'y')
         return reversePath
 
-
-    # def foundSolution(self, node, waypoint2):
-    #     if(waypoint2.n == node.n and waypoint2.e == node.e and waypoint2.d == node.d):
-    #         return True
-    #     else:
-    #         for item in node.child:
-    #             if self.foundSolution(item, waypoint2):
-    #                 return True
-    #         return False
-
     def randomPoint(self):
         return np.random.uniform(low=-self.maxN, high=self.maxN), np.random.uniform(low=-self.maxE, high=self.maxE)
 
-    # def nearestNode(self, node, northP, eastP, bestNode, bestDistance):
-    #     if(node.child.isempty()):
-    #         return bestNode, bestDistance
-    #     else:
-    #         for item in node.child:
-    #             rNode, rDist = self.nearestNode(item,northP,eastP,bestNode, bestDistance)
-    #             if rDist < bestDistance:
-    #                 bestNode = rNode#How do reference?
-    #                 bestDistance = rDist
-    #         return bestNode, bestDistance
-
-    def flyablePath(self, startNode, endNode,maxIncline):
+    def flyablePath(self, startNode, endNode, maxIncline, prevChi, chi):
         #check for obstacles
-        p1 = np.array([startNode.n, startNode.e])
-        p2 = np.array([endNode.n, endNode.e])
-        X, Y, Z = self.pointsAlongPath(startNode, endNode, 1.1)
+        X, Y, Z = self.pointsAlongPath(startNode, endNode, self.resolution)
 
         for obstacle in self.obstaclesList:
             #first check if path is above obstacle
@@ -288,16 +264,16 @@ class RRT():
                 if(any(distToLine < obstacle.r + self.clearance)):
                     return False
 
-        #Should I check for flyablility?? E.g. I can't do a 180 degree flip around.
+        #Check for new leaf now above max relative chi angle
+        if prevChi != 8888: #If not at the root node
+            if abs(prevChi-chi) > self.maxRelChi:
+                return False
 
-        #Could check incline here
+        #Check incline here
         incline = np.abs((endNode.d - startNode.d)/np.sqrt((endNode.n - startNode.n) ** 2 + (endNode.e - startNode.e) ** 2) )
-        if incline > maxIncline+.01: #Added fudge factor because of floating point math errors
+        if incline > maxIncline+.01:  #Added fudge factor because of floating point math errors
             return False
-        #check for boundaries
-            # point = Point(-90, 40)
-            # self.ax.scatter(-90, 40, 0, s=20, c=np.array([1, 0, 0]))
-            # plt.show()
+        #Check for out of boundaries
         for i in range(0,len(X)):
             if not self.polygon.contains(Point(X[i], Y[i])):
                 return False
@@ -329,101 +305,3 @@ class RRT():
             way1 = path[i]
             way2 = path[i + 1]
             self.ax.plot([way1.n, way2.n], [way1.e, way2.e], [-way1.d, -way2.d], color=color)
-
-
-    def update_plot(self):
-        """
-        Update the drawing. , path, state
-
-        The input to this function is a (message) class with properties that define the state.
-        The following properties are assumed:
-            state.pn  # north position
-            state.pe  # east position
-            state.h   # altitude
-            state.phi  # roll angle
-            state.theta  # pitch angle
-            state.psi  # yaw angle
-        """
-        # mav_position = np.array([[state.pn], [state.pe], [-state.h]])  # NED coordinates
-        # # attitude of mav as a rotation matrix R from body to inertial
-        # R = Euler2Rotation(state.phi, state.theta, state.psi)
-        # # rotate and translate points defining mav
-        # rotated_points = self._rotate_points(self.points, R.T) #Whay had to transpose??
-        # translated_points = self._translate_points(rotated_points, mav_position)
-        # # convert North-East Down to East-North-Up for rendering
-        # R = np.array([[0, 1, 0], [1, 0, 0], [0, 0, -1]])
-        # translated_points = R @ translated_points
-        # # convert points to triangular mesh defined as array of three 3D points (Nx3x3)
-        # mesh = self._points_to_mesh(translated_points)
-
-
-        path = np.array([[3,3,9], #Nx3
-                        [8,7,7],
-                        [10, 10, 9]])
-        # self.ax.plot(path[0,:], path[1,:], path[2,:], label='blah')
-        # self.ax.scatter(path[0,:], path[1,:], path[2,:], s=20,c=np.array([1, 0, 0]))
-        # self.ax.legend()
-        # plt.show()
-
-        # initialize the drawing the first time update() is called
-        # if not self.plot_initialized:
-        #     # if path.flag=='line':
-        #     straight_line_object = self.straight_line_plot(path)
-        #     self.window.addItem(straight_line_object)  # add straight line to plot
-        #     # else:  # path.flag=='orbit
-        #     #     orbit_object = self.orbit_plot(path)
-        #     #     self.window.addItem(orbit_object)
-        #     # initialize drawing of triangular mesh.
-        #     # self.body = gl.GLMeshItem(vertexes=mesh,  # defines the triangular mesh (Nx3x3)
-        #     #                           vertexColors=self.meshColors, # defines mesh colors (Nx1)
-        #     #                           drawEdges=True,  # draw edges between mesh elements
-        #     #                           smooth=False,  # speeds up rendering
-        #     #                           computeNormals=False)  # speeds up rendering
-        #     # self.window.addItem(self.body)  # add body to plot
-        #     self.plot_initialized = True
-        #
-        # # else update drawing on all other calls to update()
-        # # else:
-        #     # reset mesh using rotated and translated points
-        #     # self.body.setMeshData(vertexes=mesh, vertexColors=self.meshColors)
-        #
-        # # update the center of the camera view to the mav location
-        # #view_location = Vector(state.pe, state.pn, state.h)  # defined in ENU coordinates
-        # #self.window.opts['center'] = view_location
-        # # redraw
-        # self.app.processEvents()
-
-    # def straight_line_plot(self, points):
-    #     # points = np.array([[path.line_origin.item(0),
-    #     #                     path.line_origin.item(1),
-    #     #                     path.line_origin.item(2)],
-    #     #                    [path.line_origin.item(0) + self.scale * path.line_direction.item(0),
-    #     #                     path.line_origin.item(1) + self.scale * path.line_direction.item(1),
-    #     #                     path.line_origin.item(2) + self.scale * path.line_direction.item(2)]])
-    #     # # convert North-East Down to East-North-Up for rendering
-    #     # R = np.array([[0, 1, 0], [1, 0, 0], [0, 0, -1]])
-    #     # points = points @ R.T
-    #     red = np.array([[1., 0., 0., 1]])
-    #     path_color = np.concatenate((red, red), axis=0)
-    #     object = gl.GLLinePlotItem(pos=points,
-    #                                color=path_color,
-    #                                width=2,
-    #                                antialias=True,
-    #                                mode='lines')
-    #     return object
-
-class rrtNode():
-
-    def __init__(self, parent, cost, pn, pe, pd):
-        self.parent = parent
-        if parent == 'Parent':
-            self.cost = 0.
-        else:
-            self.cost = parent.cost + cost
-        self.n = pn
-        self.e = pe
-        self.d = pd
-        self.child = []
-
-    def addChild(self, newNode):
-        self.child.append(newNode)
