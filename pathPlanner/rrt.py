@@ -3,9 +3,6 @@ import numpy as np
 import random
 import math
 import os
-# import pyqtgraph as pg
-# import pyqtgraph.opengl as gl
-# import pyqtgraph.Vector as Vector
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
@@ -23,8 +20,26 @@ from messages.ned import msg_ned
 
 
 class RRT():
-
+    """
+    An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
+    the physical boundaries and obstacles in the competition.
+    """
     def __init__(self, obstaclesList, boundariesList, animate):
+        """
+        The constructor for the ImageInfo class.
+
+        @type  obstaclesList: msg_ned
+        @param auto_tap: A list of all the obstacles in the mission area
+
+        @type  boundariesList: msg_ned
+        @param boundariesList: A list of all the boundary points of the mission area
+
+        @type  animate: boolean
+        @param animate: True if a visual output is wanted, False otherwise
+
+        @rtype:  None
+        @return: None
+        """
         #save obstacles and boundaries
         self.obstaclesList = obstaclesList
         self.boundariesList = boundariesList
@@ -34,19 +49,20 @@ class RRT():
         self.maxRelChi = np.pi/2 #Max relative chi between leaves
         self.iterations = 50 #How many sets of random points it will add each time until solution is found
         self.resolution = 1.1 #The segment lengths checked for collisions
+        self.scaleHeight = 1.5 #Scales the height in the cost function for assigning random points to leaves
         self.animate = animate
-        pointList = []
+        pointList = [] #For boundary points formatted into the Point object for shapely use
         nList = []
         eList = []
         for point in boundariesList:
             nList.append(point.n)
             eList.append(point.e)
             pointList.append(Point(point.n,point.e))
-        self.polygon = Polygon([[p.x, p.y] for p in pointList])
-        self.maxN = max(nList)
-        self.maxE = max(eList)
-        self.minN = min(nList)
-        self.minE = min(eList)
+        self.polygon = Polygon([[p.x, p.y] for p in pointList]) #Boundaries now contained in a Polygon object
+        self.maxN = max(nList) #Max north position of boundaries
+        self.maxE = max(eList) #Max east position of boundaries
+        self.minN = min(nList) #Min north position of boundaries
+        self.minE = min(eList) #Min east position of boundaries
 
         if animate:
             mpl.rcParams['legend.fontsize'] = 10
@@ -125,9 +141,8 @@ class RRT():
         tree = np.array([startNode])
         #check for if solution at the beginning
         dist = np.sqrt((waypoint1.n-waypoint2.n)**2 + (waypoint1.e-waypoint2.e)**2 + (waypoint1.d-waypoint2.d)**2)
-        incline = np.abs((waypoint2.d-waypoint1.d)/np.sqrt((waypoint2.n-waypoint1.n)**2 + (waypoint2.e-waypoint1.e)**2))
         chi = np.arctan2((waypoint2.e - waypoint1.e), (waypoint2.n - waypoint1.n))
-        if dist < self.travelDistance and self.flyablePath(waypoint1, waypoint2, self.maxIncline,startNode[6] ,chi):
+        if dist < self.travelDistance and self.flyablePath(waypoint1, waypoint2, self.maxIncline, startNode[6], chi):
             return waypoint1, waypoint2
         else:
             foundSolution = 0
@@ -149,11 +164,8 @@ class RRT():
             #Generate Random Point
             northP, eastP = self.randomPoint()
 
-
-            #Find nearest leaf
-            #Add preference to giving priority to leaves that are at the correct altitude
-            scaleHeight = 1.5
-            distances = ((northP-tree[:,0])**2 + (eastP-tree[:,1])**2 + scaleHeight*(endN.d - tree[:,2])**2)
+            #Find nearest leaf. Preference given to leaves that are at the correct altitude
+            distances = ((northP-tree[:,0])**2 + (eastP-tree[:,1])**2 + self.scaleHeight*(endN.d - tree[:,2])**2)
             minIndex = np.argmin(distances) ##could loop through a second time to try second best node??
             chi = np.arctan2((eastP - tree[minIndex, 1]), (northP - tree[minIndex, 0]))
 
@@ -163,15 +175,15 @@ class RRT():
                 tmp = np.array([northP, eastP, downP]) - np.array([tree[minIndex,0], tree[minIndex,1], tree[minIndex,2]])
                 newPoint = np.array([tree[minIndex, 0], tree[minIndex, 1], tree[minIndex, 2]]) + L * (tmp / np.linalg.norm(tmp))
                 newNode = np.array([[newPoint.item(0), newPoint.item(1), newPoint.item(2), tree[minIndex, 3] + L, minIndex, 0., chi]])
-                # scat = self.ax.scatter([northP, northP,newNode.item(0)], [eastP, eastP,newNode.item(1)], [0, -downP,-newNode.item(2)], c = 'r', marker = '+')
-                # scat.remove()
+                # if self.animate:
+                #     scat = self.ax.scatter([northP, northP], [eastP, eastP], [0, -downP], c='r', marker='+')
+                #     scat.remove()
             else:
                 hyp = np.sqrt((northP-tree[minIndex,0])**2 + (eastP-tree[minIndex,1])**2)
                 downP = tree[minIndex,2] - hyp*maxIncline
                 # tester = (northP - tree[minIndex, 0])
                 q = np.array([northP - tree[minIndex, 0], eastP - tree[minIndex, 1], downP - tree[minIndex, 2]])
                 L = np.linalg.norm(q)
-                q = q / L
                 L = min(L, maxSegLength)
                 tmp = np.array([northP, eastP, downP]) - np.array([tree[minIndex,0], tree[minIndex,1], tree[minIndex,2]])
                 newPoint = np.array([tree[minIndex,0], tree[minIndex,1], tree[minIndex,2]]) + L*(tmp/np.linalg.norm(tmp))
@@ -185,13 +197,13 @@ class RRT():
             #Check for Collision
             if self.flyablePath(msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2]), msg_ned(newNode.item(0),newNode.item(1),newNode.item(2)),maxIncline, tree[minIndex,6] ,chi):
                 successFlag = True
-                # # The lines below draw the fully explored RRT Tree
-                # if self.animate:
-                #     if(endN.d==startN.d):
-                #         scaler = 1
-                #     else:
-                #         scaler = (endN.d - newNode.item(2))/(endN.d-startN.d)
-                #     spider = self.ax.plot([tree[minIndex,0],newNode.item(0)], [tree[minIndex,1],newNode.item(1)], [-tree[minIndex,2],-newNode.item(2)], color=self.viridis(scaler))
+                # The lines below draw the fully explored RRT Tree
+                if self.animate:
+                    if(endN.d==startN.d):
+                        scaler = 1
+                    else:
+                        scaler = (endN.d - newNode.item(2))/(endN.d-startN.d)
+                    spider = self.ax.plot([tree[minIndex,0],newNode.item(0)], [tree[minIndex,1],newNode.item(1)], [-tree[minIndex,2],-newNode.item(2)], color=self.viridis(scaler))
                 tree = np.append(tree, newNode,axis=0)
 
             #Check to see if can connect to end node
@@ -207,10 +219,7 @@ class RRT():
         #find the leaves that connect to the end node
         connectedNodes = []
         for i in range(0, np.size(tree, 0)):
-            if tree[i,5]==1:
-                # connectedNodes.append(tree[i,:])
-                # added = np.reshape(tree[i,:], (1,6))
-                # connectedNodes = np.append(connectedNodes, added, axis=0)
+            if tree[i,5] == 1:
                 connectedNodes.append(i)
 
         #find the path with the shortest distance
@@ -266,7 +275,8 @@ class RRT():
 
         #Check for new leaf now above max relative chi angle
         if prevChi != 8888: #If not at the root node
-            if abs(prevChi-chi) > self.maxRelChi:
+            wrappedPrevChi = self.wrap(prevChi, chi)
+            if abs(wrappedPrevChi-chi) > self.maxRelChi:
                 return False
 
         #Check incline here
@@ -305,3 +315,10 @@ class RRT():
             way1 = path[i]
             way2 = path[i + 1]
             self.ax.plot([way1.n, way2.n], [way1.e, way2.e], [-way1.d, -way2.d], color=color)
+
+    def wrap(self, chi_c, chi):
+        while chi_c-chi > np.pi:
+            chi_c = chi_c - 2.0 * np.pi
+        while chi_c-chi < -np.pi:
+            chi_c = chi_c + 2.0 * np.pi
+        return chi_c
