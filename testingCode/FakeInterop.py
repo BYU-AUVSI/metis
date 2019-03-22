@@ -17,7 +17,10 @@ def mission_response(req):
     pt2.point = Point(40.267625, -111.635216, 45, 0)
     pt2.ordinal = 2
 
-    res.waypoints = [pt1, pt2]
+    if res.mission_type == JudgeMission.MISSION_TYPE_DROP:
+        res.waypoints = [pt1]
+    else:
+        res.waypoints = [pt1, pt2]
 
     #Define boundaries
 
