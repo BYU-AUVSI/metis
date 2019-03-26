@@ -1,6 +1,11 @@
+import sys
+sys.path.append('..')
+
 
 import numpy as np
 import matplotlib.pyplot as plt
+from tools.tools import collisionCheck, makeBoundaryPoly
+from messages.ned import msg_ned
 
 
 class PayloadPlanner():
@@ -11,10 +16,22 @@ class PayloadPlanner():
     def __init__(self,dropLocation,obstacles,boundaries,wind=[0.,0.,0.]):
         """
         initializes global variables
+
+        Parameters
+        ----------
+        dropLocation : NED class
+            The goal drop location
+        obstacles : list of NED classes
+            static obastacles
+        boundaries : polygon
+            polygon defined by boundaries
+        wind : list
+            current estimate for the wind vector in [north, east, down]
         """
         self.dropLocation = dropLocation            # location of where on the ground we want to hit [N, E, D]
         self.wind = wind                            # current wind vector [Wn,We,Wd]
         self.obstacles = obstacles                  # competition obstacles
+        self.boundaries = boundaries                # polygon of competition boundaries
         self.drop_altitude = 45.0                   # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 1.4                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
@@ -25,24 +42,47 @@ class PayloadPlanner():
         self.course_command = 0.0                   # initialize course commmand
         self.NED_parachute_open = np.array([0.0,0.0,0.0])   # location where the parachute oepns [N, E, D]
         self.NED_release_location = np.array([0.0,0.0,0.0]) # location where the command to relase should be given [N, E, D]
+        self.waypoints = np.zeros((1,3))            # flight waypoints
         self.waypoint_spread = 15.0                 # distance between supporting waypoints in meters
-        self.supporting_points = 2                   # number of supporting waypoints on either side of drop waypoint
+        self.supporting_points = 2                  # number of supporting waypoints on either side of drop waypoint
+        self.chi_offset = 0.0                       # offset for commanded chi calculation if waypoint is inside an obstacle
+        self.ii = 0
 
     def plan(self,wind):
         """
         function called by mainplanner that returns bombdrop waypoint
+
+        Parameters
+        ----------
+        wind : list
+            current estimate for the wind vector in [north, east, down]
+
+        Returns
+        -------
+        waypoints : list of NED class objects
+            A list of NED class objects where each object describes the NED position of each waypoint
         """
         self.wind = wind
-        self.calcCourseCommand()
-        self.displacement0_1 = self.calcClosedParachuteDrop()
-        self.displacement1_2 = self.calcOpenParachuteDrop()
-        self.calcReleaseLocation(self.displacement0_1,self.displacement1_2)
-        self.waypoints = self.calcSupportingPoints()
-        return self.waypoints.tolist()
+        flag = True
+        # keep creating release locations while the location is inside an obstacle or out of bounds
+        while not(self.validateWaypoints()) or flag:
+            flag = False
+            self.calcCourseCommand(self.chi_offset)
+            self.displacement0_1 = self.calcClosedParachuteDrop()
+            self.displacement1_2 = self.calcOpenParachuteDrop()
+            self.calcReleaseLocation(self.displacement0_1,self.displacement1_2)
+            self.waypoints = self.calcSupportingPoints()
+            self.chi_offset += np.radians(15.)
+        return self.waypoints
 
     def calcClosedParachuteDrop(self):
         """
         Calculates the motion between the commanded relase and the parachute opening
+
+        Returns
+        -------
+        displacement0_1 : numpy array
+            array that includes the displacement of the closed parachute drop in the north and east directions
         """
         V0_north = self.Va*np.cos(self.course_command) + self.wind.item(0)  # initial north velocity in inertial frame
         V0_east = self.Va*np.sin(self.course_command) + self.wind.item(1)   # initial east velocity in inertial frame
@@ -57,6 +97,11 @@ class PayloadPlanner():
     def calcOpenParachuteDrop(self):
         """
         Calculates the motion between the parachute opening and hitting the ground target
+
+        Returns
+        -------
+        displacement1_2 : numpy array
+            array that includes the displacement of the open parachute drop in the north and east directions
         """
         target_north = self.dropLocation.item(0)    # target north location
         target_east = self.dropLocation.item(1)     # target east location
@@ -69,6 +114,15 @@ class PayloadPlanner():
     def calcReleaseLocation(self,displacement0_1,displacement1_2):
         """
         calculates desired location for the release command
+
+        Parameters
+        ----------
+        displacement0_1 : numpy array
+            array that includes the displacement of the closed parachute drop in the north and east directions
+
+        displacement1_2 : numpy array
+            array that includes the displacement of the open parachute drop in the north and east directions
+
         """
         dNorth0_1 = displacement0_1.item(0)                                 # region 1 north displacement
         dEast0_1 = displacement0_1.item(1)                                  # region 1 east displacement
@@ -79,19 +133,29 @@ class PayloadPlanner():
         release_down = -self.drop_altitude                                  # release down position
         self.NED_release_location = np.array([release_north,release_east,release_down])
 
-    def calcCourseCommand(self):
+    def calcCourseCommand(self,offset):
         """
         calculates the command course angle to be directly into the wind
+
+        Parameters
+        ----------
+        offset : float
+            offset for commanded chi calculation if waypoint is inside an obstacle
         """
         wind_north = self.wind.item(0)
         wind_east = self.wind.item(1)
         psi_wind = np.arctan2(wind_east,wind_north)
         course_command = np.arctan2(-wind_east,-wind_north)
-        self.course_command = course_command
+        self.course_command = course_command + offset
 
     def calcSupportingPoints(self):
         """
         given a command release location plot X points for a straight line of deployment run
+
+        Returns
+        -------
+        waypoints : list of NED class objects
+            A list of NED class objects where each object describes the NED position of each waypoint
         """
         length = self.supporting_points*2 + 1
         waypoints = np.zeros((length,3))
@@ -100,14 +164,17 @@ class PayloadPlanner():
         dEast = self.waypoint_spread*np.sin(self.course_command)
         # create waypoints before the release location
         for ii in range(self.supporting_points):
-            print(ii,(self.supporting_points-ii)*np.array([dNorth,dEast,0.0]))
             waypoints[ii] = self.NED_release_location - (self.supporting_points-ii)*np.array([dNorth,dEast,0.0])
         # add the release location waypoint
         waypoints[self.supporting_points] = self.NED_release_location
         # create waypoints after the release location
         for ii in range(self.supporting_points):
             waypoints[ii+self.supporting_points+1] = self.NED_release_location + (ii+1.0)*np.array([dNorth,dEast,0.0])
-        return waypoints
+        waypointsList = []
+        for ii in range(length):
+            waypointsList.append(msg_ned(waypoints[ii,0],waypoints[ii,1],waypoints[ii,2]))
+
+        return waypointsList
 
     def plot(self):
         """
@@ -145,8 +212,9 @@ class PayloadPlanner():
         ax.plot([self.NED_parachute_open.item(0),self.dropLocation.item(0)],[self.NED_parachute_open.item(1),self.dropLocation.item(1)],[self.NED_parachute_open.item(2),self.dropLocation.item(2)],c='b')
 
         # release Location
-        ax.scatter(self.waypoints[:,0],self.waypoints[:,1],self.waypoints[:,2], c='g', marker='^')
-        ax.quiver(self.waypoints.item(0),self.waypoints.item(1),self.waypoints.item(2),np.cos(test.course_command),np.sin(test.course_command),0.,length=20.0,color='g')
+        for ii in range(len(self.waypoints)):
+            ax.scatter(self.waypoints[ii].n,self.waypoints[ii].e,self.waypoints[ii].d, c='g', marker='^')
+        ax.quiver(self.waypoints[0].n,self.waypoints[0].e,self.waypoints[0].d,np.cos(self.course_command),np.sin(self.course_command),0.,length=20.0,color='g')
 
         ax.set_xlabel('North')
         ax.set_ylabel('East')
@@ -154,12 +222,36 @@ class PayloadPlanner():
         ax.view_init(azim=76.,elev=-162.)
         ax.axis([-100.,100.,-100.,100.])
         plt.show()
-        
-if __name__ == "__main__":
+
+    def validateWaypoints(self):
+        #collisionCheck(self.obstacles, boundaryPoly, N, E, D, clearance)
+        if self.ii > 6:
+            return True
+        else:
+            self.ii += 1
+            return False
+
+if __name__ == '__main__':
+
+    #List of obastacles and boundaries
+    obstaclesList = []
+    obstaclesList.append(msg_ned(25.,-25.,100.,20.))
+    obstaclesList.append(msg_ned(60.,60.,110.,20.))
+    # obstaclesList.append(msg_ned(50.,50.,75.,5.))
+    boundariesList = []
+    boundariesList.append(msg_ned(-100,100))
+    boundariesList.append(msg_ned(-100,50))
+    boundariesList.append(msg_ned(-75,50))
+    boundariesList.append(msg_ned(-75,0))
+    boundariesList.append(msg_ned(-100,0))
+    boundariesList.append(msg_ned(-100,-100))
+    boundariesList.append(msg_ned(100,-100))
+    boundariesList.append(msg_ned(100,100))
+    boundaryPoly = makeBoundaryPoly(boundariesList)
+
     dropLocation = np.array([0.0,0.0,0.0])
-    wind = np.array([0.8,0.5,0.1])
-    obstacles = np.array([0.0,0.0,0.0])
-    boundaries = np.array([0.0,0.0,0.0])
-    test = PayloadPlanner(dropLocation,wind,obstacles,boundaries)
+    wind = np.array([2.8,0.8,0.1])
+    test = PayloadPlanner(dropLocation,wind,obstaclesList,boundaryPoly)
     result = test.plan(wind)
+    print(result)
     test.plot()
