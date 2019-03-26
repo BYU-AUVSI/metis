@@ -142,8 +142,8 @@ class RRT():
         """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
         boundaries, and all other parameters set in the init function.
 
-        Paramters
-        -------
+        Parameters
+        ----------
         waypoint1 : msg_ned
             The starting waypoint
 
@@ -183,8 +183,8 @@ class RRT():
         """RRT class function that extends the passed-in tree. It will continue to attempt adding a leaf until it finds a
         successful one. This is the basic RRT algorithm.
 
-        Paramters
-        -------
+        Parameters
+        ----------
         tree : float
             @param tree: An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
 
@@ -265,8 +265,8 @@ class RRT():
     def shortestPath(self, tree, endNode):
         """RRT class function that takes in a tree with successful paths and finds which one is the shortest
 
-        Paramters
-        -------
+        Parameters
+        ----------
         tree : float
             An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
 
@@ -305,8 +305,8 @@ class RRT():
     def smoothPath(self, path):
         """ RRT class function that takes in an array of waypoints and tries to find a flyable, smooth path.
 
-        Paramters
-        -------
+        Parameters
+        ----------
         path : msg_ned
             The list of waypoints.
 
@@ -350,8 +350,8 @@ class RRT():
         """ RRT class function that checks if flying between two points is possible. It checks for collisions, chi angle,
         and incline.
 
-        Paramters
-        -------
+        Parameters
+        ----------
         startNode : msg_ned
             The starting node
 
@@ -403,8 +403,8 @@ class RRT():
         """ RRT class function that takes two nodes and returns the N, E, and D position of many points along the line
         between the two points spaced according to the step size passed in.
 
-        Paramters
-        -------
+        Parameters
+        ----------
         startN : msg_ned
             The starting node
 
@@ -445,8 +445,8 @@ class RRT():
     def drawPath(self, path, color):
         """ RRT class function that draws the path between a list of waypoints
 
-        Paramters
-        -------
+        Parameters
+        ----------
         path : msg_ned
             List of waypoints
 
@@ -461,8 +461,8 @@ class RRT():
     def wrap(self, chi_c, chi):
         """ RRT class function that wraps an angle
 
-        Paramters
-        -------
+        Parameters
+        ----------
         chi_c : double
             Angle that will be wrapped
 
