@@ -3,8 +3,10 @@ import numpy as np
 import time
 from messages.ned import msg_ned
 
+
 if __name__ == '__main__':
     show_animation = True
+
 
     #List of obastacles and boundaries
     obstaclesList = []
@@ -23,13 +25,14 @@ if __name__ == '__main__':
 
     animating = True
 
+
     #List of waypoints
     waypoints = []
-    waypoints.append(msg_ned(10.,10., -100.))
-    waypoints.append(msg_ned(90.,90., -100.))
+    # waypoints.append(msg_ned(10.,10., -100.))
+    # waypoints.append(msg_ned(90.,90., -100.))
     waypoints.append(msg_ned(80.,10., -100.))
     waypoints.append(msg_ned(-40.,-50., -100.))
-    waypoints.append(msg_ned(30.,30., -100.))
+    # waypoints.append(msg_ned(30.,30., -100.))
     # waypoints.append(msg_ned(30.,30., -150.))
     # waypoints.append(msg_ned(20.,20., -120.))
     # waypoints.append(msg_ned(25.,25., -100.))
@@ -38,7 +41,10 @@ if __name__ == '__main__':
     # waypoints.append(msg_ned(20.,20., -100.))
     # waypoints.append(msg_ned(80.,20., -140.))
 
-    #Create rrt object
+    # Create rrt object
     rrt = RRT(obstaclesList, boundariesList, animating)
-    rrt.findFullPath(waypoints)
-    # time.sleep(5.5)
+
+    # Solve the path
+    solvedPath = rrt.findFullPath(waypoints)
+    # Make sure shows plot even when not debugging??
+

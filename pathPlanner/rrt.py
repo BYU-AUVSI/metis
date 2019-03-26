@@ -317,15 +317,6 @@ class RRT():
         return reversePath
 
     def randomPoint(self):
-        """
-        RRT class function that takes in an array of waypoints and tries to find a flyable, smooth path.
-
-        @type  path: msg_ned
-        @param path: The list of waypoints.
-
-        @rtype:  msg_ned
-        @return: An array of waypoints that expresses the smoothed, successful path through all the waypoints.
-        """
         return np.random.uniform(low=-self.maxN, high=self.maxN), np.random.uniform(low=-self.maxE, high=self.maxE)
 
     def flyablePath(self, startNode, endNode, prevChi, chi):
