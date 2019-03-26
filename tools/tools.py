@@ -32,29 +32,32 @@ def wypts2msg(waypoints, mission_type):
 	return rsp
 
 def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
-	"""
-	Checks points for collisions with obstacles and boundaries
+	"""Checks points for collisions with obstacles and boundaries
 
-	@type  obstaclesList: msg_ned
-	@param obstaclesList: List of obstacles
+	Parameters
+	----------
+	obstaclesList : msg_ned
+		List of obstacles
 
-	@type  boundaryPoly: Polygon
-	@param boundaryPoly: A Polygon object of the boundaries
+	boundaryPoly : Polygon
+	 A Polygon object of the boundaries
 
-	@type  N: np.array
-	@param N: Arrays of the north position of points
+	N : np.array
+		Arrays of the north position of points
 
-	@type  E: np.array
-	@param E: Arrays of the east position of points
+	E : np.array
+		Arrays of the east position of points
 
-	@type  D: np.array
-	@param D: Arrays of the down position of points
+	D : np.array
+		Arrays of the down position of points
 
-	@type  clearance: float
-	@param clearance: The amount of clearance desired from obstacles and boundaries
+	clearance : float
+		The amount of clearance desired from obstacles and boundaries
 
-	@rtype:  boolean
-	@return: Returns true if a safe path, false if not
+	Returns
+	----------
+	boolean
+		Returns true if a safe path, false if not
 	"""
 	# First check for collision with obstacles
 	for obstacle in obstaclesList:
@@ -74,14 +77,17 @@ def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
 	return True
 
 def makeBoundaryPoly(boundariesList):
-	"""
-	Makes a list of boundary points into a Polygon object.
+	"""Makes a list of boundary points into a Polygon object.
 
-	@type  boundariesList: msg_ned
-	@param boundariesList: List of boundary points
+	Parameters
+	----------
+	boundariesList : msg_ned
+		List of boundary points
 
-	@rtype:  Polygon
-	@return: Returns the Polygon object of boundaries
+	Returns
+	----------
+	boundaries : Polygon
+		Returns the Polygon object of boundaries
 	"""
 	pointList = []
 	for point in boundariesList:
