@@ -1,0 +1,173 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pathPlanner package &#8212; Metis  documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">Metis  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="pathplanner-package">
+<h1>pathPlanner package<a class="headerlink" href="#pathplanner-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-pathPlanner.pathPlannerBase">
+<span id="pathplanner-pathplannerbase-module"></span><h2>pathPlanner.pathPlannerBase module<a class="headerlink" href="#module-pathPlanner.pathPlannerBase" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pathPlanner.pathPlannerBase.pathPlannerBase">
+<em class="property">class </em><code class="descclassname">pathPlanner.pathPlannerBase.</code><code class="descname">pathPlannerBase</code><a class="headerlink" href="#pathPlanner.pathPlannerBase.pathPlannerBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is the path planner class</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-pathPlanner.rrt">
+<span id="pathplanner-rrt-module"></span><h2>pathPlanner.rrt module<a class="headerlink" href="#module-pathPlanner.rrt" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pathPlanner.rrt.RRT">
+<em class="property">class </em><code class="descclassname">pathPlanner.rrt.</code><code class="descname">RRT</code><span class="sig-paren">(</span><em>obstaclesList</em>, <em>boundariesList</em>, <em>animate</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="pathPlanner.rrt.RRT.drawPath">
+<code class="descname">drawPath</code><span class="sig-paren">(</span><em>path</em>, <em>color</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.drawPath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.extendTree">
+<code class="descname">extendTree</code><span class="sig-paren">(</span><em>tree</em>, <em>startN</em>, <em>endN</em>, <em>maxSegLength</em>, <em>maxIncline</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.extendTree" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.findFullPath">
+<code class="descname">findFullPath</code><span class="sig-paren">(</span><em>waypoints</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.findFullPath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.findPath">
+<code class="descname">findPath</code><span class="sig-paren">(</span><em>waypoint1</em>, <em>waypoint2</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.findPath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.flyablePath">
+<code class="descname">flyablePath</code><span class="sig-paren">(</span><em>startNode</em>, <em>endNode</em>, <em>maxIncline</em>, <em>prevChi</em>, <em>chi</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.flyablePath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.pointsAlongPath">
+<code class="descname">pointsAlongPath</code><span class="sig-paren">(</span><em>startN</em>, <em>endN</em>, <em>stepSize</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.pointsAlongPath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.randomPoint">
+<code class="descname">randomPoint</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.randomPoint" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.shortestPath">
+<code class="descname">shortestPath</code><span class="sig-paren">(</span><em>tree</em>, <em>waypoint2</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.shortestPath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.smoothPath">
+<code class="descname">smoothPath</code><span class="sig-paren">(</span><em>path</em>, <em>maxIncline</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.smoothPath" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-pathPlanner.rrtTest">
+<span id="pathplanner-rrttest-module"></span><h2>pathPlanner.rrtTest module<a class="headerlink" href="#module-pathPlanner.rrtTest" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-pathPlanner">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-pathPlanner" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">pathPlanner package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-pathPlanner.pathPlannerBase">pathPlanner.pathPlannerBase module</a></li>
+<li><a class="reference internal" href="#module-pathPlanner.rrt">pathPlanner.rrt module</a></li>
+<li><a class="reference internal" href="#module-pathPlanner.rrtTest">pathPlanner.rrtTest module</a></li>
+<li><a class="reference internal" href="#module-pathPlanner">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/source/pathPlanner.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">Metis  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, John Akagi, Brady Moon, Derek Knowles.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

@@ -146,11 +146,12 @@ class PayloadPlanner():
         ax.axis([-50.,50.,-50.,50.])
         print("sup")
         plt.show()
-
-dropLocation = np.array([0.0,0.0,0.0])
-wind = np.array([0.8,0.5,0.1])
-obstacles = np.array([0.0,0.0,0.0])
-boundaries = np.array([0.0,0.0,0.0])
-test = PayloadPlanner(dropLocation,wind,obstacles,boundaries)
-result = test.plan(wind)
-test.plot()
+        
+if __name__ == "__main__":
+    dropLocation = np.array([0.0,0.0,0.0])
+    wind = np.array([0.8,0.5,0.1])
+    obstacles = np.array([0.0,0.0,0.0])
+    boundaries = np.array([0.0,0.0,0.0])
+    test = PayloadPlanner(dropLocation,wind,obstacles,boundaries)
+    result = test.plan(wind)
+    test.plot()

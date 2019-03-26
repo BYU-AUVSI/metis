@@ -1,0 +1,328 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>missionPlanner package &#8212; Metis  documentation</title>
+    <link rel="stylesheet" href="../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">Metis  documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="missionplanner-package">
+<h1>missionPlanner package<a class="headerlink" href="#missionplanner-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-missionPlanner.loiterPlanner">
+<span id="missionplanner-loiterplanner-module"></span><h2>missionPlanner.loiterPlanner module<a class="headerlink" href="#module-missionPlanner.loiterPlanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="missionPlanner.loiterPlanner.LoiterPlanner">
+<em class="property">class </em><code class="descclassname">missionPlanner.loiterPlanner.</code><code class="descname">LoiterPlanner</code><span class="sig-paren">(</span><em>obstacles</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.loiterPlanner.LoiterPlanner" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="missionPlanner.loiterPlanner.LoiterPlanner.plan">
+<code class="descname">plan</code><span class="sig-paren">(</span><em>waypoints</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.loiterPlanner.LoiterPlanner.plan" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-missionPlanner.mainPlanner">
+<span id="missionplanner-mainplanner-module"></span><h2>missionPlanner.mainPlanner module<a class="headerlink" href="#module-missionPlanner.mainPlanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="missionPlanner.mainPlanner.mainPlanner">
+<em class="property">class </em><code class="descclassname">missionPlanner.mainPlanner.</code><code class="descname">mainPlanner</code><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handles the passing of information for the competition</p>
+<p>This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners</p>
+<dl class="method">
+<dt id="missionPlanner.mainPlanner.mainPlanner.convert_boundaries">
+<code class="descname">convert_boundaries</code><span class="sig-paren">(</span><em>msg</em>, <em>ref_pos</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.convert_boundaries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the boundary points obtained from the interop server to NED coordinates</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>msg</strong> (<em>JudgeMission message</em>) – The message received from the interop server</li>
+<li><strong>ref_pos</strong> (<em>list</em>) – The reference latitude, longitude, and height (in m)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a list of lists describing all the boundary points
+each inner list has the North location, East location, and Down location of a single boundary point
+all measurements are in meters</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.mainPlanner.mainPlanner.convert_obstacles">
+<code class="descname">convert_obstacles</code><span class="sig-paren">(</span><em>msg</em>, <em>ref_pos</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.convert_obstacles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the obstacles from the rospy message to a list of lists</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>msg</strong> (<em>JudgeMission message</em>) – The message received from the interop server</li>
+<li><strong>ref_pos</strong> (<em>list</em>) – The reference latitude, longitude, and height (in m)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a list of lists describing all the obstacles
+each inner list has the North location, East location, Down location, Obstacle height, and Obstacle radius of a single obstacle
+all measurements are in meters</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.mainPlanner.mainPlanner.convert_waypoints">
+<code class="descname">convert_waypoints</code><span class="sig-paren">(</span><em>msg</em>, <em>ref_pos</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.convert_waypoints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the waypoints obtained from the interop server to NED coordinates
+This function doesn’t care about what mission is being run, it just gets the waypoints
+which can be for the drop location, flight location, or search boundaries, and converts them</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>msg</strong> (<em>JudgeMission message</em>) – The message received from the interop server</li>
+<li><strong>ref_pos</strong> (<em>list</em>) – The reference latitude, longitude, and height (in m)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a list of lists describing all the waypoints
+each inner list has the North location, East location, and Down location of a single waypoint
+all measurements are in meters</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.mainPlanner.mainPlanner.get_server_data">
+<code class="descname">get_server_data</code><span class="sig-paren">(</span><em>mission_type</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.get_server_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets data from the interop server</p>
+<p>Polls the interop server node via a service call to get the data associated with a specific mission
+Returns a tuple of all the information</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mission_type</strong> (<em>int</em>) – The mission type number for which data is to be recieved (number defined in the JudgeMission message)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>mission_type</strong> (<em>int</em>) – The mission type number for which data was obtained (number defined in the JudgeMission message)</li>
+<li><strong>obstacles</strong> (<em>list of lists</em>) – A list of lists where the inner lists described the N,E,D,r,h orientation of the obstacles</li>
+<li><strong>boundaries</strong> (<em>list of lists</em>) – A list of lists where each inner list describes the NED position of each boundary position</li>
+<li><strong>waypoints</strong> (<em>list of lists</em>) – A list of lists where each inner list describes the NED position of each waypoint associated with the desired mission_type</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.mainPlanner.mainPlanner.update_path_callback">
+<code class="descname">update_path_callback</code><span class="sig-paren">(</span><em>msg</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.update_path_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is called when waypoints are approved by the GUI and adds the waypoints to the approved path.
+The approved waypoints are sent from the GUI to the path manner via the approve_path
+message and topic.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.mainPlanner.mainPlanner.update_task_callback">
+<code class="descname">update_task_callback</code><span class="sig-paren">(</span><em>req</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.update_task_callback" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is called when the desired task is changed by the GUI. The proper mission is then called.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-missionPlanner.objectivePointsPlanner">
+<span id="missionplanner-objectivepointsplanner-module"></span><h2>missionPlanner.objectivePointsPlanner module<a class="headerlink" href="#module-missionPlanner.objectivePointsPlanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="missionPlanner.objectivePointsPlanner.ObjectivePointsPlanner">
+<em class="property">class </em><code class="descclassname">missionPlanner.objectivePointsPlanner.</code><code class="descname">ObjectivePointsPlanner</code><span class="sig-paren">(</span><em>obstacles</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.objectivePointsPlanner.ObjectivePointsPlanner" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="missionPlanner.objectivePointsPlanner.ObjectivePointsPlanner.plan">
+<code class="descname">plan</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.objectivePointsPlanner.ObjectivePointsPlanner.plan" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-missionPlanner.payloadPlanner">
+<span id="missionplanner-payloadplanner-module"></span><h2>missionPlanner.payloadPlanner module<a class="headerlink" href="#module-missionPlanner.payloadPlanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner">
+<em class="property">class </em><code class="descclassname">missionPlanner.payloadPlanner.</code><code class="descname">PayloadPlanner</code><span class="sig-paren">(</span><em>dropLocation, obstacles, boundaries, wind=[0.0, 0.0, 0.0]</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner" title="Permalink to this definition">¶</a></dt>
+<dd><p>inputs: drop gps location, wind, obstacles
+outputs: X number of waypoints with a single drop waypoint</p>
+<dl class="method">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner.calcClosedParachuteDrop">
+<code class="descname">calcClosedParachuteDrop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.calcClosedParachuteDrop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the motion between the commanded relase and the parachute opening</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner.calcCourseCommand">
+<code class="descname">calcCourseCommand</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.calcCourseCommand" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates the command course angle to be directly into the wind</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner.calcOpenParachuteDrop">
+<code class="descname">calcOpenParachuteDrop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.calcOpenParachuteDrop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the motion between the parachute opening and hitting the ground target</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner.calcReleaseLocation">
+<code class="descname">calcReleaseLocation</code><span class="sig-paren">(</span><em>displacement0_1</em>, <em>displacement1_2</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.calcReleaseLocation" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculates desired location for the release command</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner.calcSupportingPoints">
+<code class="descname">calcSupportingPoints</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.calcSupportingPoints" title="Permalink to this definition">¶</a></dt>
+<dd><p>given a command release location plot X points for a straight line of deployment run</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner.plan">
+<code class="descname">plan</code><span class="sig-paren">(</span><em>wind</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.plan" title="Permalink to this definition">¶</a></dt>
+<dd><p>function called by mainplanner that returns bombdrop waypoint</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="missionPlanner.payloadPlanner.PayloadPlanner.plot">
+<code class="descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.plot" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-missionPlanner.searchPlanner">
+<span id="missionplanner-searchplanner-module"></span><h2>missionPlanner.searchPlanner module<a class="headerlink" href="#module-missionPlanner.searchPlanner" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="missionPlanner.searchPlanner.SearchPlanner">
+<em class="property">class </em><code class="descclassname">missionPlanner.searchPlanner.</code><code class="descname">SearchPlanner</code><span class="sig-paren">(</span><em>obstacles</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.searchPlanner.SearchPlanner" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="missionPlanner.searchPlanner.SearchPlanner.plan">
+<code class="descname">plan</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.searchPlanner.SearchPlanner.plan" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-missionPlanner">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-missionPlanner" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">missionPlanner package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-missionPlanner.loiterPlanner">missionPlanner.loiterPlanner module</a></li>
+<li><a class="reference internal" href="#module-missionPlanner.mainPlanner">missionPlanner.mainPlanner module</a></li>
+<li><a class="reference internal" href="#module-missionPlanner.objectivePointsPlanner">missionPlanner.objectivePointsPlanner module</a></li>
+<li><a class="reference internal" href="#module-missionPlanner.payloadPlanner">missionPlanner.payloadPlanner module</a></li>
+<li><a class="reference internal" href="#module-missionPlanner.searchPlanner">missionPlanner.searchPlanner module</a></li>
+<li><a class="reference internal" href="#module-missionPlanner">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/source/missionPlanner.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">Metis  documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, John Akagi, Brady Moon, Derek Knowles.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+  </body>
+</html>

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+
 #Get the path to the package so we can use files in the tools folder
 #ROS doesn't use the normal path so we can't just sys.path.append('..')
 import sys
@@ -17,13 +18,21 @@ from objectivePointsPlanner import ObjectivePointsPlanner
 from uav_msgs.msg import JudgeMission, NED_list
 from uav_msgs.srv import GetMissionWithId, PlanMissionPoints
 class mainPlanner():
-    """
-    inputs: commands from gui
-    outputs:
+    """Handles the passing of information for the competition
+
+    This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners
     """
 
     def __init__(self):
+        """brief Creates a new main planner objectives
 
+        This initializes a new main planner. The reference latitude, longitude, and altitude are taken from the .launch files
+        A service call is made to get the stationary obstacles, boundaries, and payload drop location.
+        The various mission planners are initilized with the obstacles and boundaries. The paylod planer additionally is initialized
+        with the drop location known.
+        """
+
+        #TODO Add a flag to allow for easy debugging without running the full rosnode suite
 
         #Get ref lat, lon from launch file
         ref_lat = rospy.get_param("ref_lat")
@@ -42,14 +51,14 @@ class mainPlanner():
         #Proposing a switch to a service call rather than a topic to get info to the GUI. If that holds, delete this line
         #self._pub_waypoints = rospy.Publisher('desired_waypoints', NED_list, queue_size=5)
 
-        self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task)
+        self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
 
         #Load the values that identify the various objectives
         #This needs to match what is being used in the GUI
-        self.SEARCH_PLANNER = JudgeMission.MISSION_TYPE_SEARCH
-        self.PAYLOAD_PLANNER = JudgeMission.MISSION_TYPE_DROP
-        self.LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
-        self.OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
+        self._SEARCH_PLANNER = JudgeMission.MISSION_TYPE_SEARCH
+        self._PAYLOAD_PLANNER = JudgeMission.MISSION_TYPE_DROP
+        self._LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
+        self._OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
 
         #Wait for the interop client service call to initiate
         rospy.wait_for_service('get_mission_with_id')
@@ -58,11 +67,12 @@ class mainPlanner():
         mission_type, obstacles, boundaries, drop_location = self.get_server_data(JudgeMission.MISSION_TYPE_DROP)
 
         #Initiate the planner classes
-        self.plan_payload = PayloadPlanner(drop_location, obstacles, boundaries)
-        self.plan_loiter = LoiterPlanner(obstacles)
-        self.plan_search = SearchPlanner(obstacles)
-        self.plan_objective = ObjectivePointsPlanner(obstacles)
+        self._plan_payload = PayloadPlanner(drop_location, obstacles, boundaries)
+        self._plan_loiter = LoiterPlanner(obstacles)
+        self._plan_search = SearchPlanner(obstacles)
+        self._plan_objective = ObjectivePointsPlanner(obstacles)
 
+        #-----START DEBUG----
         #This code is just used to visually check that everything worked ok. Can be removed anytime.
         print("obstacles")
         print(obstacles)
@@ -70,27 +80,33 @@ class mainPlanner():
         print(boundaries)
         print("drop")
         print(drop_location)
+        #-----END DEBUG----
 
 
-
+    #TODO replace lists of lists with NED msg type
+    #TODO remove obstacle D position
     def get_server_data(self, mission_type):
-        """
+        """Gets data from the interop server
+
         Polls the interop server node via a service call to get the data associated with a specific mission
         Returns a tuple of all the information
 
         Parameters
         ----------
         mission_type : int
-            The mission type number as defined in the JudgeMission message
+            The mission type number for which data is to be recieved (number defined in the JudgeMission message)
 
         Returns
         -------
         mission_type : int
-            The mission type number is simply passed through as a reference
-        obstacles : list of list
-            A list of lists where each inner list describes the NED position, height, and radius of each obstacle in meters
+            The mission type number for which data was obtained (number defined in the JudgeMission message)
+
+        obstacles : list of lists
+            A list of lists where the inner lists described the N,E,D,r,h orientation of the obstacles
+
         boundaries : list of lists
             A list of lists where each inner list describes the NED position of each boundary position
+
         waypoints : list of lists
             A list of lists where each inner list describes the NED position of each waypoint associated with the desired mission_type
         """
@@ -216,9 +232,7 @@ class mainPlanner():
 
         return boundary_list
 
-    #TODO This function should probably be a service call callback function
-    #TODO This function should probably call the interop server to get the desired waypoints
-    def update_task(self, req):
+    def update_task_callback(self, req):
         """
         This function is called when the desired task is changed by the GUI. The proper mission is then called.
         """
@@ -249,7 +263,7 @@ class mainPlanner():
             rospy.logfatal('TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER')
 
         wypts_msg = wypts2msg(planned_points,self.task)
-        
+
         return wypts_msg
 
 
