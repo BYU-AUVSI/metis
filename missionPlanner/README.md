@@ -26,7 +26,7 @@ the parachute is fully open.
 2. Time delay between the bay door opening is constant and known (through experimentation)
 3. Height difference is calculated between when the bay door opens and when the parachute opens
 4. Wind is steady state (no gusts)
-5. The only force acting on the payload is gravity (no aerodynamic drag, etc.) 
+5. The only force acting on the payload is gravity (no aerodynamic drag, etc.)
 
 ### Parachute Open to Target
 The second region is between when the parachute opens to when the payload hits the ground target
@@ -34,6 +34,10 @@ The second region is between when the parachute opens to when the payload hits t
 1. Payload descends down at a constant rate which is known (through experimentation)
 2. Payload moves in the North and East directions at the speed of the wind
 3. No aerodynamic drag, acceleration
+
+### Supporting Waypoints
+The final step of  the payload planner is to create supporting waypoints (green triangles) so that
+the plane is flying in a straight line when it drops the payload. 
 
 ## Current Task
 This is a description about this planner
