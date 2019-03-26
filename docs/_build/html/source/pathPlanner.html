@@ -42,64 +42,246 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-pathPlanner.pathPlannerBase">
-<span id="pathplanner-pathplannerbase-module"></span><h2>pathPlanner.pathPlannerBase module<a class="headerlink" href="#module-pathPlanner.pathPlannerBase" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="pathPlanner.pathPlannerBase.pathPlannerBase">
-<em class="property">class </em><code class="descclassname">pathPlanner.pathPlannerBase.</code><code class="descname">pathPlannerBase</code><a class="headerlink" href="#pathPlanner.pathPlannerBase.pathPlannerBase" title="Permalink to this definition">¶</a></dt>
-<dd><p>This is the path planner class</p>
-</dd></dl>
-
+<div class="section" id="pathplanner-pathplannerbase-module">
+<h2>pathPlanner.pathPlannerBase module<a class="headerlink" href="#pathplanner-pathplannerbase-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-pathPlanner.rrt">
 <span id="pathplanner-rrt-module"></span><h2>pathPlanner.rrt module<a class="headerlink" href="#module-pathPlanner.rrt" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="pathPlanner.rrt.RRT">
 <em class="property">class </em><code class="descclassname">pathPlanner.rrt.</code><code class="descname">RRT</code><span class="sig-paren">(</span><em>obstaclesList</em>, <em>boundariesList</em>, <em>animate</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="method">
+<dd><p>An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
+the physical boundaries and obstacles in the competition.</p>
+<dl class="method">
 <dt id="pathPlanner.rrt.RRT.drawPath">
 <code class="descname">drawPath</code><span class="sig-paren">(</span><em>path</em>, <em>color</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.drawPath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>RRT class function that draws the path between a list of waypoints</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>path</strong> (<em>msg_ned</em>) – List of waypoints</li>
+<li><strong>color</strong> (<em>string</em>) – Desired color in format for matplot (e.g. ‘r’,’y’,’b’,etc.)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.extendTree">
-<code class="descname">extendTree</code><span class="sig-paren">(</span><em>tree</em>, <em>startN</em>, <em>endN</em>, <em>maxSegLength</em>, <em>maxIncline</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.extendTree" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descname">extendTree</code><span class="sig-paren">(</span><em>tree</em>, <em>startN</em>, <em>endN</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.extendTree" title="Permalink to this definition">¶</a></dt>
+<dd><p>RRT class function that extends the passed-in tree. It will continue to attempt adding a leaf until it finds a
+successful one. This is the basic RRT algorithm.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>tree</strong> (<em>float</em>) – &#64;param tree: An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi</li>
+<li><strong>startN</strong> (<em>msg_ned</em>) – &#64;param startN: The starting waypoint.</li>
+<li><strong>endN</strong> (<em>msg_ned</em>) – The ending waypoint.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>tree</strong> (<em>float</em>) – An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi</li>
+<li><em>int</em> – Returns a 1 if a path to the end node was found, 0 if not.</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.findFullPath">
 <code class="descname">findFullPath</code><span class="sig-paren">(</span><em>waypoints</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.findFullPath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>RRT class function that finds a path to all of the waypoints passed in. This path takes into account obstacles,
+boundaries, and all other parameters set in the init function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>waypoints</strong> (<em>msg_ned</em>) – A list of waypoints</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>fullPath</strong> – The full list of waypoints which outlines a safe path to follow in order to reach all of the waypoints
+passed in.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">msg_ned</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.findPath">
 <code class="descname">findPath</code><span class="sig-paren">(</span><em>waypoint1</em>, <em>waypoint2</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.findPath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
+boundaries, and all other parameters set in the init function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>waypoint1</strong> (<em>msg_ned</em>) – The starting waypoint</li>
+<li><strong>waypoint2</strong> (<em>msg_ned</em>) – &#64;param waypoint2: The ending waypoint. Super creative names, I know.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>smoothedPath</strong> – The list of waypoints which outlines a safe path to follow in order to reach the two waypoints passed in.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">msg_ned</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.flyablePath">
-<code class="descname">flyablePath</code><span class="sig-paren">(</span><em>startNode</em>, <em>endNode</em>, <em>maxIncline</em>, <em>prevChi</em>, <em>chi</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.flyablePath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descname">flyablePath</code><span class="sig-paren">(</span><em>startNode</em>, <em>endNode</em>, <em>prevChi</em>, <em>chi</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.flyablePath" title="Permalink to this definition">¶</a></dt>
+<dd><p>RRT class function that checks if flying between two points is possible. It checks for collisions, chi angle,
+and incline.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>startNode</strong> (<em>msg_ned</em>) – The starting node</li>
+<li><strong>endNode</strong> (<em>msg_ned</em>) – The ending node</li>
+<li><strong>prevChi</strong> (<em>double</em>) – The chi angle of the leaf being added to</li>
+<li><strong>chi</strong> (<em>double</em>) – The chie angle made by added leaf</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Returns true if a flyable path, false if not</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">boolean</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.pointsAlongPath">
 <code class="descname">pointsAlongPath</code><span class="sig-paren">(</span><em>startN</em>, <em>endN</em>, <em>stepSize</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.pointsAlongPath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>RRT class function that takes two nodes and returns the N, E, and D position of many points along the line
+between the two points spaced according to the step size passed in.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>startN</strong> (<em>msg_ned</em>) – The starting node</li>
+<li><strong>endN</strong> (<em>msg_ned</em>) – The ending node</li>
+<li><strong>stepSize</strong> (<em>double</em>) – The desired spacing between each point along the line between the two nodes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
+<li><strong>N</strong> (<em>double</em>) – An np.array of the north position of points</li>
+<li><strong>E</strong> (<em>double</em>) – An np.array of the east position of points</li>
+<li><strong>D</strong> (<em>double</em>) – An np.array of the down position of points</li>
+</ul>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.randomPoint">
 <code class="descname">randomPoint</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.randomPoint" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>RRT class function that creates a random point in the 2d plane bounded by the max and min boundary positions</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><strong>pointN</strong> (<em>float</em>) – A random north position of a point</li>
+<li><strong>pointE</strong> (<em>float</em>) – A random east position of a point</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.shortestPath">
-<code class="descname">shortestPath</code><span class="sig-paren">(</span><em>tree</em>, <em>waypoint2</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.shortestPath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descname">shortestPath</code><span class="sig-paren">(</span><em>tree</em>, <em>endNode</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.shortestPath" title="Permalink to this definition">¶</a></dt>
+<dd><p>RRT class function that takes in a tree with successful paths and finds which one is the shortest</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>tree</strong> (<em>float</em>) – An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi</li>
+<li><strong>endNode</strong> (<em>msg_ned</em>) – The ending waypoint.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>path</strong> – An array of waypoints that expresses the shortest (but not smoothed), successful path from one waypoint
+to another</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">msg_ned</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="method">
 <dt id="pathPlanner.rrt.RRT.smoothPath">
-<code class="descname">smoothPath</code><span class="sig-paren">(</span><em>path</em>, <em>maxIncline</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.smoothPath" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<code class="descname">smoothPath</code><span class="sig-paren">(</span><em>path</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.smoothPath" title="Permalink to this definition">¶</a></dt>
+<dd><p>RRT class function that takes in an array of waypoints and tries to find a flyable, smooth path.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>path</strong> (<em>msg_ned</em>) – The list of waypoints.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><strong>path</strong> – An array of waypoints that expresses the smoothed, successful path through all the waypoints in reversed
+order.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">msg_ned</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pathPlanner.rrt.RRT.wrap">
+<code class="descname">wrap</code><span class="sig-paren">(</span><em>chi_c</em>, <em>chi</em><span class="sig-paren">)</span><a class="headerlink" href="#pathPlanner.rrt.RRT.wrap" title="Permalink to this definition">¶</a></dt>
+<dd><p>RRT class function that wraps an angle</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>chi_c</strong> (<em>double</em>) – Angle that will be wrapped</li>
+<li><strong>chi</strong> (<em>double</em>) – Reference angle</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>chi_c</strong> – Returns the wrapped angle</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">double</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 </dd></dl>
 
@@ -122,7 +304,7 @@
   <ul>
 <li><a class="reference internal" href="#">pathPlanner package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#module-pathPlanner.pathPlannerBase">pathPlanner.pathPlannerBase module</a></li>
+<li><a class="reference internal" href="#pathplanner-pathplannerbase-module">pathPlanner.pathPlannerBase module</a></li>
 <li><a class="reference internal" href="#module-pathPlanner.rrt">pathPlanner.rrt module</a></li>
 <li><a class="reference internal" href="#module-pathPlanner.rrtTest">pathPlanner.rrtTest module</a></li>
 <li><a class="reference internal" href="#module-pathPlanner">Module contents</a></li>
