@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
 import sys
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
@@ -234,13 +235,13 @@ class RRT():
             # Check for Collision
             if self.flyablePath(msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2]), msg_ned(newNode.item(0),newNode.item(1),newNode.item(2)), tree[minIndex,6] ,chi):
                 successFlag = True
-                # The animate lines below draw the fully explored RRT Tree
-                if self.animate:
-                    if(endN.d==startN.d):
-                        scaler = 1
-                    else:
-                        scaler = (endN.d - newNode.item(2))/(endN.d-startN.d)
-                    spider = self.ax.plot([tree[minIndex,0],newNode.item(0)], [tree[minIndex,1],newNode.item(1)], [-tree[minIndex,2],-newNode.item(2)], color=self.viridis(scaler))
+                # # The animate lines below draw the fully explored RRT Tree
+                # if self.animate:
+                #     if(endN.d==startN.d):
+                #         scaler = 1
+                #     else:
+                #         scaler = (endN.d - newNode.item(2))/(endN.d-startN.d)
+                #     spider = self.ax.plot([tree[minIndex,0],newNode.item(0)], [tree[minIndex,1],newNode.item(1)], [-tree[minIndex,2],-newNode.item(2)], color=self.viridis(scaler))
                 tree = np.append(tree, newNode,axis=0)  # Append new node to the full tree
 
             # Check to see if the new node can connect to the end node
