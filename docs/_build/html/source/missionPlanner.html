@@ -55,133 +55,8 @@
 </dd></dl>
 
 </div>
-<div class="section" id="module-missionPlanner.mainPlanner">
-<span id="missionplanner-mainplanner-module"></span><h2>missionPlanner.mainPlanner module<a class="headerlink" href="#module-missionPlanner.mainPlanner" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="missionPlanner.mainPlanner.mainPlanner">
-<em class="property">class </em><code class="descclassname">missionPlanner.mainPlanner.</code><code class="descname">mainPlanner</code><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner" title="Permalink to this definition">¶</a></dt>
-<dd><p>Handles the passing of information for the competition</p>
-<p>This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners</p>
-<dl class="method">
-<dt id="missionPlanner.mainPlanner.mainPlanner.convert_boundaries">
-<code class="descname">convert_boundaries</code><span class="sig-paren">(</span><em>msg</em>, <em>ref_pos</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.convert_boundaries" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts the boundary points obtained from the interop server to NED coordinates</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>msg</strong> (<em>JudgeMission message</em>) – The message received from the interop server</li>
-<li><strong>ref_pos</strong> (<em>list</em>) – The reference latitude, longitude, and height (in m)</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a list of lists describing all the boundary points
-each inner list has the North location, East location, and Down location of a single boundary point
-all measurements are in meters</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="missionPlanner.mainPlanner.mainPlanner.convert_obstacles">
-<code class="descname">convert_obstacles</code><span class="sig-paren">(</span><em>msg</em>, <em>ref_pos</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.convert_obstacles" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts the obstacles from the rospy message to a list of lists</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>msg</strong> (<em>JudgeMission message</em>) – The message received from the interop server</li>
-<li><strong>ref_pos</strong> (<em>list</em>) – The reference latitude, longitude, and height (in m)</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a list of lists describing all the obstacles
-each inner list has the North location, East location, Down location, Obstacle height, and Obstacle radius of a single obstacle
-all measurements are in meters</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="missionPlanner.mainPlanner.mainPlanner.convert_waypoints">
-<code class="descname">convert_waypoints</code><span class="sig-paren">(</span><em>msg</em>, <em>ref_pos</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.convert_waypoints" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts the waypoints obtained from the interop server to NED coordinates
-This function doesn’t care about what mission is being run, it just gets the waypoints
-which can be for the drop location, flight location, or search boundaries, and converts them</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>msg</strong> (<em>JudgeMission message</em>) – The message received from the interop server</li>
-<li><strong>ref_pos</strong> (<em>list</em>) – The reference latitude, longitude, and height (in m)</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a list of lists describing all the waypoints
-each inner list has the North location, East location, and Down location of a single waypoint
-all measurements are in meters</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="missionPlanner.mainPlanner.mainPlanner.get_server_data">
-<code class="descname">get_server_data</code><span class="sig-paren">(</span><em>mission_type</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.get_server_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gets data from the interop server</p>
-<p>Polls the interop server node via a service call to get the data associated with a specific mission
-Returns a tuple of all the information</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mission_type</strong> (<em>int</em>) – The mission type number for which data is to be recieved (number defined in the JudgeMission message)</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
-<li><strong>mission_type</strong> (<em>int</em>) – The mission type number for which data was obtained (number defined in the JudgeMission message)</li>
-<li><strong>obstacles</strong> (<em>list of lists</em>) – A list of lists where the inner lists described the N,E,D,r,h orientation of the obstacles</li>
-<li><strong>boundaries</strong> (<em>list of lists</em>) – A list of lists where each inner list describes the NED position of each boundary position</li>
-<li><strong>waypoints</strong> (<em>list of lists</em>) – A list of lists where each inner list describes the NED position of each waypoint associated with the desired mission_type</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="missionPlanner.mainPlanner.mainPlanner.update_path_callback">
-<code class="descname">update_path_callback</code><span class="sig-paren">(</span><em>msg</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.update_path_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function is called when waypoints are approved by the GUI and adds the waypoints to the approved path.
-The approved waypoints are sent from the GUI to the path manner via the approve_path
-message and topic.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="missionPlanner.mainPlanner.mainPlanner.update_task_callback">
-<code class="descname">update_task_callback</code><span class="sig-paren">(</span><em>req</em><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.mainPlanner.mainPlanner.update_task_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function is called when the desired task is changed by the GUI. The proper mission is then called.</p>
-</dd></dl>
-
-</dd></dl>
-
+<div class="section" id="missionplanner-mainplanner-module">
+<h2>missionPlanner.mainPlanner module<a class="headerlink" href="#missionplanner-mainplanner-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-missionPlanner.objectivePointsPlanner">
 <span id="missionplanner-objectivepointsplanner-module"></span><h2>missionPlanner.objectivePointsPlanner module<a class="headerlink" href="#module-missionPlanner.objectivePointsPlanner" title="Permalink to this headline">¶</a></h2>
@@ -242,7 +117,8 @@ outputs: X number of waypoints with a single drop waypoint</p>
 <dl class="method">
 <dt id="missionPlanner.payloadPlanner.PayloadPlanner.plot">
 <code class="descname">plot</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#missionPlanner.payloadPlanner.PayloadPlanner.plot" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Plots the waypoints, wind, and drop path</p>
+</dd></dl>
 
 </dd></dl>
 
@@ -276,7 +152,7 @@ outputs: X number of waypoints with a single drop waypoint</p>
 <li><a class="reference internal" href="#">missionPlanner package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
 <li><a class="reference internal" href="#module-missionPlanner.loiterPlanner">missionPlanner.loiterPlanner module</a></li>
-<li><a class="reference internal" href="#module-missionPlanner.mainPlanner">missionPlanner.mainPlanner module</a></li>
+<li><a class="reference internal" href="#missionplanner-mainplanner-module">missionPlanner.mainPlanner module</a></li>
 <li><a class="reference internal" href="#module-missionPlanner.objectivePointsPlanner">missionPlanner.objectivePointsPlanner module</a></li>
 <li><a class="reference internal" href="#module-missionPlanner.payloadPlanner">missionPlanner.payloadPlanner module</a></li>
 <li><a class="reference internal" href="#module-missionPlanner.searchPlanner">missionPlanner.searchPlanner module</a></li>

@@ -17,20 +17,18 @@ class RRT():
     the physical boundaries and obstacles in the competition.
     """
     def __init__(self, obstaclesList, boundariesList, animate):
-        """
-        The constructor for the RRT class.
+        """The constructor for the RRT class.
 
-        @type  obstaclesList: msg_ned
-        @param obstaclesList: A list of all the obstacles in the mission area
+        Parameters
+        ----------
+        obstaclesList : msg_ned
+            A list of all the obstacles in the mission area
 
-        @type  boundariesList: msg_ned
-        @param boundariesList: A list of all the boundary points of the mission area
+        boundariesList : msg_ned
+            A list of all the boundary points of the mission area
 
-        @type  animate: boolean
-        @param animate: True if a visual output is wanted, False otherwise
-
-        @rtype:  None
-        @return: None
+        animate : boolean
+            True if a visual output is wanted, False otherwise
         """
         #save obstacles and boundaries
         self.obstaclesList = obstaclesList
@@ -94,16 +92,19 @@ class RRT():
             self.ax.legend()
 
     def findFullPath(self, waypoints):
-        """
-        RRT class function that finds a path to all of the waypoints passed in. This path takes into account obstacles,
+        """RRT class function that finds a path to all of the waypoints passed in. This path takes into account obstacles,
         boundaries, and all other parameters set in the init function.
 
-        @type  waypoints: msg_ned
-        @param waypoints: A list of waypoints
+        Parameters
+        ----------
+        waypoints : msg_ned
+            A list of waypoints
 
-        @rtype:  msg_ned
-        @return: The full list of waypoints which outlines a safe path to follow in order to reach all of the waypoints
-                 passed in.
+        Returns
+        -------
+        fullPath : msg_ned
+            The full list of waypoints which outlines a safe path to follow in order to reach all of the waypoints
+            passed in.
         """
         numWaypoints = len(waypoints)
         if self.animate:
@@ -138,19 +139,21 @@ class RRT():
         return fullPath
 
     def findPath(self, waypoint1, waypoint2):
-        """
-        RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
+        """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
         boundaries, and all other parameters set in the init function.
 
-        @type  waypoint1: msg_ned
-        @param waypoint1: The starting waypoint
+        Parameters
+        ----------
+        waypoint1 : msg_ned
+            The starting waypoint
 
-        @type  waypoint2: msg_ned
-        @param waypoint2: The ending waypoint. Super creative names, I know.
+        waypoint2 : msg_ned
+            @param waypoint2: The ending waypoint. Super creative names, I know.
 
-        @rtype:  msg_ned
-        @return: The list of waypoints which outlines a safe path to follow in order to reach the two waypoints
-                 passed in.
+        Returns
+        -------
+        smoothedPath :  msg_ned
+            The list of waypoints which outlines a safe path to follow in order to reach the two waypoints passed in.
         """
         if self.animate: # draws the two waypoints
             begEndPoints = self.ax.scatter([waypoint1.n, waypoint2.n], [waypoint1.e, waypoint2.e],
@@ -177,21 +180,27 @@ class RRT():
         return smoothedPath
 
     def extendTree(self, tree, startN, endN):
-        """
-        RRT class function that extends the passed-in tree. It will continue to attempt adding a leaf until it finds a
+        """RRT class function that extends the passed-in tree. It will continue to attempt adding a leaf until it finds a
         successful one. This is the basic RRT algorithm.
 
-        @type  tree: float
-        @param tree: An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
+        Parameters
+        ----------
+        tree : float
+            @param tree: An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
 
-        @type  startN: msg_ned
-        @param startN: The starting waypoint.
+        startN : msg_ned
+            @param startN: The starting waypoint.
 
-        @type  endN: msg_ned
-        @param endN: The ending waypoint.
+        endN : msg_ned
+            The ending waypoint.
 
-        @rtype:  float
-        @return: An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
+        Returns
+        -------
+        tree:  float
+            An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
+
+        int
+            Returns a 1 if a path to the end node was found, 0 if not.
         """
         successFlag = False
         while not successFlag:
@@ -254,18 +263,21 @@ class RRT():
                 return tree, 0
 
     def shortestPath(self, tree, endNode):
-        """
-        RRT class function that takes in a tree with successful paths and finds which one is the shortest
+        """RRT class function that takes in a tree with successful paths and finds which one is the shortest
 
-        @type  tree: float
-        @param tree: An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
+        Parameters
+        ----------
+        tree : float
+            An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
 
-        @type  endNode: msg_ned
-        @param endNode: The ending waypoint.
+        endNode : msg_ned
+            The ending waypoint.
 
-        @rtype:  msg_ned
-        @return: An array of waypoints that expresses the shortest (but not smoothed), successful path from one waypoint
-                 to another
+        Returns
+        -------
+        path :  msg_ned
+            An array of waypoints that expresses the shortest (but not smoothed), successful path from one waypoint
+            to another
         """
         # Find the leaves that connect to the end node
         connectedNodes = []
@@ -291,14 +303,18 @@ class RRT():
         return path
 
     def smoothPath(self, path):
-        """
-        RRT class function that takes in an array of waypoints and tries to find a flyable, smooth path.
+        """ RRT class function that takes in an array of waypoints and tries to find a flyable, smooth path.
 
-        @type  path: msg_ned
-        @param path: The list of waypoints.
+        Parameters
+        ----------
+        path : msg_ned
+            The list of waypoints.
 
-        @rtype:  msg_ned
-        @return: An array of waypoints that expresses the smoothed, successful path through all the waypoints.
+        Returns
+        -------
+        path : msg_ned
+            An array of waypoints that expresses the smoothed, successful path through all the waypoints in reversed
+            order.
         """
         smoothedPath = [path[0]]
         prevChi = 8888
@@ -318,9 +334,41 @@ class RRT():
         return reversePath
 
     def randomPoint(self):
+        """ RRT class function that creates a random point in the 2d plane bounded by the max and min boundary positions
+
+        Returns
+        -------
+        pointN : float
+            A random north position of a point
+
+        pointE : float
+            A random east position of a point
+        """
         return np.random.uniform(low=-self.maxN, high=self.maxN), np.random.uniform(low=-self.maxE, high=self.maxE)
 
     def flyablePath(self, startNode, endNode, prevChi, chi):
+        """ RRT class function that checks if flying between two points is possible. It checks for collisions, chi angle,
+        and incline.
+
+        Parameters
+        ----------
+        startNode : msg_ned
+            The starting node
+
+        endNode : msg_ned
+            The ending node
+
+        prevChi : double
+            The chi angle of the leaf being added to
+
+        chi : double
+            The chie angle made by added leaf
+
+        Returns
+        -------
+        boolean
+            Returns true if a flyable path, false if not
+        """
         #check for obstacles
         X, Y, Z = self.pointsAlongPath(startNode, endNode, self.resolution)
 
@@ -352,9 +400,32 @@ class RRT():
 
 
     def pointsAlongPath(self, startN, endN, stepSize):
-        X = np.array([startN.n])
-        Y = np.array([startN.e])
-        Z = np.array([startN.d])
+        """ RRT class function that takes two nodes and returns the N, E, and D position of many points along the line
+        between the two points spaced according to the step size passed in.
+
+        Parameters
+        ----------
+        startN : msg_ned
+            The starting node
+
+        endN : msg_ned
+            The ending node
+
+        stepSize : double
+            The desired spacing between each point along the line between the two nodes
+
+        Returns
+        -------
+        N : double
+            An np.array of the north position of points
+        E : double
+            An np.array of the east position of points
+        D : double
+            An np.array of the down position of points
+        """
+        N = np.array([startN.n])
+        E = np.array([startN.e])
+        D = np.array([startN.d])
 
         q = np.array([endN.n-startN.n, endN.e-startN.e, endN.d-startN.d])
         L = np.linalg.norm(q)
@@ -363,21 +434,46 @@ class RRT():
         w = np.array([startN.n, startN.e, startN.d])
         for i in range(1, int(np.ceil(L/stepSize))):
             w += stepSize*q
-            X = np.append(X, w.item(0))
-            Y = np.append(Y, w.item(1))
-            Z = np.append(Z, w.item(2))
-        X = np.append(X, endN.n)
-        Y = np.append(Y, endN.e)
-        Z = np.append(Z, endN.d)
-        return X, Y, Z
+            N = np.append(N, w.item(0))
+            E = np.append(E, w.item(1))
+            D = np.append(D, w.item(2))
+        N = np.append(N, endN.n)
+        E = np.append(E, endN.e)
+        D = np.append(D, endN.d)
+        return N, E, D
 
     def drawPath(self, path, color):
+        """ RRT class function that draws the path between a list of waypoints
+
+        Parameters
+        ----------
+        path : msg_ned
+            List of waypoints
+
+        color : string
+            Desired color in format for matplot (e.g. 'r','y','b',etc.)
+        """
         for i in range(0, len(path) - 1):
             way1 = path[i]
             way2 = path[i + 1]
             self.ax.plot([way1.n, way2.n], [way1.e, way2.e], [-way1.d, -way2.d], color=color)
 
     def wrap(self, chi_c, chi):
+        """ RRT class function that wraps an angle
+
+        Parameters
+        ----------
+        chi_c : double
+            Angle that will be wrapped
+
+        chi : double
+            Reference angle
+
+        Returns
+        -------
+        chi_c : double
+            Returns the wrapped angle
+        """
         while chi_c-chi > np.pi:
             chi_c = chi_c - 2.0 * np.pi
         while chi_c-chi < -np.pi:
