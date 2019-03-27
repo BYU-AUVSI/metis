@@ -10,8 +10,8 @@ if __name__ == '__main__':
 
     #List of obastacles and boundaries
     obstaclesList = []
-    obstaclesList.append(msg_ned(25.,-25.,100.,20.))
-    obstaclesList.append(msg_ned(60.,60.,110.,20.))
+    obstaclesList.append(msg_ned(25.,-25.,150.,20.))
+    obstaclesList.append(msg_ned(60.,60.,150.,20.))
     # obstaclesList.append(msg_ned(50.,50.,75.,5.))
     boundariesList = []
     boundariesList.append(msg_ned(-100,100))
@@ -23,6 +23,13 @@ if __name__ == '__main__':
     boundariesList.append(msg_ned(100,-100))
     boundariesList.append(msg_ned(100,100))
 
+    clearance = 5.  # The minimum distance between the path and all obstacles
+    maxDistance = 10.  # Max distance between each added leaf
+    maxIncline = .5  # Max slope the vehicle can climb or decend at
+    maxRelChi = np.pi / 2  # Max relative chi between leaves
+    iterations = 50  # How many sets of random points it will add each time until solution is found
+    resolution = 1.1  # The segment lengths checked for collisions
+    scaleHeight = 1.5  # Scales the height in the cost function for assigning random points to leaves
     animating = True
 
 
@@ -30,19 +37,19 @@ if __name__ == '__main__':
     waypoints = []
     # waypoints.append(msg_ned(10.,10., -100.))
     # waypoints.append(msg_ned(90.,90., -100.))
-    waypoints.append(msg_ned(80.,10., -100.))
-    waypoints.append(msg_ned(-40.,-50., -100.))
+    # waypoints.append(msg_ned(80.,10., -100.))
+    # waypoints.append(msg_ned(-40.,-50., -100.))
     # waypoints.append(msg_ned(30.,30., -100.))
     # waypoints.append(msg_ned(30.,30., -150.))
     # waypoints.append(msg_ned(20.,20., -120.))
     # waypoints.append(msg_ned(25.,25., -100.))
     # waypoints.append(msg_ned(40.,25., -100.))
     # waypoints.append(msg_ned(40.,0., -100.))
-    # waypoints.append(msg_ned(20.,20., -100.))
-    # waypoints.append(msg_ned(80.,20., -140.))
+    waypoints.append(msg_ned(20.,20., -100.))
+    waypoints.append(msg_ned(80.,20., -140.))
 
     # Create rrt object
-    rrt = RRT(obstaclesList, boundariesList, animating)
+    rrt = RRT(obstaclesList, boundariesList, clearance, maxDistance, maxIncline, maxRelChi, iterations, resolution, scaleHeight, animating)
 
     # Solve the path
     solvedPath = rrt.findFullPath(waypoints)

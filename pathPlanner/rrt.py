@@ -17,7 +17,7 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
-    def __init__(self, obstaclesList, boundariesList, animate):
+    def __init__(self, obstaclesList, boundariesList, clearance, maxDistance, maxIncline, maxRelChi, iterations, resolution, scaleHeight, animate):
         """The constructor for the RRT class.
 
         Parameters
@@ -28,6 +28,29 @@ class RRT():
         boundariesList : msg_ned
             A list of all the boundary points of the mission area
 
+        clearance : double
+            The minimum distance the path can be to any obstacle or boundary
+
+        maxDistance : double
+            The maximum distance the next leaf will be extended from the previous leaf
+
+        maxIncline : double
+            The maximum incline or decline angle of the planned path
+
+        maxRelChi : double
+            The maximum difference in the chi angles of path segments
+
+        iterations : int
+            The amount of leaves that will be added until a successful path is found
+
+        resolution : double
+            The spacing of points along the path that are checked for collisions. This method was chosen for ease of use
+            and could be improved later if wanted. But it should be good enough for our purposes and it runs quickly.
+
+        scaleHeight : double
+            This is a scaling value when finding which leaf is closest to the randomly chosen new point. This scales the
+            height in the distance formula so that preference is given to leaves that are closer to the ending altitude.
+
         animate : boolean
             True if a visual output is wanted, False otherwise
         """
@@ -36,16 +59,16 @@ class RRT():
         #save obstacles and boundaries
         self.obstaclesList = obstaclesList
         self.boundariesList = boundariesList
-        #These paremters should be set through a param file and passed in??
-        self.clearance = 5. #The minimum distance between the path and all obstacles
-        self.maxDistance = 10. #Max distance between each added leaf
-        self.maxIncline = .5 #Max slope the vehicle can climb or decend at
-        self.maxRelChi = np.pi/2 #Max relative chi between leaves
-        self.iterations = 50 #How many sets of random points it will add each time until solution is found
-        self.resolution = 1.1 #The segment lengths checked for collisions
-        self.scaleHeight = 1.5 #Scales the height in the cost function for assigning random points to leaves
+        # These paremters should be set through a param file and passed in??
+        self.clearance = clearance  # The minimum distance between the path and all obstacles
+        self.maxDistance = maxDistance  # Max distance between each added leaf
+        self.maxIncline = maxIncline  # Max slope the vehicle can climb or decend at
+        self.maxRelChi = maxRelChi  # Max relative chi between leaves
+        self.iterations = iterations  # How many sets of random points it will add each time until solution is found
+        self.resolution = resolution  # The segment lengths checked for collisions
+        self.scaleHeight = scaleHeight  # Scales the height in the cost function for assigning random points to leaves
         self.animate = animate
-        pointList = [] #For boundary points formatted into the Point object for shapely use
+        pointList = []  # For boundary points formatted into the Point object for shapely use
         nList = []
         eList = []
         for point in boundariesList:
