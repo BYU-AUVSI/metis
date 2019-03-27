@@ -8,6 +8,7 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 sys.path.append('..')
 from messages.ned import msg_ned
+from tools.tools import collisionCheck
 
 
 
@@ -30,6 +31,8 @@ class RRT():
         animate : boolean
             True if a visual output is wanted, False otherwise
         """
+        # np.random.seed(1111) # For Debugging
+
         #save obstacles and boundaries
         self.obstaclesList = obstaclesList
         self.boundariesList = boundariesList
@@ -86,10 +89,13 @@ class RRT():
             self.ax.set_xlabel('X axis')
             self.ax.set_ylabel('Y axis')
             self.ax.set_zlabel('Z axis')
+            plt.xlim(self.maxN*1.1, self.minN*1.1)
+            plt.ylim(self.minE * 1.1, self.maxE * 1.1)
             self.ax.elev = 90 #55
             self.ax.azim = 0 #80
             self.viridis = cm.get_cmap('viridis', 12)
             self.ax.legend()
+
 
     def findFullPath(self, waypoints):
         """RRT class function that finds a path to all of the waypoints passed in. This path takes into account obstacles,
@@ -136,6 +142,7 @@ class RRT():
                 else:
                     scaler = (self.wayMin - way2.d) / (self.wayMin - self.wayMax)
                 self.ax.plot([way1.n, way2.n], [way1.e, way2.e],[-way1.d, -way2.d], color=self.viridis(scaler))
+            plt.show()
         return fullPath
 
     def findPath(self, waypoint1, waypoint2):
@@ -253,14 +260,14 @@ class RRT():
                 #     spider = self.ax.plot([tree[minIndex,0],newNode.item(0)], [tree[minIndex,1],newNode.item(1)], [-tree[minIndex,2],-newNode.item(2)], color=self.viridis(scaler))
                 tree = np.append(tree, newNode,axis=0)  # Append new node to the full tree
 
-            # Check to see if the new node can connect to the end node
-            dist = np.sqrt((endN.n - newNode.item(0)) ** 2 + (endN.e - newNode.item(1)) ** 2 + (endN.d - newNode.item(2)) ** 2)
-            chi = np.arctan2((endN.e - newNode.item(1)), (endN.n - newNode.item(0)))
-            if dist < self.maxDistance and self.flyablePath(msg_ned(newNode.item(0), newNode.item(1), newNode.item(2)), endN, newNode.item(6), chi):
-                tree[np.size(tree, 0)-1, 5] = 1
-                return tree, 1  # Return the extended tree with the flag of a successful path to ending node
-            else:
-                return tree, 0
+                # Check to see if the new node can connect to the end node
+                dist = np.sqrt((endN.n - newNode.item(0)) ** 2 + (endN.e - newNode.item(1)) ** 2 + (endN.d - newNode.item(2)) ** 2)
+                chi = np.arctan2((endN.e - newNode.item(1)), (endN.n - newNode.item(0)))
+                if dist < self.maxDistance and self.flyablePath(msg_ned(newNode.item(0), newNode.item(1), newNode.item(2)), endN, newNode.item(6), chi):
+                    tree[np.size(tree, 0)-1, 5] = 1
+                    return tree, 1  # Return the extended tree with the flag of a successful path to ending node
+                else:
+                    return tree, 0
 
     def shortestPath(self, tree, endNode):
         """RRT class function that takes in a tree with successful paths and finds which one is the shortest
@@ -317,17 +324,22 @@ class RRT():
             order.
         """
         smoothedPath = [path[0]]
-        prevChi = 8888
+        prev_chi = 8888
         index = 1
         while index < len(path)-1:
             chi = np.arctan2((path[index+1].e - smoothedPath[len(smoothedPath)-1].e), (path[index+1].n - smoothedPath[len(smoothedPath)-1].n))
-            if not self.flyablePath(smoothedPath[len(smoothedPath)-1], path[index+1], prevChi ,chi):
+            not_last = index + 2 < len(path)  # This is to know if we aren't checking second to last node
+            if not_last:  # Have to check the flyability of the node after in addition to current one
+                chi2 = np.arctan2((path[index+2].e - path[index+1].e), (path[index+2].n - path[index+1].n))
+            if not self.flyablePath(smoothedPath[len(smoothedPath)-1], path[index+1], prev_chi, chi) or \
+                    (not_last and not self.flyablePath(path[index+1], path[index+2], chi, chi2)):
                 smoothedPath.append(path[index])
-            prevChi = chi
+                prev_chi = np.arctan2((smoothedPath[len(smoothedPath)-1].e - smoothedPath[len(smoothedPath)-2].e),
+                                      (smoothedPath[len(smoothedPath)-1].n - smoothedPath[len(smoothedPath)-2].n))
             index += 1
 
         smoothedPath.append(path[len(path)-1])
-        reversePath = smoothedPath[::-1]
+        reversePath = smoothedPath[::-1]  # Path was saved in reverse order, so it had to be flipped
         # # Commented lines draw the shortened path
         # if self.animate:
         #     self.drawPath(reversePath, 'y')
@@ -369,18 +381,12 @@ class RRT():
         boolean
             Returns true if a flyable path, false if not
         """
-        #check for obstacles
-        X, Y, Z = self.pointsAlongPath(startNode, endNode, self.resolution)
+        #check for obstacles and boundaries
+        N, E, D = self.pointsAlongPath(startNode, endNode, self.resolution)
+        collisionChecked = collisionCheck(self.obstaclesList,self.polygon, N, E, D, self.clearance)
+        if not collisionChecked:
+            return False
 
-        for obstacle in self.obstaclesList:
-            #first check if path is above obstacle
-            if (all(Z < -obstacle.d-self.clearance)):
-                continue
-            #then check if runs into obstacle
-            else:
-                distToPoint = np.sqrt((X-obstacle.n)**2 + (Y-obstacle.e)**2)
-                if(any(distToPoint < obstacle.r + self.clearance)):
-                    return False
 
         #Check for new leaf now above max relative chi angle
         if prevChi != 8888: #If not at the root node
@@ -392,10 +398,7 @@ class RRT():
         incline = np.abs((endNode.d - startNode.d)/np.sqrt((endNode.n - startNode.n) ** 2 + (endNode.e - startNode.e) ** 2) )
         if incline > self.maxIncline+.01:  #Added fudge factor because of floating point math errors
             return False
-        #Check for out of boundaries
-        for i in range(0,len(X)):
-            if not self.polygon.contains(Point(X[i], Y[i])):
-                return False
+
         return True
 
 

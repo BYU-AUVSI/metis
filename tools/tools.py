@@ -1,5 +1,5 @@
 from geographiclib.geodesic import Geodesic
-from uav_msgs.msg import NED_pt, NED_list
+# from uav_msgs.msg import NED_pt, NED_list
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from messages.ned import msg_ned
@@ -40,7 +40,7 @@ def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
 		List of obstacles
 
 	boundaryPoly : Polygon
-	 A Polygon object of the boundaries
+		A Polygon object of the boundaries
 
 	N : np.array
 		Arrays of the north position of points
