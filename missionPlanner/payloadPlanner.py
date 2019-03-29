@@ -4,6 +4,8 @@ sys.path.append('..')
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Polygon
+#from matplotlib.patches import PatchCollection
 from tools.tools import collisionCheck, makeBoundaryPoly
 from messages.ned import msg_ned
 
@@ -13,7 +15,7 @@ class PayloadPlanner():
     inputs: drop gps location, wind, obstacles
     outputs: X number of waypoints with a single drop waypoint
     """
-    def __init__(self,dropLocation,obstacles,boundaries,wind=[0.,0.,0.]):
+    def __init__(self,dropLocation,obstacles,boundariesList,boundariesPolygon,wind=[0.,0.,0.]):
         """
         initializes global variables
 
@@ -31,7 +33,8 @@ class PayloadPlanner():
         self.dropLocation = dropLocation            # location of where on the ground we want to hit [N, E, D]
         self.wind = wind                            # current wind vector [Wn,We,Wd]
         self.obstacles = obstacles                  # competition obstacles
-        self.boundaries = boundaries                # polygon of competition boundaries
+        self.boundariesPolygon = boundariesPolygon                # polygon of competition boundaries
+        self.boundariesList = boundariesList
         self.drop_altitude = 45.0                   # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 1.4                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
@@ -43,6 +46,7 @@ class PayloadPlanner():
         self.NED_parachute_open = np.array([0.0,0.0,0.0])   # location where the parachute oepns [N, E, D]
         self.NED_release_location = np.array([0.0,0.0,0.0]) # location where the command to relase should be given [N, E, D]
         self.waypoints = np.zeros((1,3))            # flight waypoints
+        self.waypoints_array = np.zeros((1,3))      # numpy list of flight waypoints
         self.waypoint_spread = 15.0                 # distance between supporting waypoints in meters
         self.supporting_points = 2                  # number of supporting waypoints on either side of drop waypoint
         self.chi_offset = 0.0                       # offset for commanded chi calculation if waypoint is inside an obstacle
@@ -158,21 +162,21 @@ class PayloadPlanner():
             A list of NED class objects where each object describes the NED position of each waypoint
         """
         length = self.supporting_points*2 + 1
-        waypoints = np.zeros((length,3))
+        self.waypoints_array = np.zeros((length,3))
         # North and East difference at course angle for given distance between waypoints
         dNorth = self.waypoint_spread*np.cos(self.course_command)
         dEast = self.waypoint_spread*np.sin(self.course_command)
         # create waypoints before the release location
         for ii in range(self.supporting_points):
-            waypoints[ii] = self.NED_release_location - (self.supporting_points-ii)*np.array([dNorth,dEast,0.0])
+            self.waypoints_array[ii] = self.NED_release_location - (self.supporting_points-ii)*np.array([dNorth,dEast,0.0])
         # add the release location waypoint
-        waypoints[self.supporting_points] = self.NED_release_location
+        self.waypoints_array[self.supporting_points] = self.NED_release_location
         # create waypoints after the release location
         for ii in range(self.supporting_points):
-            waypoints[ii+self.supporting_points+1] = self.NED_release_location + (ii+1.0)*np.array([dNorth,dEast,0.0])
+            self.waypoints_array[ii+self.supporting_points+1] = self.NED_release_location + (ii+1.0)*np.array([dNorth,dEast,0.0])
         waypointsList = []
         for ii in range(length):
-            waypointsList.append(msg_ned(waypoints[ii,0],waypoints[ii,1],waypoints[ii,2]))
+            waypointsList.append(msg_ned(self.waypoints_array[ii,0],self.waypoints_array[ii,1],self.waypoints_array[ii,2]))
 
         return waypointsList
 
@@ -216,26 +220,53 @@ class PayloadPlanner():
             ax.scatter(self.waypoints[ii].n,self.waypoints[ii].e,self.waypoints[ii].d, c='g', marker='^')
         ax.quiver(self.waypoints[0].n,self.waypoints[0].e,self.waypoints[0].d,np.cos(self.course_command),np.sin(self.course_command),0.,length=20.0,color='g')
 
+        for obstacle in self.obstacles:
+            # Cylinder
+            x = np.linspace((obstacle.n - obstacle.r), (obstacle.n + obstacle.r), 100)
+            z = np.linspace(-obstacle.d,0., 100)
+            # x = np.linspace(-1, 1, 25)
+            # z = np.linspace(-2, 2, 25)
+            Xc, Zc = np.meshgrid(x, z)
+            Yc = np.sqrt(obstacle.r**2 - (Xc - obstacle.n)**2) + obstacle.e
+
+            # Draw parameters
+            ax.plot_surface(Xc, Yc, Zc, alpha=0.9, color='b')
+            ax.plot_surface(Xc, (2.*obstacle.e-Yc), Zc, alpha=0.9, color='b')
+        first = True
+        boundaries = []
+        last = []
+        for bounds in self.boundariesList:
+            if first:
+                boundaries = np.array([[bounds.n, bounds.e, 0.]])
+                last = np.array([[bounds.n, bounds.e, 0.]])
+                first = False
+                continue
+            boundaries = np.append(boundaries, [[bounds.n, bounds.e, 0.]], axis=0)
+        boundaries = np.append(boundaries, last, axis=0)
+        ax.plot(boundaries[:, 0], boundaries[:, 1], boundaries[:, 2], label='Boundaries')
+
         ax.set_xlabel('North')
         ax.set_ylabel('East')
         ax.set_zlabel('Down')
         ax.view_init(azim=76.,elev=-162.)
-        ax.axis([-100.,100.,-100.,100.])
+        ax.axis([-110.,110.,-110.,110.])
         plt.show()
 
     def validateWaypoints(self):
-        #collisionCheck(self.obstacles, boundaryPoly, N, E, D, clearance)
-        if self.ii > 6:
+        N = self.waypoints_array[:,0]
+        E = self.waypoints_array[:,1]
+        D = self.waypoints_array[:,2]
+        clearance = 1.0
+        if collisionCheck(self.obstacles, self.boundariesPolygon, N, E, D, clearance):
             return True
         else:
-            self.ii += 1
             return False
 
 if __name__ == '__main__':
 
     #List of obastacles and boundaries
     obstaclesList = []
-    obstaclesList.append(msg_ned(25.,-25.,100.,20.))
+    obstaclesList.append(msg_ned(25.,25.,100.,20.))
     obstaclesList.append(msg_ned(60.,60.,110.,20.))
     # obstaclesList.append(msg_ned(50.,50.,75.,5.))
     boundariesList = []
@@ -251,7 +282,6 @@ if __name__ == '__main__':
 
     dropLocation = np.array([0.0,0.0,0.0])
     wind = np.array([2.8,0.8,0.1])
-    test = PayloadPlanner(dropLocation,wind,obstaclesList,boundaryPoly)
+    test = PayloadPlanner(dropLocation,obstaclesList,boundariesList,boundaryPoly,wind)
     result = test.plan(wind)
-    print(result)
     test.plot()
