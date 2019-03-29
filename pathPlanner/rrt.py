@@ -59,7 +59,6 @@ class RRT():
         #save obstacles and boundaries
         self.obstaclesList = obstaclesList
         self.boundariesList = boundariesList
-        # These paremters should be set through a param file and passed in??
         self.clearance = clearance  # The minimum distance between the path and all obstacles
         self.maxDistance = maxDistance  # Max distance between each added leaf
         self.maxIncline = maxIncline  # Max slope the vehicle can climb or decend at
@@ -145,10 +144,22 @@ class RRT():
                 self.wayMin = waypoints[0].d
 
         fullPath = []
-        for i in range(0, numWaypoints-1):  # Do each segment of the path individually
-            way1 = waypoints[i]
-            way2 = waypoints[i+1]
-            #Check to make sure if the waypoint is possible??
+        index = 0
+        while index < numWaypoints-1:  # Do each segment of the path individually
+            way1 = waypoints[index]
+            index2 = index+1
+            way2 = waypoints[index2]
+            # Check to make sure if the waypoints are possible
+            if not collisionCheck(self.obstaclesList,self.polygon,np.array([way1.n]), np.array([way1.e]), np.array([way1.d]), self.clearance):
+                index += 1
+                continue
+            while not collisionCheck(self.obstaclesList, self.polygon, np.array([way2.n]), np.array([way2.e]), np.array([way2.d]), self.clearance):
+                if index2 < numWaypoints-1:
+                    index2 += 1
+                    way2 = waypoints[index2]
+                else:
+                    break
+
             if self.animate:
                 if way2.d > self.wayMax:
                     self.wayMax = way2.d
@@ -156,6 +167,7 @@ class RRT():
                     self.wayMin = way2.d
             newPath = self.findPath(way1, way2)  # call the findPath function to find path between these two waypoints
             fullPath += newPath  # Append this segment of the path to the full path
+            index += index2-index
         if self.animate:  # This block of animate code shows the full planned path
             for i in range(0, len(fullPath)-1):
                 way1 = fullPath[i]
@@ -257,13 +269,16 @@ class RRT():
             else:
                 # This case is for when the nearest leaf isn't yet at the correct altitude for the ending waypoint
                 hyp = np.sqrt((northP-tree[minIndex,0])**2 + (eastP-tree[minIndex,1])**2)
-                downP = tree[minIndex,2] - hyp*self.maxIncline
+                if startN.d > endN.d:
+                    downP = tree[minIndex, 2] - hyp * self.maxIncline
+                else:
+                    downP = tree[minIndex, 2] + hyp * self.maxIncline
                 q = np.array([northP - tree[minIndex, 0], eastP - tree[minIndex, 1], downP - tree[minIndex, 2]])
                 L = np.linalg.norm(q)
                 L = min(L, self.maxDistance)
                 tmp = np.array([northP, eastP, downP]) - np.array([tree[minIndex,0], tree[minIndex,1], tree[minIndex,2]])
                 newPoint = np.array([tree[minIndex,0], tree[minIndex,1], tree[minIndex,2]]) + L*(tmp/np.linalg.norm(tmp))
-                if newPoint.item(2) < endN.d:  # Check for overshooting the correct altitude
+                if (startN.d > endN.d and newPoint.item(2) < endN.d) or (startN.d < endN.d and newPoint.item(2) > endN.d):  # Check for overshooting the correct altitude
                     newPoint[2] = endN.d
                 newNode = np.array([[newPoint.item(0), newPoint.item(1), newPoint.item(2), tree[minIndex,3]+L, minIndex, 0., chi]])
                 # # The following commented lines are for seeing the randomly chosen point
@@ -316,7 +331,8 @@ class RRT():
                 connectedNodes.append(i)
 
         # Find the path with the shortest distance (could find a different heuristic for choosing which path to go with,
-        # especially because we are going to shorten the path anyway??).
+        # especially because we are going to shorten the path anyway??). Choose shortest after smoothing?? Or choose for
+        # least turns.
         minIndex = np.argmin(tree[connectedNodes,3])
         minIndex = connectedNodes[minIndex]
         path = []
@@ -346,6 +362,8 @@ class RRT():
             An array of waypoints that expresses the smoothed, successful path through all the waypoints in reversed
             order.
         """
+        # Improve smoother. Because of chi constraint, it doesn't do well at cutting out lots of segments. First try
+        # getting all paths before trimming them.
         smoothedPath = [path[0]]
         prev_chi = 8888
         index = 1

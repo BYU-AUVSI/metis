@@ -45,8 +45,15 @@ if __name__ == '__main__':
     # waypoints.append(msg_ned(25.,25., -100.))
     # waypoints.append(msg_ned(40.,25., -100.))
     # waypoints.append(msg_ned(40.,0., -100.))
+    waypoints.append(msg_ned(25., -25., -140.))
     waypoints.append(msg_ned(20.,20., -100.))
     waypoints.append(msg_ned(80.,20., -140.))
+    waypoints.append(msg_ned(60., 60., -140.))
+    waypoints.append(msg_ned(-60., 60., -140.))
+    waypoints.append(msg_ned(-80., -60., -140.))
+    waypoints.append(msg_ned(50., 60., -140.))
+    waypoints.append(msg_ned(25., -25., -140.))
+    waypoints.append(msg_ned(25., 20., -100.))
 
     # Create rrt object
     rrt = RRT(obstaclesList, boundariesList, clearance, maxDistance, maxIncline, maxRelChi, iterations, resolution, scaleHeight, animating)
