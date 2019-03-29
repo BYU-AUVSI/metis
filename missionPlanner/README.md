@@ -36,8 +36,9 @@ The second region is between when the parachute opens to when the payload hits t
 3. No aerodynamic drag, acceleration
 
 ### Supporting Waypoints
-The final step of  the payload planner is to create supporting waypoints (green triangles) so that
-the plane is flying in a straight line when it drops the payload. 
+The final step of  the payload planner is to create supporting waypoints (green triangles) so that the plane is flying in a straight line when it drops the payload.  
+The planner first tries to fly directly into the wind. If that commanded chi angle
+would hit an obstacle or go out of bounds, it iterates on the command chi angle by adding 15 degrees until it finds a successful waypoint path.
 
 ## Current Task
 This is a description about this planner
