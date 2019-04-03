@@ -12,6 +12,7 @@ from tools.tools import collisionCheck
 
 # To do: A buffer for incline when planning, that way it can smooth
 # Find all possible paths, smooth all, then pick best
+# Could do an improved smoother where is doesn't just check adjacent nodes. But can't be a factorial check.
 
 
 
@@ -218,11 +219,36 @@ class RRT():
                     tree, flag = self.extendTree(tree, waypoint1, waypoint2)
                     foundSolution += flag
 
-        # Find the shortest path
-        path = self.shortestPath(tree, waypoint2)
-        # Smooth the path
-        smoothedPath = self.smoothPath(path)
-        return smoothedPath
+        # # Find the shortest path
+        # path = self.shortestPath(tree, waypoint2)
+        # # Smooth the path
+        # smoothedPath = self.smoothPath(path)
+        # return smoothedPath
+
+        # Find complete paths
+        connectedPaths = []
+        for i in range(0, np.size(tree, 0)):
+            if tree[i, 5] == 1:
+                connectedNodes = []
+                connectedNodes.append(waypoint2)
+                connectedNodes.append(msg_ned(tree[i, 0], tree[i, 1], tree[i, 2]))
+                parentNode = int(tree[i, 4])
+                while parentNode > 0:
+                    connectedNodes.append(msg_ned(tree[parentNode,0],tree[parentNode,1],tree[parentNode,2]))
+                    parentNode = int(tree[parentNode, 4])
+                connectedNodes.append(waypoint1)
+                connectedPaths.append(connectedNodes)
+
+        # Smooth all paths and save the best
+        bestPath = []
+        bestCost = np.inf
+        for path in connectedPaths:
+            smoothedPath, cost = self.smoothPath(path)
+            if cost <  bestCost:
+                bestPath = smoothedPath
+                bestCost = cost
+        return bestPath
+
 
     def extendTree(self, tree, startN, endN):
         """RRT class function that extends the passed-in tree. It will continue to attempt adding a leaf until it finds a
@@ -371,6 +397,7 @@ class RRT():
         # getting all paths before trimming them.
         smoothedPath = [path[0]]
         prev_chi = 8888
+        cost = 0
         index = 1
         while index < len(path)-1:
             chi = np.arctan2((path[index+1].e - smoothedPath[len(smoothedPath)-1].e), (path[index+1].n - smoothedPath[len(smoothedPath)-1].n))
@@ -385,11 +412,14 @@ class RRT():
             index += 1
 
         smoothedPath.append(path[len(path)-1])
+        for i in range(0,len(smoothedPath)-1): #Could add other things to this cost function if wanted
+            cost += np.sqrt((smoothedPath[i].n-smoothedPath[i+1].n)**2 + (smoothedPath[i].e-smoothedPath[i+1].e)**2 + \
+                            (smoothedPath[i].d-smoothedPath[i+1].d)**2)
         reversePath = smoothedPath[::-1]  # Path was saved in reverse order, so it had to be flipped
         # # Commented lines draw the shortened path
         # if self.animate:
         #     self.drawPath(reversePath, 'y')
-        return reversePath
+        return reversePath, cost
 
     def randomPoint(self):
         """ RRT class function that creates a random point in the 2d plane bounded by the max and min boundary positions
