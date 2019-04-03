@@ -10,6 +10,9 @@ sys.path.append('..')
 from messages.ned import msg_ned
 from tools.tools import collisionCheck
 
+# To do: A buffer for incline when planning, that way it can smooth
+# Find all possible paths, smooth all, then pick best
+
 
 
 class RRT():
@@ -251,7 +254,8 @@ class RRT():
 
             # Find nearest leaf. Preference given to leaves that are at the correct altitude
             distances = ((northP-tree[:,0])**2 + (eastP-tree[:,1])**2 + self.scaleHeight*(endN.d - tree[:,2])**2)
-            minIndex = np.argmin(distances)  # could loop through a second time to try second best node??
+            minIndex = np.argmin(distances)  # could loop through a second time to try second best node?? This might help with smoother ascending and descending.
+            # Need to find way to get more smooth descents and ascents?? not zig zaggy
             chi = np.arctan2((eastP - tree[minIndex, 1]), (northP - tree[minIndex, 0]))
 
             # Calculate the new node location
@@ -269,10 +273,11 @@ class RRT():
             else:
                 # This case is for when the nearest leaf isn't yet at the correct altitude for the ending waypoint
                 hyp = np.sqrt((northP-tree[minIndex,0])**2 + (eastP-tree[minIndex,1])**2)
+                lessInclineWhilePlanning = .3
                 if startN.d > endN.d:
-                    downP = tree[minIndex, 2] - hyp * self.maxIncline
+                    downP = tree[minIndex, 2] - hyp * self.maxIncline * lessInclineWhilePlanning
                 else:
-                    downP = tree[minIndex, 2] + hyp * self.maxIncline
+                    downP = tree[minIndex, 2] + hyp * self.maxIncline * lessInclineWhilePlanning
                 q = np.array([northP - tree[minIndex, 0], eastP - tree[minIndex, 1], downP - tree[minIndex, 2]])
                 L = np.linalg.norm(q)
                 L = min(L, self.maxDistance)
