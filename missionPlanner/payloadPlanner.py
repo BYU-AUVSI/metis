@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 #from matplotlib.patches import PatchCollection
-from tools.tools import collisionCheck, makeBoundaryPoly
+from tools.tools import collisionCheck, makeBoundaryPoly, convert
 from messages.ned import msg_ned
 
 
@@ -39,15 +39,15 @@ class PayloadPlanner():
         self.time_delay = 1.4                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
         self.ff = 1.0                               # fudge factor for closed parachute drag
-        self.terminal_velocity = 3.59               # from experimental data [m/s]
-        self.Va = 17.5  # pull from                 # competition design Va [m/s]
+        self.terminal_velocity = 2.28               # from experimental data [m/s]
+        self.Va = 17.5  # pull from yaml            # competition design Va [m/s]
         self.gravity = 9.8147 # pull from yaml      # acceleration of gravity [m/s**2]
         self.course_command = 0.0                   # initialize course commmand
         self.NED_parachute_open = np.array([0.0,0.0,0.0])   # location where the parachute oepns [N, E, D]
         self.NED_release_location = np.array([0.0,0.0,0.0]) # location where the command to relase should be given [N, E, D]
         self.waypoints = np.zeros((1,3))            # flight waypoints
         self.waypoints_array = np.zeros((1,3))      # numpy list of flight waypoints
-        self.waypoint_spread = 15.0                 # distance between supporting waypoints in meters
+        self.waypoint_spread = 25.0                 # distance between supporting waypoints in meters
         self.supporting_points = 2                  # number of supporting waypoints on either side of drop waypoint
         self.chi_offset = 0.0                       # offset for commanded chi calculation if waypoint is inside an obstacle
         self.ii = 0
@@ -190,7 +190,7 @@ class PayloadPlanner():
 
         # target location
         ax.scatter(self.dropLocation.item(0),self.dropLocation.item(1),self.dropLocation.item(2),c='r', marker='o')
-        ax.quiver(0.,0.,0.,self.wind.item(0),self.wind.item(1),self.wind.item(2),length=20.0,normalize=True)
+        #ax.quiver(0.,0.,0.,self.wind.item(0),self.wind.item(1),self.wind.item(2),length=20.0,normalize=True)
 
         # closed baydoor movement
         V0_north = self.Va*np.cos(self.course_command) + self.wind.item(0)  # initial north velocity in inertial frame
@@ -199,7 +199,7 @@ class PayloadPlanner():
         north00 = self.ff*V0_north*time00
         east00 = self.ff*V0_east*time00
         down00 = 0.0*time00
-        ax.plot(self.NED_release_location.item(0)+north00,self.NED_release_location.item(1)+east00,self.NED_release_location.item(2)+down00,c='b')
+        ax.plot(self.NED_release_location.item(0)+north00,self.NED_release_location.item(1)+east00,self.NED_release_location.item(2)+down00,c='r',linewidth=5.0)
 
         # closed parachute dropping
         time11 = np.linspace(self.time_delay,self.time_to_open_parachute+self.time_delay,50)        # time between command and the parachute opening
@@ -207,18 +207,20 @@ class PayloadPlanner():
         east11 = self.ff*V0_east*time11                                          # time 0 to 1 east difference in inertial frame
         time12 = np.linspace(0.0,self.time_to_open_parachute,50)
         down11 = 0.5*self.gravity*time12**2             # time 0 to 1 down difference in inertial frame (Xf = X0 + V0*t + 0.5*a*t**2)
-        ax.plot(self.NED_release_location.item(0)+north11,self.NED_release_location.item(1)+east11,self.NED_release_location.item(2)+down11,c='b')
+        ax.plot(self.NED_release_location.item(0)+north11,self.NED_release_location.item(1)+east11,self.NED_release_location.item(2)+down11,c='r',linewidth=5.0)
 
         # open parachute
         self.NED_parachute_open[0] = self.NED_release_location.item(0) + self.displacement0_1.item(0)
         self.NED_parachute_open[1] = self.NED_release_location.item(1) + self.displacement0_1.item(1)
-        ax.scatter(self.NED_parachute_open.item(0),self.NED_parachute_open.item(1),self.NED_parachute_open.item(2),c='b',marker='+')
-        ax.plot([self.NED_parachute_open.item(0),self.dropLocation.item(0)],[self.NED_parachute_open.item(1),self.dropLocation.item(1)],[self.NED_parachute_open.item(2),self.dropLocation.item(2)],c='b')
+        #ax.scatter(self.NED_parachute_open.item(0),self.NED_parachute_open.item(1),self.NED_parachute_open.item(2),c='b',marker='+')
+        ax.plot([self.NED_parachute_open.item(0),self.dropLocation.item(0)],[self.NED_parachute_open.item(1),self.dropLocation.item(1)],[self.NED_parachute_open.item(2),self.dropLocation.item(2)],c='r',linewidth=5.0)
 
         # release Location
-        for ii in range(len(self.waypoints)):
-            ax.scatter(self.waypoints[ii].n,self.waypoints[ii].e,self.waypoints[ii].d, c='g', marker='^')
-        ax.quiver(self.waypoints[0].n,self.waypoints[0].e,self.waypoints[0].d,np.cos(self.course_command),np.sin(self.course_command),0.,length=20.0,color='g')
+        #for ii in range(len(self.waypoints)):
+        #    ax.scatter(self.waypoints[ii].n,self.waypoints[ii].e,self.waypoints[ii].d, c='g',linewidth=5.0)#marker='^')
+        #ax.quiver(self.waypoints[0].n,self.waypoints[0].e,self.waypoints[0].d,np.cos(self.course_command),np.sin(self.course_command),0.,length=20.0,color='g')
+        ax.plot([self.waypoints[0].n,self.waypoints[-1].n],[self.waypoints[0].e,self.waypoints[-1].e],[self.waypoints[0].d,self.waypoints[-1].d], c='g',linewidth=5.0)
+
 
         for obstacle in self.obstacles:
             # Cylinder
@@ -230,7 +232,7 @@ class PayloadPlanner():
             Yc = np.sqrt(obstacle.r**2 - (Xc - obstacle.n)**2) + obstacle.e
 
             # Draw parameters
-            ax.plot_surface(Xc, Yc, Zc, alpha=0.9, color='b')
+            ax.plot_surface(Xc, Yc, Zc, alpha=0.5, color='b')
             ax.plot_surface(Xc, (2.*obstacle.e-Yc), Zc, alpha=0.9, color='b')
         first = True
         boundaries = []
@@ -243,13 +245,26 @@ class PayloadPlanner():
                 continue
             boundaries = np.append(boundaries, [[bounds.n, bounds.e, 0.]], axis=0)
         boundaries = np.append(boundaries, last, axis=0)
-        ax.plot(boundaries[:, 0], boundaries[:, 1], boundaries[:, 2], label='Boundaries')
+        ax.plot(boundaries[:, 0], boundaries[:, 1], boundaries[:, 2], label='Boundaries',c='b',linewidth=5.0)
 
-        ax.set_xlabel('North')
-        ax.set_ylabel('East')
-        ax.set_zlabel('Down')
-        ax.view_init(azim=76.,elev=-162.)
-        ax.axis([-110.,110.,-110.,110.])
+        for t in ax.xaxis.get_major_ticks(): t.label.set_fontsize(12)
+        for t in ax.yaxis.get_major_ticks(): t.label.set_fontsize(12)
+        for t in ax.zaxis.get_major_ticks(): t.label.set_fontsize(12)
+
+
+        ax.set_xlabel('North [m]',fontsize=20)
+        ax.set_ylabel('East [m]',fontsize=20)
+        ax.set_zlabel('Down [m]',fontsize=20)
+        ax.xaxis.labelpad = 20
+        ax.yaxis.labelpad = 20
+        ax.zaxis.labelpad = 20
+        #ax.xaxis._axinfo['label']['space_factor'] = 3.0
+        #ax.yaxis._axinfo['label']['space_factor'] = 3.0
+        #ax.zaxis._axinfo['label']['space_factor'] = 3.0
+
+
+        ax.view_init(azim=-180.,elev=-120.)
+        ax.axis([-750.,750.,-750.,750.])
         plt.show()
 
     def validateWaypoints(self):
@@ -266,22 +281,57 @@ if __name__ == '__main__':
 
     #List of obastacles and boundaries
     obstaclesList = []
-    obstaclesList.append(msg_ned(25.,25.,100.,20.))
-    obstaclesList.append(msg_ned(60.,60.,110.,20.))
-    # obstaclesList.append(msg_ned(50.,50.,75.,5.))
+    obstaclesList.append(msg_ned(-350.,450.,50.,50.))
+    obstaclesList.append(msg_ned(300.,-150.,100.,25.))
+    obstaclesList.append(msg_ned(-300.,-250.,75.,75.))
     boundariesList = []
-    boundariesList.append(msg_ned(-100,100))
-    boundariesList.append(msg_ned(-100,50))
-    boundariesList.append(msg_ned(-75,50))
-    boundariesList.append(msg_ned(-75,0))
-    boundariesList.append(msg_ned(-100,0))
-    boundariesList.append(msg_ned(-100,-100))
-    boundariesList.append(msg_ned(100,-100))
-    boundariesList.append(msg_ned(100,100))
+
+    home = [38.146269,-76.428164, 0.0]
+    bd0 = [38.146269,-76.428164, 0.0]
+    bd1 = [38.151625,-76.428683, 0.0]
+    bd2 = [38.151889, -76.431467, 0.0]
+    bd3 = [38.150594, -76.435361, 0.0]
+    bd4 = [38.147567, -76.432342, 0.0]
+    bd5 = [38.144667, -76.432947, 0.0]
+    bd6 = [38.143256, -76.434767, 0.0]
+    bd7 = [38.140464, -76.432636, 0.0]
+    bd8 = [38.140719, -76.426014, 0.0]
+    bd9 = [38.143761, -76.421206, 0.0]
+    bd10 = [38.147347, -76.423211, 0.0]
+    bd11 = [38.146131, -76.426653, 0.0]
+
+    bd0_m = convert(home[0],home[1],home[2],bd0[0],bd0[1],bd0[2])
+    bd1_m = convert(home[0],home[1],home[2],bd1[0],bd1[1],bd1[2])
+    bd2_m = convert(home[0],home[1],home[2],bd2[0],bd2[1],bd2[2])
+    bd3_m = convert(home[0],home[1],home[2],bd3[0],bd3[1],bd3[2])
+    bd4_m = convert(home[0],home[1],home[2],bd4[0],bd4[1],bd4[2])
+    bd5_m = convert(home[0],home[1],home[2],bd5[0],bd5[1],bd5[2])
+    bd6_m = convert(home[0],home[1],home[2],bd6[0],bd6[1],bd6[2])
+    bd7_m = convert(home[0],home[1],home[2],bd7[0],bd7[1],bd7[2])
+    bd8_m = convert(home[0],home[1],home[2],bd8[0],bd8[1],bd8[2])
+    bd9_m = convert(home[0],home[1],home[2],bd9[0],bd9[1],bd9[2])
+    bd10_m = convert(home[0],home[1],home[2],bd10[0],bd10[1],bd10[2])
+    bd11_m = convert(home[0],home[1],home[2],bd11[0],bd11[1],bd11[2])
+
+    boundariesList.append(msg_ned(bd0_m[0],bd0_m[1]))
+    boundariesList.append(msg_ned(bd1_m[0],bd1_m[1]))
+    boundariesList.append(msg_ned(bd2_m[0],bd2_m[1]))
+    boundariesList.append(msg_ned(bd3_m[0],bd3_m[1]))
+    boundariesList.append(msg_ned(bd4_m[0],bd4_m[1]))
+    boundariesList.append(msg_ned(bd5_m[0],bd5_m[1]))
+    boundariesList.append(msg_ned(bd6_m[0],bd6_m[1]))
+    boundariesList.append(msg_ned(bd7_m[0],bd7_m[1]))
+    boundariesList.append(msg_ned(bd8_m[0],bd8_m[1]))
+    boundariesList.append(msg_ned(bd9_m[0],bd9_m[1]))
+    boundariesList.append(msg_ned(bd10_m[0],bd10_m[1]))
+    boundariesList.append(msg_ned(bd11_m[0],bd11_m[1]))
     boundaryPoly = makeBoundaryPoly(boundariesList)
 
-    dropLocation = np.array([0.0,0.0,0.0])
-    wind = np.array([2.8,0.8,0.1])
+
+    dropLocation_gps = [38.145861, -76.426389, 0.0]
+    dropLocation = convert(home[0],home[1],home[2],dropLocation_gps[0],dropLocation_gps[1],dropLocation_gps[2])
+    dropLocation = np.array(dropLocation)
+    wind = np.array([0.5,12.8,0.1])
     test = PayloadPlanner(dropLocation,obstaclesList,boundariesList,boundaryPoly,wind)
     result = test.plan(wind)
     test.plot()
