@@ -190,7 +190,7 @@ class PayloadPlanner():
 
         # target location
         ax.scatter(self.dropLocation.item(0),self.dropLocation.item(1),self.dropLocation.item(2),c='r', marker='o')
-        #ax.quiver(0.,0.,0.,self.wind.item(0),self.wind.item(1),self.wind.item(2),length=20.0,normalize=True)
+        ax.quiver(0.,0.,0.,self.wind.item(0),self.wind.item(1),self.wind.item(2),length=20.0,normalize=True)
 
         # closed baydoor movement
         V0_north = self.Va*np.cos(self.course_command) + self.wind.item(0)  # initial north velocity in inertial frame
@@ -216,10 +216,10 @@ class PayloadPlanner():
         ax.plot([self.NED_parachute_open.item(0),self.dropLocation.item(0)],[self.NED_parachute_open.item(1),self.dropLocation.item(1)],[self.NED_parachute_open.item(2),self.dropLocation.item(2)],c='r',linewidth=5.0)
 
         # release Location
-        #for ii in range(len(self.waypoints)):
-        #    ax.scatter(self.waypoints[ii].n,self.waypoints[ii].e,self.waypoints[ii].d, c='g',linewidth=5.0)#marker='^')
+        for ii in range(len(self.waypoints)):
+            ax.scatter(self.waypoints[ii].n,self.waypoints[ii].e,self.waypoints[ii].d, c='g',linewidth=1.0,marker='^')
         #ax.quiver(self.waypoints[0].n,self.waypoints[0].e,self.waypoints[0].d,np.cos(self.course_command),np.sin(self.course_command),0.,length=20.0,color='g')
-        ax.plot([self.waypoints[0].n,self.waypoints[-1].n],[self.waypoints[0].e,self.waypoints[-1].e],[self.waypoints[0].d,self.waypoints[-1].d], c='g',linewidth=5.0)
+        #ax.plot([self.waypoints[0].n,self.waypoints[-1].n],[self.waypoints[0].e,self.waypoints[-1].e],[self.waypoints[0].d,self.waypoints[-1].d], c='g',linewidth=5.0)
 
 
         for obstacle in self.obstacles:

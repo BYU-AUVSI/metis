@@ -14,9 +14,11 @@ This is a description about this planner
 
 ## Payload Planner
 
-The payload path planner is calculated using two distinct regions
+The payload path planner is calculated using two distinct regions. The final path plan is shown below
+with the boundaries and obstacles in blue, payload path in red, and calculated plane waypoints
+in green.
 
-![server overview](docs/img/dropgraph.png)
+![server overview](docs/img/payloadplan.png)
 
 ### Commanded Release to Parachute Open
 The first region is between when the command to release is given to the servo to when
