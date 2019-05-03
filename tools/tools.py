@@ -1,3 +1,19 @@
+ROS_Flag = True #Flag to determine if file is being run in a ros node or testing enviornment
+import socket
+
+from sys import platform
+if platform == "win32": #If running on windows, don't bother checking for ROS
+    ROS_Flag = False
+if ROS_Flag:
+    try:
+        import rospy
+        rospy.get_master().getPid() #Check to see if ros is running
+        from uav_msgs.msg import NED_pt, NED_list
+    except socket.error:
+        print("tools.py: File not being run through ROS")
+        import sys
+        sys.path.append("..")
+
 from geographiclib.geodesic import Geodesic
 # from uav_msgs.msg import NED_pt, NED_list
 from shapely.geometry import Point
@@ -11,25 +27,29 @@ def convert(lat1, lon1, h1, lat2, lon2, h2):
     This function gives the relative N E D coordinates of gps2 relative to gps1
     """
     diction = Geodesic.WGS84.Inverse(lat1, lon1, lat2, lon2)
-    solution = [diction['s12']*math.cos(math.radians(diction['azi1'])), diction['s12']*math.sin(math.radians(diction['azi1'])), -(h2-h1)]
+    solution = [diction['s12']*math.cos(math.radians(diction['azi1'])), diction['s12']*math.sin(math.radians(diction['azi1'])), float(-(h2-h1))]
     return solution
 
 def wypts2msg(waypoints, mission_type):
-	"""
-	This function converts a list of lists of waypoints to a rosmsg
-	"""
+    """
+    This function converts a list of lists of waypoints to a rosmsg
+    """
 
-	rsp = NED_list()
+    if ROS_Flag:
+        rsp = NED_list()
 
-	for i in waypoints:
-		tmp_wypt = NED_pt()
-		tmp_wypt.N = i[0]
-		tmp_wypt.E = i[1]
-		tmp_wypt.D = i[2]
-		tmp_wypt.task = mission_type
-		rsp.waypoint_list.append(tmp_wypt)
+        for i in waypoints:
+            tmp_wypt = NED_pt()
+            tmp_wypt.N = i[0]
+            tmp_wypt.E = i[1]
+            tmp_wypt.D = i[2]
+            tmp_wypt.task = mission_type
+            rsp.waypoint_list.append(tmp_wypt)
 
-	return rsp
+        return rsp
+    else: #Run testing code if ROS is not running
+        #Currently, just pass the waypoint list through
+        return waypoints
 
 def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
 	"""Checks points for collisions with obstacles and boundaries
@@ -76,20 +96,21 @@ def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
 			return False
 	return True
 
+
 def makeBoundaryPoly(boundariesList):
-	"""Makes a list of boundary points into a Polygon object.
+    """Makes a list of boundary points into a Polygon object.
 
-	Parameters
-	----------
-	boundariesList : msg_ned
-		List of boundary points
+    Parameters
+    ----------
+    boundariesList : msg_ned
+        List of boundary points
 
-	Returns
-	----------
-	boundaries : Polygon
-		Returns the Polygon object of boundaries
-	"""
-	pointList = []
-	for point in boundariesList:
-		pointList.append(Point(point.n, point.e))
-	return Polygon([[p.x, p.y] for p in pointList])  # Boundaries now contained in a Polygon object
+    Returns
+    ----------
+    boundaries : Polygon
+        Returns the Polygon object of boundaries
+    """
+    pointList = []
+    for point in boundariesList:
+        pointList.append(Point(point.n, point.e))
+    return Polygon([[p.x, p.y] for p in pointList])  # Boundaries now contained in a Polygon object

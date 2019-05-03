@@ -4,19 +4,28 @@
 #Get the path to the package so we can use files in the tools folder
 #ROS doesn't use the normal path so we can't just sys.path.append('..')
 import sys
-import rospkg
-rospack = rospkg.RosPack()
-sys.path.append(rospack.get_path('metis'))
+ROS_FLAG = True
+try:
+    import rospkg
+    rospack = rospkg.RosPack()
+    sys.path.append(rospack.get_path('metis'))
+    from uav_msgs.msg import JudgeMission, NED_list
+    from uav_msgs.srv import GetMissionWithId, PlanMissionPoints
+except:
+    ROS_FLAG = False
+    sys.path.append("..")
+    import testingCode.testParams as PARAM
+    print("mainPlanner.py: File not being run through ROS")
 
-import rospy
 import numpy as np
-from tools.tools import convert, wypts2msg
+
+from messages.ned import msg_ned
+from tools import tools
 from payloadPlanner import PayloadPlanner
 from loiterPlanner import LoiterPlanner
 from searchPlanner import SearchPlanner
 from objectivePointsPlanner import ObjectivePointsPlanner
-from uav_msgs.msg import JudgeMission, NED_list
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints
+
 class mainPlanner():
     """Handles the passing of information for the competition
 
@@ -33,38 +42,45 @@ class mainPlanner():
         """
 
         #TODO Add a flag to allow for easy debugging without running the full rosnode suite
+        if ROS_FLAG:
+            #Get ref lat, lon from launch file
+            ref_lat = rospy.get_param("ref_lat")
+            ref_lon = rospy.get_param("ref_lon")
+            ref_h = rospy.get_param("ref_h")
+            self.ref_pos = [ref_lat, ref_lon, ref_h]
 
-        #Get ref lat, lon from launch file
-        ref_lat = rospy.get_param("ref_lat")
-        ref_lon = rospy.get_param("ref_lon")
-        ref_h = rospy.get_param("ref_h")
-        self.ref_pos = [ref_lat, ref_lon, ref_h]
+            #Keeps track of what task is currently being executed
+            self.task = 0
 
-        #Keeps track of what task is currently being executed
-        self.task = 0
+            self._sub_waypoints = rospy.Subscriber('approved_path', NED_list, self.update_path_callback, queue_size=5)
+            #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
+            #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
 
-        self._sub_waypoints = rospy.Subscriber('approved_path', NED_list, self.update_path_callback, queue_size=5)
-        #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
-        #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
+            self._pub_task = rospy.Publisher('current_task', JudgeMission, queue_size=5)
+            #Proposing a switch to a service call rather than a topic to get info to the GUI. If that holds, delete this line
+            #self._pub_waypoints = rospy.Publisher('desired_waypoints', NED_list, queue_size=5)
 
-        self._pub_task = rospy.Publisher('current_task', JudgeMission, queue_size=5)
-        #Proposing a switch to a service call rather than a topic to get info to the GUI. If that holds, delete this line
-        #self._pub_waypoints = rospy.Publisher('desired_waypoints', NED_list, queue_size=5)
+            self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
 
-        self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
+            #Load the values that identify the various objectives
+            #This needs to match what is being used in the GUI
+            self._SEARCH_PLANNER = JudgeMission.MISSION_TYPE_SEARCH
+            self._PAYLOAD_PLANNER = JudgeMission.MISSION_TYPE_DROP
+            self._LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
+            self._OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
 
-        #Load the values that identify the various objectives
-        #This needs to match what is being used in the GUI
-        self._SEARCH_PLANNER = JudgeMission.MISSION_TYPE_SEARCH
-        self._PAYLOAD_PLANNER = JudgeMission.MISSION_TYPE_DROP
-        self._LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
-        self._OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
+            #Wait for the interop client service call to initiate
+            rospy.wait_for_service('get_mission_with_id')
 
-        #Wait for the interop client service call to initiate
-        rospy.wait_for_service('get_mission_with_id')
+            #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
+            mission_type, obstacles, boundaries, drop_location = self.get_server_data(JudgeMission.MISSION_TYPE_DROP)
+        else:
+                drop_location = PARAM.drop_location
+                obstalces = PARAM.obstacles
+                boundaries = PARAM.boundaries
+                self.ref_pos = PARAM.ref_pos
 
-        #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
-        mission_type, obstacles, boundaries, drop_location = self.get_server_data(JudgeMission.MISSION_TYPE_DROP)
+
 
         #Initiate the planner classes
         self._plan_payload = PayloadPlanner(drop_location, obstacles, boundaries)
@@ -118,9 +134,9 @@ class mainPlanner():
         resp = mission_data(mission_type)
 
         #Get boundaries, obstacles, flight waypoints
-        obstacles = self.convert_obstacles(resp.mission, self.ref_pos)
-        boundaries = self.convert_boundaries(resp.mission, self.ref_pos)
-        waypoints =  self.convert_waypoints(resp.mission, self.ref_pos)
+        obstacles = self.convert_obstacles(self.ref_pos, resp.mission)
+        boundaries = self.convert_boundaries(self.ref_pos, resp.mission)
+        waypoints =  self.convert_waypoints(self.ref_pos, resp.mission)
 
         return mission_type, obstacles, boundaries, waypoints
 
@@ -134,7 +150,7 @@ class mainPlanner():
 
         self.waypoints.append(msg.waypoints)
 
-    def convert_obstacles(self, msg, ref_pos):
+    def convert_obstacles(self, ref_pos, msg):
         """
         Converts the obstacles from the rospy message to a list of lists
 
@@ -160,14 +176,14 @@ class mainPlanner():
         obstacle_list = []
 
         for i in msg.stationary_obstacles:
-            obs_NED = convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
+            obs_NED = tools.convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
             obs_NED.append(i.cylinder_height)
             obs_NED.append(i.cylinder_radius)
             obstacle_list.append(obs_NED)
 
         return obstacle_list
 
-    def convert_waypoints(self, msg, ref_pos):
+    def convert_waypoints(self,ref_pos, msg):
         """
         Converts the waypoints obtained from the interop server to NED coordinates
         This function doesn't care about what mission is being run, it just gets the waypoints
@@ -196,12 +212,12 @@ class mainPlanner():
         waypoint_list = []
 
         for i in msg.waypoints:
-            wpt_NED = convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
+            wpt_NED = tools.convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
             waypoint_list.append(wpt_NED)
 
         return waypoint_list
 
-    def convert_boundaries(self, msg, ref_pos):
+    def convert_boundaries(self, ref_pos, msg):
         """
         Converts the boundary points obtained from the interop server to NED coordinates
 
@@ -227,7 +243,7 @@ class mainPlanner():
         boundary_list = []
 
         for i in msg.boundaries:
-            bnd_NED = convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
+            bnd_NED = tools.convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
             boundary_list.append(bnd_NED)
 
         return boundary_list
@@ -262,14 +278,17 @@ class mainPlanner():
         else:
             rospy.logfatal('TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER')
 
-        wypts_msg = wypts2msg(planned_points,self.task)
+        wypts_msg = tools.wypts2msg(planned_points,self.task)
 
         return wypts_msg
 
 
 #Run the main planner
 if __name__ == "__main__":
-    rospy.init_node('main_planner', anonymous=True)
-    test_planner = mainPlanner()
-    while not rospy.is_shutdown():
-        rospy.spin()
+    if ROS_FLAG:
+        rospy.init_node('main_planner', anonymous=True)
+        test_planner = mainPlanner()
+        while not rospy.is_shutdown():
+            rospy.spin()
+    else:
+        print("mainPlanner is not running ros")
