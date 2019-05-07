@@ -40,9 +40,9 @@ def wypts2msg(waypoints, mission_type):
 
         for i in waypoints:
             tmp_wypt = NED_pt()
-            tmp_wypt.N = i[0]
-            tmp_wypt.E = i[1]
-            tmp_wypt.D = i[2]
+            tmp_wypt.N = i.n
+            tmp_wypt.E = i.e
+            tmp_wypt.D = i.d
             tmp_wypt.task = mission_type
             rsp.waypoint_list.append(tmp_wypt)
 
