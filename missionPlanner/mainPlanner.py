@@ -6,6 +6,7 @@
 import sys
 ROS_FLAG = True
 try:
+    import rospy
     import rospkg
     rospack = rospkg.RosPack()
     sys.path.append(rospack.get_path('metis'))
@@ -14,7 +15,7 @@ try:
 except:
     ROS_FLAG = False
     sys.path.append("..")
-    import testingCode.testParams as PARAM
+    import testingCode.testParam as PARAM
     print("mainPlanner.py: File not being run through ROS")
 
 import numpy as np
@@ -32,7 +33,7 @@ class mainPlanner():
     This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners
     """
 
-    def __init__(self):
+    def __init__(self, Testing=False):
         """brief Creates a new main planner objectives
 
         This initializes a new main planner. The reference latitude, longitude, and altitude are taken from the .launch files
@@ -42,7 +43,7 @@ class mainPlanner():
         """
 
         #TODO Add a flag to allow for easy debugging without running the full rosnode suite
-        if ROS_FLAG:
+        if not Testing:
             #Get ref lat, lon from launch file
             ref_lat = rospy.get_param("ref_lat")
             ref_lon = rospy.get_param("ref_lon")
@@ -62,6 +63,9 @@ class mainPlanner():
 
             self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
 
+
+            #TODO: Add ability to manual call individual missions if groundstation isn't running
+
             #Load the values that identify the various objectives
             #This needs to match what is being used in the GUI
             self._SEARCH_PLANNER = JudgeMission.MISSION_TYPE_SEARCH
@@ -73,29 +77,33 @@ class mainPlanner():
             rospy.wait_for_service('get_mission_with_id')
 
             #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
-            mission_type, obstacles, boundaries, drop_location = self.get_server_data(JudgeMission.MISSION_TYPE_DROP)
+            mission_type, obstacles, boundary_list, boundary_poly, drop_location = self.get_server_data(JudgeMission.MISSION_TYPE_DROP)
         else:
-                drop_location = PARAM.drop_location
-                obstalces = PARAM.obstacles
-                boundaries = PARAM.boundaries
-                self.ref_pos = PARAM.ref_pos
+                drop_location = [PARAM.drop_location]
+                obstacles = PARAM.obstacles
+                boundary_poly = PARAM.boundaries
+                boundary_list = PARAM.boundariesList
+                #self.ref_pos = PARAM.ref_pos # I don't think anything needs to be converted - JTA, 5/3/19
 
 
 
         #Initiate the planner classes
-        self._plan_payload = PayloadPlanner(drop_location, obstacles, boundaries)
+        self._plan_payload = PayloadPlanner(drop_location[0], obstacles, boundary_list, boundary_poly)
         self._plan_loiter = LoiterPlanner(obstacles)
         self._plan_search = SearchPlanner(obstacles)
         self._plan_objective = ObjectivePointsPlanner(obstacles)
 
         #-----START DEBUG----
         #This code is just used to visually check that everything worked ok. Can be removed anytime.
-        print("obstacles")
-        print(obstacles)
-        print("boundaries")
-        print(boundaries)
-        print("drop")
-        print(drop_location)
+        print("Obstacles")
+        for obstacle in obstacles:
+            print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
+        print("Boundaries")
+        for boundary in boundary_list:
+            print(boundary.n, boundary.e)
+        print("Drop")
+        for drop in drop_location:
+            print(drop.n, drop.e, drop.d)
         #-----END DEBUG----
 
 
@@ -117,14 +125,14 @@ class mainPlanner():
         mission_type : int
             The mission type number for which data was obtained (number defined in the JudgeMission message)
 
-        obstacles : list of lists
-            A list of lists where the inner lists described the N,E,D,r,h orientation of the obstacles
+        obstacles : list of NED messages
+            A list of NED messages
 
-        boundaries : list of lists
-            A list of lists where each inner list describes the NED position of each boundary position
+        boundaries : polygon
+            A polygon object that defines the boundaries
 
-        waypoints : list of lists
-            A list of lists where each inner list describes the NED position of each waypoint associated with the desired mission_type
+        waypoints : list of NED messages
+            A list of NED messages
         """
 
         #Set up a service call to poll the interop server
@@ -135,10 +143,10 @@ class mainPlanner():
 
         #Get boundaries, obstacles, flight waypoints
         obstacles = self.convert_obstacles(self.ref_pos, resp.mission)
-        boundaries = self.convert_boundaries(self.ref_pos, resp.mission)
+        boundary_list, boundary_poly = self.convert_boundaries(self.ref_pos, resp.mission)
         waypoints =  self.convert_waypoints(self.ref_pos, resp.mission)
 
-        return mission_type, obstacles, boundaries, waypoints
+        return mission_type, obstacles, boundary_list, boundary_poly, waypoints
 
 
     def update_path_callback(self, msg):
@@ -152,7 +160,7 @@ class mainPlanner():
 
     def convert_obstacles(self, ref_pos, msg):
         """
-        Converts the obstacles from the rospy message to a list of lists
+        Converts the obstacles from the rospy message to a list of NED classes
 
         Parameters
         ----------
@@ -163,10 +171,8 @@ class mainPlanner():
 
         Returns
         -------
-        list
-            a list of lists describing all the obstacles
-            each inner list has the North location, East location, Down location, Obstacle height, and Obstacle radius of a single obstacle
-            all measurements are in meters
+        obstacle_list : list of NED classes
+            Describes the position and height of each obstacle
 
         """
         ref_lat = ref_pos[0]
@@ -177,9 +183,7 @@ class mainPlanner():
 
         for i in msg.stationary_obstacles:
             obs_NED = tools.convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
-            obs_NED.append(i.cylinder_height)
-            obs_NED.append(i.cylinder_radius)
-            obstacle_list.append(obs_NED)
+            obstacle_list.append(msg_ned(obs_NED[0], obs_NED[1], i.cylinder_height, i.cylinder_radius))
 
         return obstacle_list
 
@@ -199,10 +203,8 @@ class mainPlanner():
 
         Returns
         -------
-        list
-            a list of lists describing all the waypoints
-            each inner list has the North location, East location, and Down location of a single waypoint
-            all measurements are in meters
+        waypoint_list : list of NED classes
+            List describing the NED position of each waypoint
 
         """
         ref_lat = ref_pos[0]
@@ -213,7 +215,7 @@ class mainPlanner():
 
         for i in msg.waypoints:
             wpt_NED = tools.convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
-            waypoint_list.append(wpt_NED)
+            waypoint_list.append(msg_ned(wpt_NED[0], wpt_NED[1], wpt_NED[2]))
 
         return waypoint_list
 
@@ -244,43 +246,48 @@ class mainPlanner():
 
         for i in msg.boundaries:
             bnd_NED = tools.convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
-            boundary_list.append(bnd_NED)
+            boundary_list.append(msg_ned(bnd_NED[0], bnd_NED[1]))
 
-        return boundary_list
+        boundary_poly = tools.makeBoundaryPoly(boundary_list)
+        return boundary_list, boundary_poly
 
     def update_task_callback(self, req):
         """
         This function is called when the desired task is changed by the GUI. The proper mission is then called.
+
+
         """
 
         self.task = req.mission_type
 
-        mission_type, obstacles, boundaries, waypoints = self.get_server_data(self.task)
+        mission_type, obstacles, boundary_list, boundary_poly, waypoints = self.get_server_data(self.task)
 
         #Each task_planner class function should return a NED_list msg
         #These classes can be switched out depending on the desired functionality
-        if(self.task == self.SEARCH_PLANNER):
-            rospy.loginfo('PATH PLANNER TASK BEING PLANNED')
-            planned_points = self.plan_search.plan(waypoints)
+        if(self.task == self._SEARCH_PLANNER):
+            rospy.loginfo('SEARCH TASK BEING PLANNED')
+            planned_points = self._plan_search.plan(waypoints)
 
-        elif(self.task == self.PAYLOAD_PLANNER):
-            rospy.loginfo('PAYLOAD PLANNER TASK BEING PLANNED')
-            planned_points = self.plan_payload.plan(waypoints)
+        elif(self.task == self._PAYLOAD_PLANNER):
+            rospy.loginfo('PAYLOAD TASK BEING PLANNED')
+            planned_points = self._plan_payload.plan()
 
-        elif(self.task == self.LOITER_PLANNER):
+        elif(self.task == self._LOITER_PLANNER):
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
-            planned_points = self.plan_loiter.plan(waypoints)
+            planned_points = self._plan_loiter.plan(waypoints)
 
-        elif(self.task == self.OBJECTIVE_PLANNER):
+        elif(self.task == self._OBJECTIVE_PLANNER):
             rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
-            planned_points = self.plan_objective.plan(waypoints)
+            planned_points = self._plan_objective.plan(waypoints)
 
         else:
             rospy.logfatal('TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER')
 
+        #Convert python NED class to rospy ned msg
         wypts_msg = tools.wypts2msg(planned_points,self.task)
-
+        print(wypts_msg)
         return wypts_msg
+
 
 
 #Run the main planner
@@ -291,4 +298,5 @@ if __name__ == "__main__":
         while not rospy.is_shutdown():
             rospy.spin()
     else:
+        test_planner = mainPlanner()
         print("mainPlanner is not running ros")

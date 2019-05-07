@@ -15,7 +15,7 @@ class PayloadPlanner():
     inputs: drop gps location, wind, obstacles
     outputs: X number of waypoints with a single drop waypoint
     """
-    def __init__(self,dropLocation,obstacles,boundariesList,boundariesPolygon,wind=[0.,0.,0.]):
+    def __init__(self,dropLocation,obstacles,boundariesList,boundariesPolygon,wind=np.array([0.,0.,0.])):
         """
         initializes global variables
 
@@ -34,7 +34,7 @@ class PayloadPlanner():
         self.wind = wind                            # current wind vector [Wn,We,Wd]
         self.obstacles = obstacles                  # competition obstacles
         self.boundariesPolygon = boundariesPolygon                # polygon of competition boundaries
-        self.boundariesList = boundariesList
+        self.boundariesList = boundariesList       # This is only used once it seems, to plot the boundaries. Could we change it so we get the plotting points from the polygon? -JTA, 5/3/2019
         self.drop_altitude = 45.0                   # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 1.4                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
@@ -52,7 +52,7 @@ class PayloadPlanner():
         self.chi_offset = 0.0                       # offset for commanded chi calculation if waypoint is inside an obstacle
         self.ii = 0
 
-    def plan(self,wind):
+    def plan(self,wind=np.array([0.,0.,0.])):
         """
         function called by mainplanner that returns bombdrop waypoint
 
@@ -107,9 +107,10 @@ class PayloadPlanner():
         displacement1_2 : numpy array
             array that includes the displacement of the open parachute drop in the north and east directions
         """
-        target_north = self.dropLocation.item(0)    # target north location
-        target_east = self.dropLocation.item(1)     # target east location
-        target_down = self.dropLocation.item(2)    # target down location
+        print(self.dropLocation)
+        target_north = self.dropLocation.n    # target north location
+        target_east = self.dropLocation.e     # target east location
+        target_down = self.dropLocation.d   # target down location
         time1_2 = (target_down - self.NED_parachute_open.item(2))/self.terminal_velocity  # calculate time from parahute opening to hitting the target (Xf - X0 = v*t)
         dNorth1_2 = self.wind.item(0)*time1_2       # time 1 to 2 north difference in inertial frame
         dEast1_2 = self.wind.item(1)*time1_2        # time 1 to 2 east difference in inertial frame
@@ -132,8 +133,8 @@ class PayloadPlanner():
         dEast0_1 = displacement0_1.item(1)                                  # region 1 east displacement
         dNorth1_2 = displacement1_2.item(0)                                 # region 2 north displacement
         dEast1_2 = displacement1_2.item(1)                                  # region 2 east displacement
-        release_north = self.dropLocation.item(0) - dNorth1_2 - dNorth0_1   # release north position
-        release_east = self.dropLocation.item(1) - dEast1_2 - dEast0_1      # release east position
+        release_north = self.dropLocation.n - dNorth1_2 - dNorth0_1   # release north position
+        release_east = self.dropLocation.e - dEast1_2 - dEast0_1      # release east position
         release_down = -self.drop_altitude                                  # release down position
         self.NED_release_location = np.array([release_north,release_east,release_down])
 
@@ -332,6 +333,6 @@ if __name__ == '__main__':
     dropLocation = convert(home[0],home[1],home[2],dropLocation_gps[0],dropLocation_gps[1],dropLocation_gps[2])
     dropLocation = np.array(dropLocation)
     wind = np.array([0.5,12.8,0.1])
-    test = PayloadPlanner(dropLocation,obstaclesList,boundariesList,boundaryPoly,wind)
+    test = PayloadPlanner(dropLocation,obstaclesList,boundaryPoly,wind)
     result = test.plan(wind)
     test.plot()
