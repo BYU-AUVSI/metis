@@ -17,8 +17,22 @@ def mission_response(req):
     pt2.point = Point(40.267625, -111.635216, 45, 0)
     pt2.ordinal = 2
 
+    pt3 = OrderedPoint()
+    pt3.point = Point(40.266511, -111.633746, 45, 0)
+    pt3.ordinal = 3
+
+    pt4 = OrderedPoint()
+    pt4.point = Point(40.266340, -111.635935, 45, 0)
+    pt4.ordinal = 4
+
+    pt5 = OrderedPoint()
+    pt5.point = Point(40.266815, -111.637083, 45, 0)
+    pt5.ordinal = 5
+
     if res.mission_type == JudgeMission.MISSION_TYPE_DROP:
         res.waypoints = [pt1]
+    elif res.mission_type == JudgeMission.MISSION_TYPE_SEARCH:
+        res.waypoints = [pt1, pt2, pt3, pt4, pt5]
     else:
         res.waypoints = [pt1, pt2]
 
@@ -37,7 +51,7 @@ def mission_response(req):
     bnd3.ordinal = 3
 
     bnd4 = OrderedPoint()
-    bnd4.point = Point(40.266135, -111.634604, 0, 0)
+    bnd4.point = Point(40.266143, -111.632233, 0, 0)
     bnd4.ordinal = 4
 
     res.boundaries = [bnd1, bnd2, bnd3, bnd4]
