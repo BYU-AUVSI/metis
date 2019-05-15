@@ -90,7 +90,7 @@ class mainPlanner():
         #Initiate the planner classes
         self._plan_payload = PayloadPlanner(drop_location[0], obstacles, boundary_list, boundary_poly)
         self._plan_loiter = LoiterPlanner(obstacles)
-        self._plan_search = SearchPlanner(obstacles)
+        self._plan_search = SearchPlanner(boundary_list, obstacles)
         self._plan_objective = ObjectivePointsPlanner(obstacles)
 
         #-----START DEBUG----
