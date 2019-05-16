@@ -29,10 +29,16 @@ def mission_response(req):
     pt5.point = Point(40.266815, -111.637083, 45, 0)
     pt5.ordinal = 5
 
+    pt6 = OrderedPoint()
+    pt6.point = Point(40.266946, -111.632552, 0, 0)
+    pt6.ordinal = 1
+
     if res.mission_type == JudgeMission.MISSION_TYPE_DROP:
         res.waypoints = [pt1]
     elif res.mission_type == JudgeMission.MISSION_TYPE_SEARCH:
         res.waypoints = [pt1, pt2, pt3, pt4, pt5]
+    elif res.mission_type == JudgeMission.MISSION_TYPE_OFFAXIS:
+        res.waypoints = [pt6]
     else:
         res.waypoints = [pt1, pt2]
 

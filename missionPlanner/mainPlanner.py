@@ -26,6 +26,7 @@ from payloadPlanner import PayloadPlanner
 from loiterPlanner import LoiterPlanner
 from searchPlanner import SearchPlanner
 from objectivePointsPlanner import ObjectivePointsPlanner
+from offaxisPlanner import OffaxisPlanner
 
 class mainPlanner():
     """Handles the passing of information for the competition
@@ -92,6 +93,7 @@ class mainPlanner():
         self._plan_loiter = LoiterPlanner(obstacles)
         self._plan_search = SearchPlanner(boundary_list, obstacles)
         self._plan_objective = ObjectivePointsPlanner(obstacles)
+        self._plan_offaxis = OffaxisPlanner(boundary_list, obstacles)
 
         #-----START DEBUG----
         #This code is just used to visually check that everything worked ok. Can be removed anytime.
@@ -276,9 +278,16 @@ class mainPlanner():
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
             planned_points = self._plan_loiter.plan(waypoints)
 
-        elif(self.task == self._OBJECTIVE_PLANNER):
+        elif(self.task == self._OBJECTIVE_PLANNER): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
             rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
             planned_points = self._plan_objective.plan(waypoints)
+
+        elif(self.task == JudgeMission.MISSION_TYPE_OFFAXIS):
+            rospy.loginfo('OFFAXIS PLANNER TASK BEING PLANNED')
+            planned_points = self._plan_offaxis.plan(waypoints)
+
+        elif(self.tas == JudgeMission.MISSION_TYPE_EMERGENT):
+            pass
 
         else:
             rospy.logfatal('TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER')
