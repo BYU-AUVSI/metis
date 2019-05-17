@@ -29,7 +29,7 @@ class mainPlanner():
     This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners
     """
 
-    def __init__(self, Testing=False):
+    def __init__(self):
         """brief Creates a new main planner objectives
 
         This initializes a new main planner. The reference latitude, longitude, and altitude are taken from the .launch files

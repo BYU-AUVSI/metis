@@ -21,7 +21,7 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
-    def __init__(self, obstaclesList, boundariesList, clearance, maxDistance, maxIncline, maxRelChi, iterations, resolution, scaleHeight, animate):
+    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=10., maxIncline=.5, maxRelChi=np.pi/2, iterations=50, resolution=1.1, scaleHeight=1.5, animate=False):
         """The constructor for the RRT class.
 
         Parameters
@@ -120,6 +120,7 @@ class RRT():
             self.ax.elev = 90 #55
             self.ax.azim = 0 #80
             self.viridis = cm.get_cmap('viridis', 12)
+            self.viridis = cm.get_cmap('viridis')
             self.ax.legend()
 
 
@@ -181,6 +182,8 @@ class RRT():
                 else:
                     scaler = (self.wayMin - way2.d) / (self.wayMin - self.wayMax)
                 self.ax.plot([way1.n, way2.n], [way1.e, way2.e],[-way1.d, -way2.d], color=self.viridis(scaler))
+            plt.gcf()
+            plt.gca()
             plt.show()
         return fullPath
 

@@ -37,6 +37,16 @@ def wypts2msg(waypoints, mission_type):
 
     return rsp
 
+def msg2wypts(message):
+    """
+    Converts a ros message to a list of msg_ned classes
+    """
+
+    waypoints = []
+    for point in message.planned_waypoints.waypoint_list:
+        waypoints.append(msg_ned(point.N, point.E, point.D))
+
+    return waypoints
 
 def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
 	"""Checks points for collisions with obstacles and boundaries
