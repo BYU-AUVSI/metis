@@ -33,7 +33,7 @@ class SearchPlanner():
         self.obstalces = obstacles
         self.waypoint_distance = waypoint_distance
 
-    def plan(self, search_boundaries, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=False):
+    def plan(self, search_boundaries, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=True):
         """
         Creates a lawn mower path over the search area
 
