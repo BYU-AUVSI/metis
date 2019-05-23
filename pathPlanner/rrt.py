@@ -10,6 +10,10 @@ sys.path.append('..')
 from messages.ned import msg_ned
 from tools.tools import collisionCheck
 
+import cProfile
+
+import time
+
 # To do: A buffer for incline when planning, that way it can smooth
 # Find all possible paths, smooth all, then pick best
 # Could do an improved smoother where is doesn't just check adjacent nodes. But can't be a factorial check.
@@ -21,7 +25,7 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
-    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=10., maxIncline=.5, maxRelChi=np.pi/2, iterations=50, resolution=1.1, scaleHeight=1.5, animate=False):
+    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=5, maxIncline=.5, maxRelChi=np.inf, iterations=50, resolution=1.1, scaleHeight=1.5, distance=5, animate=False):
         """The constructor for the RRT class.
 
         Parameters
@@ -71,6 +75,8 @@ class RRT():
         self.resolution = resolution  # The segment lengths checked for collisions
         self.scaleHeight = scaleHeight  # Scales the height in the cost function for assigning random points to leaves
         self.animate = animate
+        self.distance = distance # Distance between the nodes that surround the start and end nodes
+        self.R = min_R # Minimum turn radius of the aircraft for planning fillet paths
         pointList = []  # For boundary points formatted into the Point object for shapely use
         nList = []
         eList = []
@@ -84,44 +90,44 @@ class RRT():
         self.minN = min(nList) #Min north position of boundaries
         self.minE = min(eList) #Min east position of boundaries
 
-        if animate:
-            mpl.rcParams['legend.fontsize'] = 10
-            self.fig = plt.figure()
-            self.ax = self.fig.gca(projection='3d')
-            for obstacle in obstaclesList:
-                # Cylinder
-                x = np.linspace((obstacle.n - obstacle.r), (obstacle.n + obstacle.r), 100)
-                z = np.linspace(0, obstacle.d, 100)
-                # x = np.linspace(-1, 1, 25)
-                # z = np.linspace(-2, 2, 25)
-                Xc, Zc = np.meshgrid(x, z)
-                Yc = np.sqrt(obstacle.r**2 - (Xc - obstacle.n)**2) + obstacle.e
+        # if animate:
+        #     mpl.rcParams['legend.fontsize'] = 10
+        #     self.fig = plt.figure()
+        #     self.ax = self.fig.gca(projection='3d')
+        #     for obstacle in obstaclesList:
+        #         # Cylinder
+        #         x = np.linspace((obstacle.n - obstacle.r), (obstacle.n + obstacle.r), 100)
+        #         z = np.linspace(0, obstacle.d, 100)
+        #         # x = np.linspace(-1, 1, 25)
+        #         # z = np.linspace(-2, 2, 25)
+        #         Xc, Zc = np.meshgrid(x, z)
+        #         Yc = np.sqrt(obstacle.r**2 - (Xc - obstacle.n)**2) + obstacle.e
 
-                # Draw parameters
-                self.ax.plot_surface(Xc, Yc, Zc, alpha=0.9, color='b')
-                self.ax.plot_surface(Xc, (2.*obstacle.e-Yc), Zc, alpha=0.9, color='b')
-            first = True
-            boundaries = []
-            last = []
-            for bounds in boundariesList:
-                if first:
-                    boundaries = np.array([[bounds.n, bounds.e, 0.]])
-                    last = np.array([[bounds.n, bounds.e, 0.]])
-                    first = False
-                    continue
-                boundaries = np.append(boundaries, [[bounds.n, bounds.e, 0.]], axis=0)
-            boundaries = np.append(boundaries, last, axis=0)
-            self.ax.plot(boundaries[:, 0], boundaries[:, 1], boundaries[:, 2], label='Boundaries')
-            self.ax.set_xlabel('X axis')
-            self.ax.set_ylabel('Y axis')
-            self.ax.set_zlabel('Z axis')
-            plt.xlim(self.maxN*1.1, self.minN*1.1)
-            plt.ylim(self.minE * 1.1, self.maxE * 1.1)
-            self.ax.elev = 90 #55
-            self.ax.azim = 0 #80
-            self.viridis = cm.get_cmap('viridis', 12)
-            self.viridis = cm.get_cmap('viridis')
-            self.ax.legend()
+        #         # Draw parameters
+        #         self.ax.plot_surface(Xc, Yc, Zc, alpha=0.9, color='b')
+        #         self.ax.plot_surface(Xc, (2.*obstacle.e-Yc), Zc, alpha=0.9, color='b')
+        #     first = True
+        #     boundaries = []
+        #     last = []
+        #     for bounds in boundariesList:
+        #         if first:
+        #             boundaries = np.array([[bounds.n, bounds.e, 0.]])
+        #             last = np.array([[bounds.n, bounds.e, 0.]])
+        #             first = False
+        #             continue
+        #         boundaries = np.append(boundaries, [[bounds.n, bounds.e, 0.]], axis=0)
+        #     boundaries = np.append(boundaries, last, axis=0)
+        #     self.ax.plot(boundaries[:, 0], boundaries[:, 1], boundaries[:, 2], label='Boundaries')
+        #     self.ax.set_xlabel('X axis')
+        #     self.ax.set_ylabel('Y axis')
+        #     self.ax.set_zlabel('Z axis')
+        #     plt.xlim(self.maxN*1.1, self.minN*1.1)
+        #     plt.ylim(self.minE * 1.1, self.maxE * 1.1)
+        #     self.ax.elev = 90 #55
+        #     self.ax.azim = 0 #80
+        #     self.viridis = cm.get_cmap('viridis', 12)
+        #     self.viridis = cm.get_cmap('viridis')
+        #     self.ax.legend()
 
 
     def findFullPath(self, waypoints):
@@ -171,20 +177,42 @@ class RRT():
                 if way2.d < self.wayMin:
                     self.wayMin = way2.d
             newPath = self.findPath(way1, way2)  # call the findPath function to find path between these two waypoints
+            print("Individual Path Found")
+            if (len(fullPath) > 0) and (fullPath[-1].n == newPath[0].n) and (fullPath[-1].e == newPath[0].e) and (fullPath[-1].d == newPath[0].d):
+                newPath = newPath[1:]
             fullPath += newPath  # Append this segment of the path to the full path
             index += index2-index
-        if self.animate:  # This block of animate code shows the full planned path
-            for i in range(0, len(fullPath)-1):
-                way1 = fullPath[i]
-                way2 = fullPath[i+1]
-                if (self.wayMax == self.wayMin):
-                    scaler = 1
-                else:
-                    scaler = (self.wayMin - way2.d) / (self.wayMin - self.wayMax)
-                self.ax.plot([way1.n, way2.n], [way1.e, way2.e],[-way1.d, -way2.d], color=self.viridis(scaler))
-            plt.gcf()
-            plt.gca()
+        # if self.animate:  # This block of animate code shows the full planned path
+        #     for i in range(0, len(fullPath)-1):
+        #         way1 = fullPath[i]
+        #         way2 = fullPath[i+1]
+        #         if (self.wayMax == self.wayMin):
+        #             scaler = 1
+        #         else:
+        #             scaler = (self.wayMin - way2.d) / (self.wayMin - self.wayMax)
+        #         self.ax.plot([way1.n, way2.n], [way1.e, way2.e],[-way1.d, -way2.d], color=self.viridis(scaler))
+        #     plt.gcf()
+        #     plt.gca()
+        #     plt.show()
+        if True: # This will plot path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
+            N = np.array([])
+            E = np.array([])
+            idx = 0
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            while idx < len(fullPath) - 2:
+                N_t, E_t, D = self.pointsAlongPath(fullPath[idx], fullPath[idx+1], 1, fullPath[idx+2], self.R)
+                N = np.append(N, N_t)
+                E = np.append(E, E_t)
+                idx = idx + 1
+
+            for point in fullPath:
+                ax.scatter(point.e, point.n, c='r')
+            
+            ax.plot(E, N, 'b')
+            ax.axis('equal')
             plt.show()
+
         return fullPath
 
     def findPath(self, waypoint1, waypoint2):
@@ -221,7 +249,6 @@ class RRT():
                 for i in range(0, self.iterations):
                     tree, flag = self.extendTree(tree, waypoint1, waypoint2)
                     foundSolution += flag
-
         # # Find the shortest path
         # path = self.shortestPath(tree, waypoint2)
         # # Smooth the path
@@ -247,9 +274,57 @@ class RRT():
         bestCost = np.inf
         for path in connectedPaths:
             smoothedPath, cost = self.smoothPath(path)
+
+            #Add node between start and first node to force plane to go through the desired node
+            start_node = np.array([[smoothedPath[0].n],[smoothedPath[0].e],[smoothedPath[0].d]])
+            next_node = np.array([[smoothedPath[1].n],[smoothedPath[1].e],[smoothedPath[1].d]])
+            q = (next_node - start_node)/np.linalg.norm(next_node - start_node)
+            if np.linalg.norm(next_node - start_node) < self.distance:
+                spacing = np.linalg.norm(next_node - start_node) / 2.0
+            else:
+                spacing = self.distance
+
+            insert_node = start_node + spacing * q
+
+            smoothedPath.insert(1,msg_ned(insert_node.item(0), insert_node.item(1), insert_node.item(2)))
+
+
+
             if cost <  bestCost:
                 bestPath = smoothedPath
                 bestCost = cost
+        
+        # if len(bestPath) > 3:
+        #     node1 = bestPath[0]
+        #     node1v = np.array([[node1.n], [node1.e], [node1.d]])
+        #     node2 = bestPath[1]
+        #     node2v = np.array([[node2.n], [node2.e], [node2.d]])
+        #     node_nextlast = bestPath[-2]
+        #     node_nextlastv = np.array([[node_nextlast.n], [node_nextlast.e], [node_nextlast.d]])
+        #     node_last = bestPath[-1]
+        #     node_lastv = np.array([[node_last.n], [node_last.e], [node_last.d]])
+        #     q_start = node2v - node1v
+        #     q_end = node_lastv - node_nextlastv
+
+        #     new_node2 = node1v + 5.0*q_start/np.linalg.norm(q_start)
+        #     new_last = node_lastv + 5*q_end/np.linalg.norm(q_end)
+
+        #     node2 = msg_ned(new_node2.item(0), new_node2.item(1), new_node2.item(2))
+        #     nodel = msg_ned(new_last.item(0), new_last.item(1), new_last.item(2))
+
+        #     bestPathNew = []
+        #     bestPathNew.append(bestPath[0])
+        #     bestPathNew.append(node2)
+        #     bestPathNew.append(bestPath[1:])
+        #     bestPathNew = bestPathNew.append(nodel)
+        #     bestPath = bestPathNew
+        # elif len(bestPath) > 2:
+        #     pass
+
+        # elif len(bestPath) == 2:
+        #     pass
+
+        
         return bestPath
 
 
@@ -320,9 +395,29 @@ class RRT():
                 #     scat = self.ax.scatter([northP, northP], [eastP, eastP], [0, -downP], c='r', marker='+')
                 #     scat.remove()
 
+            if minIndex > 0:
+                startIdx = int(tree[minIndex,4])
+                node_1 = msg_ned(tree[startIdx,0],tree[startIdx,1],tree[startIdx,2])
+                node_2 = msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2])
+                node_3 = msg_ned(newNode.item(0),newNode.item(1),newNode.item(2))
+            else:
+                node_1 = msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2])
+                node_2 = msg_ned(newNode.item(0),newNode.item(1),newNode.item(2))
+                node_3 = None
             # Check for Collision
-            if self.flyablePath(msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2]), msg_ned(newNode.item(0),newNode.item(1),newNode.item(2)), tree[minIndex,6] ,chi):
+            #if self.flyablePath(msg_ned(tree[minIndex,0],tree[minIndex,1],tree[minIndex,2]), msg_ned(newNode.item(0),newNode.item(1),newNode.item(2)), tree[minIndex,6] ,chi):
+            if self.flyablePath(node_1, node_2, tree[minIndex,6], chi, node_3, self.R):
                 successFlag = True
+                # if minIndex == 0: # Attempt to get forced waypoints around the start node 5/23/2019 JTA
+                #     q = np.array([[node_2.n],[node_2.e],[node_2.d]]) - np.array([[node_1.n],[node_1.e],[node_1.d]])
+                #     forced_point = np.array([[node_1.n],[node_1.e],[node_1.d]]) + self.distance*q
+                #     forced_node = np.array([[forced_point.item(0), forced_point.item(1), forced_point.item(2), np.inf, minIndex, 0., chi]])
+                #     tree = np.append(tree, forced_node, axis=0)
+                #     forced_idx = tree.shape[0]
+                #     print(tree.shape)
+                #     newNode[0,4] = forced_idx - 1
+
+
                 # # The animate lines below draw the fully explored RRT Tree
                 # if self.animate:
                 #     if(endN.d==startN.d):
@@ -331,7 +426,8 @@ class RRT():
                 #         scaler = (endN.d - newNode.item(2))/(endN.d-startN.d)
                 #     spider = self.ax.plot([tree[minIndex,0],newNode.item(0)], [tree[minIndex,1],newNode.item(1)], [-tree[minIndex,2],-newNode.item(2)], color=self.viridis(scaler))
                 tree = np.append(tree, newNode,axis=0)  # Append new node to the full tree
-
+                if np.mod(tree.shape[0],100) == 0:
+                    print(tree.shape)
                 # Check to see if the new node can connect to the end node
                 dist = np.sqrt((endN.n - newNode.item(0)) ** 2 + (endN.e - newNode.item(1)) ** 2 + (endN.d - newNode.item(2)) ** 2)
                 chi = np.arctan2((endN.e - newNode.item(1)), (endN.n - newNode.item(0)))
@@ -394,7 +490,7 @@ class RRT():
         -------
         path : msg_ned
             An array of waypoints that expresses the smoothed, successful path through all the waypoints in reversed
-            order.
+            order. -I think it returns it in correct order? JTA 5/22/19
         """
         # Improve smoother. Because of chi constraint, it doesn't do well at cutting out lots of segments. First try
         # getting all paths before trimming them.
@@ -405,10 +501,11 @@ class RRT():
         while index < len(path)-1:
             chi = np.arctan2((path[index+1].e - smoothedPath[len(smoothedPath)-1].e), (path[index+1].n - smoothedPath[len(smoothedPath)-1].n))
             not_last = index + 2 < len(path)  # This is to know if we aren't checking second to last node
+            node_3 = None
             if not_last:  # Have to check the flyability of the node after in addition to current one
                 chi2 = np.arctan2((path[index+2].e - path[index+1].e), (path[index+2].n - path[index+1].n))
-            if not self.flyablePath(smoothedPath[len(smoothedPath)-1], path[index+1], prev_chi, chi) or \
-                    (not_last and not self.flyablePath(path[index+1], path[index+2], chi, chi2)):
+                node_3 = path[index+2]
+            if not self.flyablePath(smoothedPath[len(smoothedPath)-1], path[index+1], prev_chi, chi, third_node=node_3, R=self.R):
                 smoothedPath.append(path[index])
                 prev_chi = np.arctan2((smoothedPath[len(smoothedPath)-1].e - smoothedPath[len(smoothedPath)-2].e),
                                       (smoothedPath[len(smoothedPath)-1].n - smoothedPath[len(smoothedPath)-2].n))
@@ -437,7 +534,7 @@ class RRT():
         """
         return np.random.uniform(low=-self.maxN, high=self.maxN), np.random.uniform(low=-self.maxE, high=self.maxE)
 
-    def flyablePath(self, startNode, endNode, prevChi, chi):
+    def flyablePath(self, startNode, endNode, prevChi, chi, third_node=None, R=None):
         """ RRT class function that checks if flying between two points is possible. It checks for collisions, chi angle,
         and incline.
 
@@ -461,7 +558,7 @@ class RRT():
             Returns true if a flyable path, false if not
         """
         #check for obstacles and boundaries
-        N, E, D = self.pointsAlongPath(startNode, endNode, self.resolution)
+        N, E, D = self.pointsAlongPath(startNode, endNode, self.resolution, third_node=third_node, R=self.R)
         collisionChecked = collisionCheck(self.obstaclesList,self.polygon, N, E, D, self.clearance)
         if not collisionChecked:
             return False
@@ -481,7 +578,7 @@ class RRT():
         return True
 
 
-    def pointsAlongPath(self, startN, endN, stepSize):
+    def pointsAlongPath(self, startN, endN, stepSize, third_node=None, R=None):
         """ RRT class function that takes two nodes and returns the N, E, and D position of many points along the line
         between the two points spaced according to the step size passed in.
 
@@ -496,6 +593,12 @@ class RRT():
         stepSize : double
             The desired spacing between each point along the line between the two nodes
 
+        third_node : msg_ned or None
+            The next node in the waypoint path. If this is not None then the points will be along a fillet path
+        
+        R : float or None
+            The minimum turn radius. If None, straight line path is used
+
         Returns
         -------
         N : double
@@ -505,24 +608,140 @@ class RRT():
         D : double
             An np.array of the down position of points
         """
-        N = np.array([startN.n])
-        E = np.array([startN.e])
-        D = np.array([startN.d])
+        
+        if third_node is None or R is None:
+            N = np.array([startN.n])
+            E = np.array([startN.e])
+            D = np.array([startN.d])
 
-        q = np.array([endN.n-startN.n, endN.e-startN.e, endN.d-startN.d])
-        L = np.linalg.norm(q)
-        q = q / L
+            q = np.array([endN.n-startN.n, endN.e-startN.e, endN.d-startN.d])
+            L = np.linalg.norm(q)
+            q = q / L
 
-        w = np.array([startN.n, startN.e, startN.d])
-        for i in range(1, int(np.ceil(L/stepSize))):
-            w += stepSize*q
-            N = np.append(N, w.item(0))
-            E = np.append(E, w.item(1))
-            D = np.append(D, w.item(2))
-        N = np.append(N, endN.n)
-        E = np.append(E, endN.e)
-        D = np.append(D, endN.d)
-        return N, E, D
+            w = np.array([startN.n, startN.e, startN.d])
+            for i in range(1, int(np.ceil(L/stepSize))):
+                w += stepSize*q
+                N = np.append(N, w.item(0))
+                E = np.append(E, w.item(1))
+                D = np.append(D, w.item(2))
+            N = np.append(N, endN.n)
+            E = np.append(E, endN.e)
+            D = np.append(D, endN.d)
+        else: #Plan fillet path
+            R = float(R)
+            N = np.array([])
+            E = np.array([])
+            D = np.array([])
+
+            start_node = np.array([[startN.n], [startN.e], [startN.d]])
+            mid_node = np.array([[endN.n], [endN.e], [endN.d]])
+            last_node = np.array([[third_node.n], [third_node.e], [third_node.d]])
+
+            q_pre = (mid_node - start_node)/np.linalg.norm(mid_node - start_node)
+            q_next = (last_node - mid_node)/np.linalg.norm(last_node - mid_node)
+            theta = np.arccos(np.matmul(-q_pre.T,q_next)).item(0)
+
+            if np.linalg.norm(q_pre - q_next) > 0:
+                C = mid_node - (R/np.sin(theta/2))*(q_pre - q_next)/np.linalg.norm(q_pre - q_next)
+            else:
+                C = mid_node
+            r1 = mid_node - (R/np.tan(theta/2))*q_pre
+            r2 = mid_node + (R/np.tan(theta/2))*q_next
+
+            r1v = r1 - C
+            r2v = r2 - C
+            if np.linalg.norm(r1v) > 0:
+                rot_theta = np.arccos(np.matmul(r1v.T/np.linalg.norm(r1v.T),r2v/np.linalg.norm(r2v))).item(0)
+            else:
+                rot_theta = 0
+
+            rot_direction = -np.sign(np.cross(r1v[:,0], r2v[:,0]).item(2))
+            
+
+            # Check to make sure the points aren't collinear
+            # If they are, or nearly are, the half planes will extend beyond the actual waypoints
+            # Checking here to see if the halfplanes or start and end nodes are closer
+            if (np.linalg.norm(r1 - mid_node) < np.linalg.norm(start_node - mid_node)) and (np.linalg.norm(r2 - mid_node) < np.linalg.norm(last_node - mid_node)):
+                current_position = np.array([[startN.n], [startN.e], [startN.d]])
+                pre_position = current_position
+
+                while (np.linalg.norm(pre_position - r1) >= stepSize):
+                    N = np.append(N, current_position.item(0))
+                    E = np.append(E, current_position.item(1))
+                    D = np.append(D, current_position.item(2))
+
+                    pre_position = current_position
+
+                    current_position = current_position + q_pre*stepSize
+
+                 #   print("Part 1")
+                   # print(current_position)
+
+                
+                current_position = r1
+                ang_inc = float(stepSize)/(2*R)
+                angle = 0
+                while (rot_theta is not np.nan) and (angle <= rot_theta):
+                    N = np.append(N, current_position.item(0))
+                    E = np.append(E, current_position.item(1))
+                    D = np.append(D, current_position.item(2))
+
+                    angle = angle + ang_inc
+
+                    Rot = np.array([[np.cos(rot_direction*ang_inc), np.sin(rot_direction*ang_inc), 0],
+                                [-np.sin(rot_direction*ang_inc), np.cos(rot_direction*ang_inc), 0],
+                                [0, 0, 1]])
+                    
+                    current_position = np.matmul(Rot,current_position - C) + C
+
+                   # print("Part 2")
+                   # print(current_position)
+                
+                current_position = r2
+                pre_position = current_position
+                while(np.linalg.norm(pre_position - last_node) >= stepSize):
+                    N = np.append(N, current_position.item(0))
+                    E = np.append(E, current_position.item(1))
+                    D = np.append(D, current_position.item(2))
+
+                    pre_position = current_position
+                    current_position = current_position + q_next*stepSize
+
+                   # print("Part 3")
+                  #  print(current_position)
+                
+                current_position = last_node
+                N = np.append(N, current_position.item(0))
+                E = np.append(E, current_position.item(1))
+                D = np.append(D, current_position.item(2))
+            
+
+                if False: # This will plot each individual path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111)
+                    ax.scatter(E, N)
+                    ax.scatter(r1.item(1), r1.item(0),c='r')
+                    ax.scatter(r2.item(1), r2.item(0),c='r')
+                    ax.scatter(C.item(1), C.item(0),c='r')
+                    ax.axis('equal')
+                    plt.show()
+
+            else:
+                start_node = msg_ned(start_node.item(0), start_node.item(1), start_node.item(2))
+                mid_node = msg_ned(mid_node.item(0), mid_node.item(1), mid_node.item(2))
+                last_node = msg_ned(last_node.item(0), last_node.item(1), last_node.item(2))
+                N,E,D = self.pointsAlongPath(start_node, mid_node, stepSize)
+                N2,E2,D2 = self.pointsAlongPath(mid_node, last_node, stepSize)
+                N = np.append(N,N2)
+                E = np.append(E,E2)
+                D = np.append(D,D2)
+
+
+                
+        return N,E,D
+
+
+
 
     def drawPath(self, path, color):
         """ RRT class function that draws the path between a list of waypoints
@@ -561,3 +780,7 @@ class RRT():
         while chi_c-chi < -np.pi:
             chi_c = chi_c + 2.0 * np.pi
         return chi_c
+
+if __name__ == "__main__":
+    test = RRT([msg_ned(0,0,10,5)],[msg_ned(500,500,0), msg_ned(-500, -500, 0), msg_ned(500, -500, 0)])
+    test.pointsAlongPath(msg_ned(29.71423436382323, 93.29286687637472, 0.0), msg_ned(33.60556737264261, 78.80640673545442, 0.0), 5, msg_ned(28.58507603064271, 85.09842767525959, 0.0), 20)
