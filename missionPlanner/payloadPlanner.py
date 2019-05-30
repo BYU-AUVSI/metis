@@ -77,7 +77,7 @@ class PayloadPlanner():
             self.calcReleaseLocation(self.displacement0_1,self.displacement1_2)
             self.waypoints = self.calcSupportingPoints()
             self.chi_offset += np.radians(15.)
-        return self.waypoints
+        return self.waypoints, self.NED_release_location
 
     def calcClosedParachuteDrop(self):
         """

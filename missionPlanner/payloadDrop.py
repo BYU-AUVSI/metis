@@ -1,11 +1,21 @@
 import rospy
+from rosplane_msgs.msg import Waypoint
+
+
 
 class PayloadDrop():
-    def __init__(self,dropWaypoint):
-        self.dropWaypoint = dropWaypoint    # the drop waypoint
-        self.nextWaypoint = False           # true if the next waypoint is the drop waypoint
+    def __init__(self):
+        ,dropWaypoint=):
+        self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # the drop waypoint
+        self.nextWaypoint = False                               # true if the next waypoint is the drop waypoint
 
-    def check(currentWaypoint):
+        rospy.init_node('payload_drop')
+        rospy.Subscriber('/current_waypoint',Waypoint,self.check)
+
+    def check(self,waypoint_msg):
+        self.dropWaypoint = rospy.get_param('DROP_LOCATION')
+        currentWaypoiint = waypoint_msg.w;
+
         if self.nextWaypoint:
             if not (all(currentWaypoint == dropWaypoint)):
                 # drop the payload!

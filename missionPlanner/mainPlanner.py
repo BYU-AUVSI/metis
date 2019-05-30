@@ -65,7 +65,7 @@ class mainPlanner():
         self._LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
         self._OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
 
-        
+
 
         #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
         mission_type, obstacles, boundary_list, boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
@@ -105,7 +105,7 @@ class mainPlanner():
 
         self.waypoints.append(msg.waypoints)
 
-    
+
 
     def update_task_callback(self, req):
         """
@@ -126,7 +126,8 @@ class mainPlanner():
 
         elif(self.task == self._PAYLOAD_PLANNER):
             rospy.loginfo('PAYLOAD TASK BEING PLANNED')
-            planned_points = self._plan_payload.plan()
+            planned_points, drop_location = self._plan_payload.plan()
+            rospy.set_param('DROP_LOCATION', drop_location)
 
         elif(self.task == self._LOITER_PLANNER):
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
@@ -160,4 +161,3 @@ if __name__ == "__main__":
     test_planner = mainPlanner()
     while not rospy.is_shutdown():
         rospy.spin()
-

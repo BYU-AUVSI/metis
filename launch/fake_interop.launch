@@ -6,10 +6,11 @@
   <param name="PAYLOAD" value="1"/>
   <param name="LOITER" value="7"/>
   <param name="OBJECTIVE" value="4"/>
+  <parm name="DROP_LOCATION",value="[INF,INF,INF]"/>
 
   <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
   <node name="fake_interop" pkg="metis" type="FakeInterop.py" output = "screen" />
   <node name="path_planner" pkg="metis" type="pathPlannerBase.py" output="screen" />
-
+  <node name="payload_drop" pkg="metis" type="payloadDrop.py" output="screen" />
 
 </launch>
