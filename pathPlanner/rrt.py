@@ -178,7 +178,6 @@ class RRT():
                     self.wayMax = way2.d
                 if way2.d < self.wayMin:
                     self.wayMin = way2.d
-            print(chi)
             newPath = self.findPath(way1, way2, chi)  # call the findPath function to find path between these two waypoints
             print("Individual Path Found")
             if (len(fullPath) > 0) and (fullPath[-1].n == newPath[0].n) and (fullPath[-1].e == newPath[0].e) and (fullPath[-1].d == newPath[0].d):
@@ -187,8 +186,6 @@ class RRT():
             index += index2-index
             way1 = fullPath[-1]
             pre_way = fullPath[-2]
-            for point in fullPath:
-                print(point.n, point.e, point.d)
             chi = np.arctan2((way1.e - pre_way.e), (way1.n - pre_way.n))
         # if self.animate:  # This block of animate code shows the full planned path
         #     for i in range(0, len(fullPath)-1):
@@ -217,7 +214,7 @@ class RRT():
             for point in fullPath:
                 ax.scatter(point.e, point.n, c='r')
             for point in waypoints:
-                ax.scatter(point.e, point.n, c='g', marker='x', markersize=10)
+                ax.scatter(point.e, point.n, c='g', marker='x')
             
             ax.plot(E, N, 'b')
             ax.axis('equal')
@@ -256,6 +253,19 @@ class RRT():
         chi = np.arctan2((waypoint2.e - waypoint1.e), (waypoint2.n - waypoint1.n))
         if dist < self.maxDistance and self.flyablePath(waypoint1, waypoint2, startNode[6], chi):
             return waypoint1, waypoint2  # Returns the two waypoints as the succesful path
+
+        #START NEW TESTING CODE
+        prep_node = np.array([[waypoint1.n],[waypoint1.e],[waypoint1.d]])
+        last_node = np.array([[waypoint2.n],[waypoint2.e],[waypoint2.d]])
+
+        q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
+
+        add_node = last_node + q*self.distance
+
+        if self.flyablePath(waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
+            return waypoint1, waypoint2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
+        
+        #END NEW TESTING CODE
         else:
             foundSolution = 0
             while foundSolution < 3: # This will keep expanding the tree the amount of iterations until solution found
@@ -675,17 +685,15 @@ class RRT():
 
             np.seterr(all='raise')
 
-            print("start")
-            print("{:.10f}".format(np.linalg.norm(q_pre)))
-            print("{:.10f}".format(np.linalg.norm(q_next)))
-            print(q_pre)
-            print(q_next)
-            print(start_node)
-            print(mid_node)
-            print(last_node)
-            theta = np.arccos(np.matmul(-q_pre.T,q_next)).item(0)
+            if abs(np.matmul(-q_pre.T,q_next)) >= 1:
+                if np.matmul(-q_pre.T,q_next) > 0:
+                    theta = 0
+                elif np.matmul(-q_pre.T,q_next) < 0:
+                    theta = -np.pi
+            else:
+                theta = np.arccos(np.matmul(-q_pre.T,q_next)).item(0)
 
-            if np.linalg.norm(q_pre - q_next) > 0:
+            if np.linalg.norm(q_pre - q_next) > 0.000001 and theta > 0 and abs(theta) < np.pi:
                 C = mid_node - (R/np.sin(theta/2))*(q_pre - q_next)/np.linalg.norm(q_pre - q_next)
                 r1 = mid_node - (R/np.tan(theta/2))*q_pre
                 r2 = mid_node + (R/np.tan(theta/2))*q_next

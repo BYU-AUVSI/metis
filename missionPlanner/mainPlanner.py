@@ -32,7 +32,7 @@ class mainPlanner():
     This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners
     """
 
-    def __init__(self):
+    def __init__(self, Va=17):
         """brief Creates a new main planner objectives
 
         This initializes a new main planner. The reference latitude, longitude, and altitude are taken from the .launch files
@@ -93,6 +93,8 @@ class mainPlanner():
             print(drop.n, drop.e, drop.d)
         #-----END DEBUG----
 
+        self.Va = Va
+
 
     #TODO replace lists of lists with NED msg type
     #TODO remove obstacle D position
@@ -115,6 +117,8 @@ class mainPlanner():
 
         msg = NewWaypoints()
 
+        waypoints = []
+
         for point in self.planned_waypoints:
             new_point = Waypoint()
             new_point.w = [point.n, point.e, point.d]
@@ -126,11 +130,12 @@ class mainPlanner():
             new_point.loiter_point = False
             new_point.priority = 0
 
-            msg.waypoints.append(new_point)
-
+            waypoints.append(new_point)
 
         #Send the service call with the desired mission type number
-        resp = waypoint_update(msg)
+        resp = waypoint_update(waypoints)
+
+        print("Waypoints sent")
 
         return True
 
