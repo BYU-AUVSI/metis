@@ -25,7 +25,7 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
-    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=5, maxIncline=.5, maxRelChi=np.inf, iterations=50, resolution=1.1, scaleHeight=1.5, distance=5, animate=False):
+    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=5, maxIncline=.5, maxRelChi=np.inf, iterations=50, resolution=1.1, scaleHeight=1.5, distance=15, animate=False):
         """The constructor for the RRT class.
 
         Parameters
@@ -156,8 +156,10 @@ class RRT():
 
         fullPath = []
         index = 0
+        way1 = waypoints[index]
+        chi = 8888
         while index < numWaypoints-1:  # Do each segment of the path individually
-            way1 = waypoints[index]
+
             index2 = index+1
             way2 = waypoints[index2]
             # Check to make sure if the waypoints are possible
@@ -176,12 +178,18 @@ class RRT():
                     self.wayMax = way2.d
                 if way2.d < self.wayMin:
                     self.wayMin = way2.d
-            newPath = self.findPath(way1, way2)  # call the findPath function to find path between these two waypoints
+            print(chi)
+            newPath = self.findPath(way1, way2, chi)  # call the findPath function to find path between these two waypoints
             print("Individual Path Found")
             if (len(fullPath) > 0) and (fullPath[-1].n == newPath[0].n) and (fullPath[-1].e == newPath[0].e) and (fullPath[-1].d == newPath[0].d):
                 newPath = newPath[1:]
             fullPath += newPath  # Append this segment of the path to the full path
             index += index2-index
+            way1 = fullPath[-1]
+            pre_way = fullPath[-2]
+            for point in fullPath:
+                print(point.n, point.e, point.d)
+            chi = np.arctan2((way1.e - pre_way.e), (way1.n - pre_way.n))
         # if self.animate:  # This block of animate code shows the full planned path
         #     for i in range(0, len(fullPath)-1):
         #         way1 = fullPath[i]
@@ -208,6 +216,8 @@ class RRT():
 
             for point in fullPath:
                 ax.scatter(point.e, point.n, c='r')
+            for point in waypoints:
+                ax.scatter(point.e, point.n, c='g', marker='x', markersize=10)
             
             ax.plot(E, N, 'b')
             ax.axis('equal')
@@ -215,7 +225,7 @@ class RRT():
 
         return fullPath
 
-    def findPath(self, waypoint1, waypoint2):
+    def findPath(self, waypoint1, waypoint2, start_chi=8888):
         """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
         boundaries, and all other parameters set in the init function.
 
@@ -227,6 +237,9 @@ class RRT():
         waypoint2 : msg_ned
             @param waypoint2: The ending waypoint. Super creative names, I know.
 
+        start_chi : float
+            The current heading of the path. If 8888, indicates first step in the full path and is ignored
+
         Returns
         -------
         smoothedPath :  msg_ned
@@ -236,7 +249,7 @@ class RRT():
             begEndPoints = self.ax.scatter([waypoint1.n, waypoint2.n], [waypoint1.e, waypoint2.e],
                                            [-waypoint1.d, -waypoint2.d], c='r', marker='o')
         # node state vector format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
-        startNode = np.array([waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., 8888])
+        startNode = np.array([waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., start_chi])
         tree = np.array([startNode])
         # check for if solution at the beginning
         dist = np.sqrt((waypoint1.n-waypoint2.n)**2 + (waypoint1.e-waypoint2.e)**2 + (waypoint1.d-waypoint2.d)**2)
@@ -245,9 +258,11 @@ class RRT():
             return waypoint1, waypoint2  # Returns the two waypoints as the succesful path
         else:
             foundSolution = 0
-            while not foundSolution: # This will keep expanding the tree the amount of iterations until solution found
+            while foundSolution < 3: # This will keep expanding the tree the amount of iterations until solution found
                 for i in range(0, self.iterations):
                     tree, flag = self.extendTree(tree, waypoint1, waypoint2)
+                    if flag > 0:
+                        print("Found Potential Path")
                     foundSolution += flag
         # # Find the shortest path
         # path = self.shortestPath(tree, waypoint2)
@@ -273,20 +288,30 @@ class RRT():
         bestPath = []
         bestCost = np.inf
         for path in connectedPaths:
-            smoothedPath, cost = self.smoothPath(path)
+            smoothedPath, cost = self.smoothPath(path, start_chi)
 
-            #Add node between start and first node to force plane to go through the desired node
-            start_node = np.array([[smoothedPath[0].n],[smoothedPath[0].e],[smoothedPath[0].d]])
-            next_node = np.array([[smoothedPath[1].n],[smoothedPath[1].e],[smoothedPath[1].d]])
-            q = (next_node - start_node)/np.linalg.norm(next_node - start_node)
-            if np.linalg.norm(next_node - start_node) < self.distance:
-                spacing = np.linalg.norm(next_node - start_node) / 2.0
-            else:
-                spacing = self.distance
+            last_node = np.array([[smoothedPath[-1].n],[smoothedPath[-1].e],[smoothedPath[-1].d]])
+            prep_node = np.array([[smoothedPath[-2].n],[smoothedPath[-2].e],[smoothedPath[-2].d]])
 
-            insert_node = start_node + spacing * q
+            q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
 
-            smoothedPath.insert(1,msg_ned(insert_node.item(0), insert_node.item(1), insert_node.item(2)))
+            add_node = last_node + q*self.distance
+
+            if self.flyablePath(smoothedPath[-1], msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
+                smoothedPath.append(msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)))
+
+            # #Add node between start and first node to force plane to go through the desired node
+            # start_node = np.array([[smoothedPath[0].n],[smoothedPath[0].e],[smoothedPath[0].d]])
+            # next_node = np.array([[smoothedPath[1].n],[smoothedPath[1].e],[smoothedPath[1].d]])
+            # q = (next_node - start_node)/np.linalg.norm(next_node - start_node)
+            # if np.linalg.norm(next_node - start_node) < self.distance:
+            #     spacing = np.linalg.norm(next_node - start_node) / 2.0
+            # else:
+            #     spacing = self.distance
+
+            # insert_node = start_node + spacing * q
+
+            # smoothedPath.insert(1,msg_ned(insert_node.item(0), insert_node.item(1), insert_node.item(2)))
 
 
 
@@ -478,13 +503,16 @@ class RRT():
         #     self.drawPath(path,'r')
         return path
 
-    def smoothPath(self, path):
+    def smoothPath(self, path, prev_chi):
         """ RRT class function that takes in an array of waypoints and tries to find a flyable, smooth path.
 
         Parameters
         ----------
         path : msg_ned
             The list of waypoints.
+
+        prev_chi : float
+            Initial heading of point or 8888 if start
 
         Returns
         -------
@@ -495,7 +523,7 @@ class RRT():
         # Improve smoother. Because of chi constraint, it doesn't do well at cutting out lots of segments. First try
         # getting all paths before trimming them.
         smoothedPath = [path[0]]
-        prev_chi = 8888
+        #prev_chi = 8888
         cost = 0
         index = 1
         while index < len(path)-1:
@@ -559,16 +587,21 @@ class RRT():
         """
         #check for obstacles and boundaries
         N, E, D = self.pointsAlongPath(startNode, endNode, self.resolution, third_node=third_node, R=self.R)
+
+        
+
         collisionChecked = collisionCheck(self.obstaclesList,self.polygon, N, E, D, self.clearance)
         if not collisionChecked:
             return False
-
 
         #Check for new leaf now above max relative chi angle
         if prevChi != 8888: #If not at the root node
             wrappedPrevChi = self.wrap(prevChi, chi)
             if abs(wrappedPrevChi-chi) > self.maxRelChi:
                 return False
+
+
+        
 
         #Check incline here
         incline = np.abs((endNode.d - startNode.d)/np.sqrt((endNode.n - startNode.n) ** 2 + (endNode.e - startNode.e) ** 2) )
@@ -639,18 +672,32 @@ class RRT():
 
             q_pre = (mid_node - start_node)/np.linalg.norm(mid_node - start_node)
             q_next = (last_node - mid_node)/np.linalg.norm(last_node - mid_node)
+
+            np.seterr(all='raise')
+
+            print("start")
+            print("{:.10f}".format(np.linalg.norm(q_pre)))
+            print("{:.10f}".format(np.linalg.norm(q_next)))
+            print(q_pre)
+            print(q_next)
+            print(start_node)
+            print(mid_node)
+            print(last_node)
             theta = np.arccos(np.matmul(-q_pre.T,q_next)).item(0)
 
             if np.linalg.norm(q_pre - q_next) > 0:
                 C = mid_node - (R/np.sin(theta/2))*(q_pre - q_next)/np.linalg.norm(q_pre - q_next)
+                r1 = mid_node - (R/np.tan(theta/2))*q_pre
+                r2 = mid_node + (R/np.tan(theta/2))*q_next
             else:
                 C = mid_node
-            r1 = mid_node - (R/np.tan(theta/2))*q_pre
-            r2 = mid_node + (R/np.tan(theta/2))*q_next
+                r1 = C
+                r2 = C
+            
 
             r1v = r1 - C
             r2v = r2 - C
-            if np.linalg.norm(r1v) > 0:
+            if np.linalg.norm(r1v - r2v) > 0:
                 rot_theta = np.arccos(np.matmul(r1v.T/np.linalg.norm(r1v.T),r2v/np.linalg.norm(r2v))).item(0)
             else:
                 rot_theta = 0
@@ -658,8 +705,7 @@ class RRT():
             rot_direction = -np.sign(np.cross(r1v[:,0], r2v[:,0]).item(2))
             
 
-            # Check to make sure the points aren't collinear
-            # If they are, or nearly are, the half planes will extend beyond the actual waypoints
+
             # Checking here to see if the halfplanes or start and end nodes are closer
             if (np.linalg.norm(r1 - mid_node) < np.linalg.norm(start_node - mid_node)) and (np.linalg.norm(r2 - mid_node) < np.linalg.norm(last_node - mid_node)):
                 current_position = np.array([[startN.n], [startN.e], [startN.d]])
@@ -782,5 +828,5 @@ class RRT():
         return chi_c
 
 if __name__ == "__main__":
-    test = RRT([msg_ned(0,0,10,5)],[msg_ned(500,500,0), msg_ned(-500, -500, 0), msg_ned(500, -500, 0)])
-    test.pointsAlongPath(msg_ned(29.71423436382323, 93.29286687637472, 0.0), msg_ned(33.60556737264261, 78.80640673545442, 0.0), 5, msg_ned(28.58507603064271, 85.09842767525959, 0.0), 20)
+    test = RRT([msg_ned(-500,-500,10,5)],[msg_ned(-500,-500,10,5),msg_ned(-500,500,0), msg_ned(500, 500, 0), msg_ned(500, -500, 0)])
+    test.findFullPath([msg_ned(0., 0., 0.0), msg_ned(0., 100., 0.0),msg_ned(100., 0., 0.0)])

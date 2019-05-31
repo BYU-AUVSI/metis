@@ -9,8 +9,11 @@ import rospy
 import rospkg
 rospack = rospkg.RosPack()
 sys.path.append(rospack.get_path('metis'))
-from uav_msgs.msg import JudgeMission, NED_list
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints
+from uav_msgs.msg import JudgeMission, Waypoint
+from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints
+
+#from rosplane.rosplane_msgs import Waypoint #This is where the msgs and srv were originally but couldn't import them
+#from rosplane.rosplane_msgs import NewWaypoints
 
 
 import numpy as np
@@ -48,7 +51,7 @@ class mainPlanner():
         #Keeps track of what task is currently being executed
         self.task = 0
 
-        self._sub_waypoints = rospy.Subscriber('approved_path', NED_list, self.update_path_callback, queue_size=5)
+        self._sub_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
         #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
         #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
 
@@ -96,14 +99,40 @@ class mainPlanner():
 
 
 
-    def update_path_callback(self, msg):
+    def update_path_callback(self, req):
         """
         This function is called when waypoints are approved by the GUI and adds the waypoints to the approved path.
         The approved waypoints are sent from the GUI to the path manner via the approve_path
         message and topic.
         """
 
-        self.waypoints.append(msg.waypoints)
+        print("Waiting For Rosplane service")
+        #Wait for the interop client service call to initiate
+        rospy.wait_for_service('waypoint_path')
+
+        #Set up a service call to poll the interop server
+        waypoint_update = rospy.ServiceProxy('waypoint_path', NewWaypoints)
+
+        msg = NewWaypoints()
+
+        for point in self.planned_waypoints:
+            new_point = Waypoint()
+            new_point.w = [point.n, point.e, point.d]
+            new_point.Va_d = self.Va
+            new_point.drop_bomb = False
+            new_point.landing = False
+            new_point.set_current = False
+            new_point.clear_wp_list = False
+            new_point.loiter_point = False
+            new_point.priority = 0
+
+            msg.waypoints.append(new_point)
+
+
+        #Send the service call with the desired mission type number
+        resp = waypoint_update(msg)
+
+        return True
 
     
 
@@ -148,6 +177,7 @@ class mainPlanner():
 
         #Convert python NED class to rospy ned msg
         wypts_msg = tools.wypts2msg(planned_points,self.task)
+        self.planned_waypoints = planned_points
         print(wypts_msg)
         return wypts_msg
 
