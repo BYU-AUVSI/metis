@@ -1,7 +1,7 @@
+#!/usr/bin/python
+
 import rospy
 from rosplane_msgs.msg import Waypoint
-
-
 
 class PayloadDrop():
     def __init__(self):
