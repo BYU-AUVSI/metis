@@ -5,7 +5,6 @@ from rosplane_msgs.msg import Waypoint
 
 class PayloadDrop():
     def __init__(self):
-        ,dropWaypoint=):
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # the drop waypoint
         self.nextWaypoint = False                               # true if the next waypoint is the drop waypoint
 
@@ -14,7 +13,7 @@ class PayloadDrop():
 
     def check(self,waypoint_msg):
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')
-        currentWaypoiint = waypoint_msg.w;
+        currentWaypoint = waypoint_msg.w;
 
         if self.nextWaypoint:
             if not (all(currentWaypoint == dropWaypoint)):
