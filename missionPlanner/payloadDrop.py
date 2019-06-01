@@ -8,17 +8,33 @@ class PayloadDrop():
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # the drop waypoint
         self.nextWaypoint = False                               # true if the next waypoint is the drop waypoint
 
-        rospy.init_node('payload_drop')
         rospy.Subscriber('/current_waypoint',Waypoint,self.check)
+
+
 
     def check(self,waypoint_msg):
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')
-        currentWaypoint = waypoint_msg.w;
+        currentWaypoint = list(waypoint_msg.w);
+        print("drop waypoint = ",self.dropWaypoint)
+        print("current waypoint =",currentWaypoint)
 
         if self.nextWaypoint:
+            print("\n\n\n\n\n  PAYLOAD DROP IS UP NEXT!!! \n\n\n\n\n")
             if not (all(currentWaypoint == dropWaypoint)):
                 # drop the payload!
-                rospy.ServiceProxy('arm payload',arm_bomb) && rospy.ServiceProxy('drop payload',actuate_drop_bomb)
+                print("\n\n\n\n\n  WE HAVE ATTEMPTED PAYLOAD DROP!!!   \n\n\n\n\n")
+                rospy.ServiceProxy('arm payload',arm_bomb) and rospy.ServiceProxy('drop payload',actuate_drop_bomb)
+
         else:
-            if all(currentWaypoint == dropWaypoint):
+            if currentWaypoint == self.dropWaypoint:
                 self.nextWaypoint = True
+
+
+
+#Run the main planner
+if __name__ == "__main__":
+
+    rospy.init_node('paylod_drop', anonymous=True)
+    paylodDrop = PayloadDrop()
+    while not rospy.is_shutdown():
+        rospy.spin()

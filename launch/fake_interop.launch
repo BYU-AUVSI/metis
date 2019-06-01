@@ -6,7 +6,8 @@
   <param name="PAYLOAD" value="1"/>
   <param name="LOITER" value="7"/>
   <param name="OBJECTIVE" value="4"/>
-  <parm name="DROP_LOCATION" value="[INF,INF,INF]"/>
+  <param name="DROP_LOCATION" value="[INF,INF,INF]"/>
+  <!--[99999.9,99999.9,99999.9]-->
 
   <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
   <node name="fake_interop" pkg="metis" type="FakeInterop.py" output = "screen" />
