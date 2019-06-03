@@ -8,7 +8,7 @@
   <param name="OBJECTIVE" value="4"/>
 
   <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
-  <node name="fake_interop" pkg="metis" type="FakeInterop.py" output = "screen" />
+  <node name="fake_interop" pkg="metis" type="FakeInteropElberta.py" output = "screen" />
   <node name="path_planner" pkg="metis" type="pathPlannerBase.py" output="screen" />
 
 
