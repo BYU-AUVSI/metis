@@ -138,6 +138,8 @@ class mainPlanner():
 
             waypoints.append(new_point)
 
+        waypoints[-1].loiter_point = True
+
         #Send the service call with the desired mission type number
         resp = waypoint_update(waypoints)
 
@@ -172,7 +174,13 @@ class mainPlanner():
 
         elif(self.task == self._LOITER_PLANNER):
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
-            planned_points = self._plan_loiter.plan(waypoints)
+            try:
+                pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+                current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
+            except rospy.ROSException as e:
+                print("Loiter - No State msg recieved")
+                current_pos = msg_ned(0.,0.,0.)
+            planned_points = self._plan_loiter.plan(current_pos)
 
         elif(self.task == self._OBJECTIVE_PLANNER): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
             rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
