@@ -9,11 +9,11 @@ import rospy
 import rospkg
 rospack = rospkg.RosPack()
 sys.path.append(rospack.get_path('metis'))
-from uav_msgs.msg import JudgeMission, Waypoint
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints
+from uav_msgs.msg import JudgeMission#, Waypoint
+from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath#, NewWaypoints
 
-#from rosplane.rosplane_msgs import Waypoint #This is where the msgs and srv were originally but couldn't import them
-#from rosplane.rosplane_msgs import NewWaypoints
+from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
+from rosplane_msgs.srv import NewWaypoints
 
 from rosplane_msgs.msg import State
 
@@ -199,11 +199,6 @@ class mainPlanner():
         planned_points.insert(0,current_pos)
 
         final_path = self.rrt.findFullPath(planned_points, connect=connect)
-        print(final_path)
-
-        
-
-        print(final_path)
 
 
         #Convert python NED class to rospy ned msg
