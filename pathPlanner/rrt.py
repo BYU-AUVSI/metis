@@ -130,7 +130,7 @@ class RRT():
         #     self.ax.legend()
 
 
-    def findFullPath(self, waypoints):
+    def findFullPath(self, waypoints, connect=False):
         """RRT class function that finds a path to all of the waypoints passed in. This path takes into account obstacles,
         boundaries, and all other parameters set in the init function.
 
@@ -178,7 +178,7 @@ class RRT():
                     self.wayMax = way2.d
                 if way2.d < self.wayMin:
                     self.wayMin = way2.d
-            newPath = self.findPath(way1, way2, chi)  # call the findPath function to find path between these two waypoints
+            newPath = self.findPath(way1, way2, chi, connect=connect)  # call the findPath function to find path between these two waypoints
             print("Individual Path Found")
             if (len(fullPath) > 0) and (fullPath[-1].n == newPath[0].n) and (fullPath[-1].e == newPath[0].e) and (fullPath[-1].d == newPath[0].d):
                 newPath = newPath[1:]
@@ -222,7 +222,7 @@ class RRT():
 
         return fullPath
 
-    def findPath(self, waypoint1, waypoint2, start_chi=8888):
+    def findPath(self, waypoint1, waypoint2, start_chi=8888, connect=False):
         """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
         boundaries, and all other parameters set in the init function.
 
@@ -262,8 +262,11 @@ class RRT():
 
         add_node = last_node + q*self.distance
 
-        if self.flyablePath(waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
+        if self.flyablePath(waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0) and connect:
             return waypoint1, waypoint2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
+
+        elif self.flyablePath(waypoint1, waypoint2, 0, 0):
+            return waypoint1, waypoint2
         
         #END NEW TESTING CODE
         else:
@@ -300,15 +303,18 @@ class RRT():
         for path in connectedPaths:
             smoothedPath, cost = self.smoothPath(path, start_chi)
 
-            last_node = np.array([[smoothedPath[-1].n],[smoothedPath[-1].e],[smoothedPath[-1].d]])
-            prep_node = np.array([[smoothedPath[-2].n],[smoothedPath[-2].e],[smoothedPath[-2].d]])
+            if connect:
+                print("Connect")
 
-            q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
+                last_node = np.array([[smoothedPath[-1].n],[smoothedPath[-1].e],[smoothedPath[-1].d]])
+                prep_node = np.array([[smoothedPath[-2].n],[smoothedPath[-2].e],[smoothedPath[-2].d]])
 
-            add_node = last_node + q*self.distance
+                q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
 
-            if self.flyablePath(smoothedPath[-1], msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
-                smoothedPath.append(msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)))
+                add_node = last_node + q*self.distance
+
+                if self.flyablePath(smoothedPath[-1], msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
+                    smoothedPath.append(msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)))
 
             # #Add node between start and first node to force plane to go through the desired node
             # start_node = np.array([[smoothedPath[0].n],[smoothedPath[0].e],[smoothedPath[0].d]])

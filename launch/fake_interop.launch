@@ -1,15 +1,13 @@
 <launch>
-  <param name="ref_lat" value="40.265997"/>
-  <param name="ref_lon" value="-111.637861"/>
+  <param name="ref_lat" value="39.98304881111"/>
+  <param name="ref_lon" value="-111.9903776"/>
   <param name="ref_h" value="0"/>
-  <param name="SEARCH" value="2"/>
-  <param name="PAYLOAD" value="1"/>
-  <param name="LOITER" value="7"/>
-  <param name="OBJECTIVE" value="4"/>
 
   <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
   <node name="fake_interop" pkg="metis" type="FakeInteropElberta.py" output = "screen" />
-  <node name="path_planner" pkg="metis" type="pathPlannerBase.py" output="screen" />
+  <node name="plotter" pkg="metis" type="plotter.py" output="screen" />
+  <node name="truth_throttle" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 1.0 /truth_slow" />
+  <node name="state_convert" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 3.0 /state" />
 
 
 </launch>
