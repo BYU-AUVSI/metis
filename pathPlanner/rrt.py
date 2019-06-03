@@ -25,7 +25,7 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
-    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=5, maxIncline=.5, maxRelChi=np.inf, iterations=50, resolution=1.1, scaleHeight=1.5, distance=15, animate=False):
+    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=20, maxIncline=.5, maxRelChi=np.inf, iterations=50, resolution=.5, scaleHeight=1.5, distance=15, animate=False):
         """The constructor for the RRT class.
 
         Parameters
@@ -155,7 +155,7 @@ class RRT():
                 self.wayMin = waypoints[0].d
 
         fullPath = []
-        index = 0
+        index = 0 
         way1 = waypoints[index]
         chi = 8888
         while index < numWaypoints-1:  # Do each segment of the path individually
@@ -164,8 +164,12 @@ class RRT():
             way2 = waypoints[index2]
             # Check to make sure if the waypoints are possible
             if not collisionCheck(self.obstaclesList,self.polygon,np.array([way1.n]), np.array([way1.e]), np.array([way1.d]), self.clearance):
-                index += 1
-                continue
+                if index == 0:
+                    pass #Don't worry about if the first waypoint is flyable because that is the start position and we want to plot a path even if we start out of bounds
+                else:
+                    index += 1
+                    way1 = waypoints[index]
+                    continue
             while not collisionCheck(self.obstaclesList, self.polygon, np.array([way2.n]), np.array([way2.e]), np.array([way2.d]), self.clearance):
                 if index2 < numWaypoints-1:
                     index2 += 1
@@ -265,7 +269,7 @@ class RRT():
         if self.flyablePath(waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0) and connect:
             return waypoint1, waypoint2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
 
-        elif self.flyablePath(waypoint1, waypoint2, 0, 0):
+        elif self.flyablePath(waypoint1, waypoint2, 0, 0) and not connect:
             return waypoint1, waypoint2
         
         #END NEW TESTING CODE
