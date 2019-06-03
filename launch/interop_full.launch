@@ -11,7 +11,6 @@
   <node name="interop_client" pkg="interop_pkg" type="InteropClient.py" output="screen">
     <rosparam file="$(find interop_pkg)/param/client_params.yaml"/>
   </node>
-  <node name="path_planner" pkg="metis" type="pathPlannerBase.py" output="screen" />
 
 
 </launch>
