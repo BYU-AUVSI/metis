@@ -11,7 +11,10 @@ class PayloadDrop():
         self.threshold = 2.0
 
         rospy.Subscriber('/current_waypoint',Waypoint,self.check)
-
+        """
+        Testing:
+        rostopic pub /current_waypoint rosplane_msgs/Waypoint "{w:[0.0, 0.0, 0.0]}"
+        """
 
 
     def check(self,waypoint_msg):
@@ -29,8 +32,8 @@ class PayloadDrop():
                     rospy.ServiceProxy('arm payload',arm_bomb) and rospy.ServiceProxy('drop payload',actuate_drop_bomb)
                     ii += 1
         else:
-            print("\n\n\n\n\n  PAYLOAD DROP IS UP NEXT!!! \n\n\n\n\n")
             if np.linalg.norm(np.array(currentWaypoint) - np.array(self.dropWaypoint)) < self.threshold:
+                print("\n\n\n\n\n  PAYLOAD DROP IS UP NEXT!!! \n\n\n\n\n")
                 self.nextWaypoint = True
 
 
