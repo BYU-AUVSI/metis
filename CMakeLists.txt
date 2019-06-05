@@ -4,11 +4,12 @@ project(metis)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   uav_msgs
+  rosplane
 )
 
 
 catkin_package(
-  CATKIN_DEPENDS rospy uav_msgs
+  CATKIN_DEPENDS rospy uav_msgs rosplane
 )
 
 catkin_python_setup()

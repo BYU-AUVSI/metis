@@ -1,0 +1,16 @@
+<launch>
+  <param name="ref_lat" value="39.98304881111"/>
+  <param name="ref_lon" value="-111.9903776"/>
+  <param name="ref_h" value="0"/>
+  <param name="SEARCH" value="2"/>
+  <param name="PAYLOAD" value="1"/>
+  <param name="LOITER" value="7"/>
+  <param name="OBJECTIVE" value="4"/>
+
+  <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
+  <node name="interop_client" pkg="interop_pkg" type="InteropClient.py" output="screen">
+    <rosparam file="$(find interop_pkg)/param/client_params.yaml"/>
+  </node>
+
+
+</launch>

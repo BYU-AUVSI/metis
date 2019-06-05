@@ -9,9 +9,13 @@ import rospy
 import rospkg
 rospack = rospkg.RosPack()
 sys.path.append(rospack.get_path('metis'))
-from uav_msgs.msg import JudgeMission, NED_list
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints
+from uav_msgs.msg import JudgeMission#, Waypoint
+from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath#, NewWaypoints
 
+from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
+from rosplane_msgs.srv import NewWaypoints
+
+from rosplane_msgs.msg import State
 
 import numpy as np
 
@@ -23,13 +27,15 @@ from searchPlanner import SearchPlanner
 from objectivePointsPlanner import ObjectivePointsPlanner
 from offaxisPlanner import OffaxisPlanner
 
+from pathPlanner.rrt import RRT
+
 class mainPlanner():
     """Handles the passing of information for the competition
 
     This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners
     """
 
-    def __init__(self):
+    def __init__(self, Va=17):
         """brief Creates a new main planner objectives
 
         This initializes a new main planner. The reference latitude, longitude, and altitude are taken from the .launch files
@@ -48,7 +54,7 @@ class mainPlanner():
         #Keeps track of what task is currently being executed
         self.task = 0
 
-        self._sub_waypoints = rospy.Subscriber('approved_path', NED_list, self.update_path_callback, queue_size=5)
+        self._sub_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
         #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
         #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
 
@@ -56,7 +62,8 @@ class mainPlanner():
         #Proposing a switch to a service call rather than a topic to get info to the GUI. If that holds, delete this line
         #self._pub_waypoints = rospy.Publisher('desired_waypoints', NED_list, queue_size=5)
 
-        self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
+        #self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
+        self._plan_server = rospy.Service('plan_path', PlanMissionPoints, self.update_task_callback)
 
         #Load the values that identify the various objectives
         #This needs to match what is being used in the GUI
@@ -77,6 +84,8 @@ class mainPlanner():
         self._plan_objective = ObjectivePointsPlanner(obstacles)
         self._plan_offaxis = OffaxisPlanner(boundary_list, obstacles)
 
+        self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
+
         #-----START DEBUG----
         #This code is just used to visually check that everything worked ok. Can be removed anytime.
         print("Obstacles")
@@ -90,20 +99,53 @@ class mainPlanner():
             print(drop.n, drop.e, drop.d)
         #-----END DEBUG----
 
+        self.Va = Va
+
 
     #TODO replace lists of lists with NED msg type
     #TODO remove obstacle D position
 
 
 
-    def update_path_callback(self, msg):
+    def update_path_callback(self, req):
         """
         This function is called when waypoints are approved by the GUI and adds the waypoints to the approved path.
         The approved waypoints are sent from the GUI to the path manner via the approve_path
         message and topic.
         """
 
-        self.waypoints.append(msg.waypoints)
+        print("Waiting For Rosplane service")
+        #Wait for the interop client service call to initiate
+        rospy.wait_for_service('waypoint_path')
+
+        #Set up a service call to poll the interop server
+        waypoint_update = rospy.ServiceProxy('waypoint_path', NewWaypoints)
+
+        msg = NewWaypoints()
+
+        waypoints = []
+
+        for point in self.planned_waypoints:
+            new_point = Waypoint()
+            new_point.w = [point.n, point.e, point.d]
+            new_point.Va_d = self.Va
+            new_point.drop_bomb = False
+            new_point.landing = False
+            new_point.set_current = False
+            new_point.clear_wp_list = False
+            new_point.loiter_point = False
+            new_point.priority = 0
+
+            waypoints.append(new_point)
+
+        waypoints[-1].loiter_point = True
+
+        #Send the service call with the desired mission type number
+        resp = waypoint_update(waypoints)
+
+        print("Waypoints sent")
+
+        return True
 
 
 
@@ -120,6 +162,8 @@ class mainPlanner():
 
         #Each task_planner class function should return a NED_list msg
         #These classes can be switched out depending on the desired functionality
+        connect = False
+
         if(self.task == self._SEARCH_PLANNER):
             rospy.loginfo('SEARCH TASK BEING PLANNED')
             planned_points = self._plan_search.plan(waypoints)
@@ -131,11 +175,18 @@ class mainPlanner():
 
         elif(self.task == self._LOITER_PLANNER):
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
-            planned_points = self._plan_loiter.plan(waypoints)
+            try:
+                pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+                current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
+            except rospy.ROSException as e:
+                print("Loiter - No State msg recieved")
+                current_pos = msg_ned(0.,0.,0.)
+            planned_points = self._plan_loiter.plan(current_pos)
 
         elif(self.task == self._OBJECTIVE_PLANNER): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
             rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
             planned_points = self._plan_objective.plan(waypoints)
+            connect = True
 
         elif(self.task == JudgeMission.MISSION_TYPE_OFFAXIS):
             rospy.loginfo('OFFAXIS PLANNER TASK BEING PLANNED')
@@ -147,8 +198,21 @@ class mainPlanner():
         else:
             rospy.logfatal('TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER')
 
+        try:
+            pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+            current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
+        except rospy.ROSException as e:
+            print("No State msg recieved")
+            current_pos = msg_ned(0.,0.,0.)
+        
+        planned_points.insert(0,current_pos)
+
+        final_path = self.rrt.findFullPath(planned_points, connect=connect)
+
+
         #Convert python NED class to rospy ned msg
-        wypts_msg = tools.wypts2msg(planned_points,self.task)
+        wypts_msg = tools.wypts2msg(final_path,self.task)
+        self.planned_waypoints = final_path
         print(wypts_msg)
         return wypts_msg
 

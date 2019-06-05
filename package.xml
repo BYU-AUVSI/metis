@@ -12,5 +12,6 @@
     <depend>rospy</depend>
     <depend>uav_msgs</depend>
     <depend>tools</depend>
+    <depend>rosplane</depend>
 
 </package>

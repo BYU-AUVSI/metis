@@ -14,6 +14,8 @@ from messages.ned import msg_ned
 from tools import tools
 from rrt import RRT
 
+import cProfile
+
 
 
 class pathPlannerBase():
@@ -31,7 +33,7 @@ class pathPlannerBase():
         #Get the obstacles, boundaries, and drop location in order to initialize the RRT class
         mission_type, self.obstacles, self.boundary_list, self.boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
 
-        self.RRT_planner = RRT(self.obstacles, self.boundary_list) #Other arguments are available but have been given default values in the RRT constructor
+        self.RRT_planner = RRT(self.obstacles, self.boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
         
         # Advertise the path planning service call
         self._plan_server = rospy.Service('plan_path', PlanMissionPoints, self.waypoints_callback)
@@ -56,7 +58,11 @@ class pathPlannerBase():
         resp = self.mission_data(req.mission_type)
         waypoints_ned = tools.msg2wypts(resp)
 
-        final_waypoints = self.RRT_planner.findFullPath(waypoints_ned)
+        #final_waypoints = self.RRT_planner.findFullPath(waypoints_ned)
+
+        prof = cProfile.Profile()
+        final_waypoints = prof.runcall(self.RRT_planner.findFullPath, waypoints_ned)
+        prof.dump_stats("TimingData")
 
         reply = tools.wypts2msg(final_waypoints, req.mission_type)
 

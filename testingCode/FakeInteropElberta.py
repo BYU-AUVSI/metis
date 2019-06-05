@@ -65,12 +65,12 @@ def mission_response(req):
     #Define obstacles
 
     obs1 = StationaryObstacle()
-    obs1.point = Point(40.267670, -111.636782, 0, 0)
+    obs1.point = Point(39.983258, -111.994228, 0, 0)
     obs1.cylinder_height = 60
     obs1.cylinder_radius = 20
 
     obs2 = StationaryObstacle()
-    obs2.point = Point(40.267208, -111.635183, 0, 0)
+    obs2.point = Point(39.981556, -111.993697, 0, 0)
     obs2.cylinder_height = 40
     obs2.cylinder_radius = 10
 
