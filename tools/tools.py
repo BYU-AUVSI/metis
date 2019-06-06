@@ -11,12 +11,45 @@ import numpy as np
 import math
 from uav_msgs.srv import GetMissionWithId
 
-def convert(lat1, lon1, h1, lat2, lon2, h2):
+def convert(lat1, lon1, h1, lat2, lon2, h2, ground_level=22., ft2m=True):
     """
     This function gives the relative N E D coordinates of gps2 relative to gps1
+
+    Paramters
+    ---------
+
+    lat1 : float
+        The latitude of the reference point
+    
+    lon1 : float
+        The longitude of the reference point
+    
+    h1 : float
+        The height of the reference point
+    
+    lat2 : float
+        The latitude of the desired point
+    
+    lon2 : float
+        The longitude of the desired point
+
+    h2 : float
+        The height of the desired point
+    
+    ground_level : float
+        Height of the ground above MSL
+    
+    ft2m : boolean
+        If heights are input as ft and need to be returned as meters, this should be true
+        For meter to meter conversion or feet to feet conversion, should be false
+    
+
     """
+    if ft2m:
+        h1 = h1/3.2808
+        h2 = h2/3.2808
     diction = Geodesic.WGS84.Inverse(lat1, lon1, lat2, lon2)
-    solution = [diction['s12']*math.cos(math.radians(diction['azi1'])), diction['s12']*math.sin(math.radians(diction['azi1'])), float(-(h2-h1))]
+    solution = [diction['s12']*math.cos(math.radians(diction['azi1'])), diction['s12']*math.sin(math.radians(diction['azi1'])), float(-(h2-h1+ground_level))]
     return solution
 
 def wypts2msg(waypoints, mission_type):

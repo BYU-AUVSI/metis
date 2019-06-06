@@ -86,6 +86,10 @@ class mainPlanner():
         self._plan_objective = ObjectivePointsPlanner(obstacles)
         self._plan_offaxis = OffaxisPlanner(boundary_list, obstacles)
 
+        self.landing = False
+        self.last_exists = False
+        self.last_waypoint = msg_ned(0.,0.,0.)
+
         self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
 
         #-----START DEBUG----
@@ -143,6 +147,17 @@ class mainPlanner():
         waypoints[-1].loiter_point = True
         waypoints[-1].priority = 0
 
+        self.last_exists = True
+        self.last_waypoint = planned_waypoint[-1]
+
+        if self.landing == True:
+            waypoints[-1].loiter_point = False
+            waypoints[-1].priority = 1
+            waypoints[-1].landing = True
+
+            self.last_exists = False
+
+
         #Send the service call with the desired mission type number
         resp = waypoint_update(waypoints)
 
@@ -185,6 +200,7 @@ class mainPlanner():
         """
 
         self.task = req.mission_type
+        self.landing = False
 
         mission_type, obstacles, boundary_list, boundary_poly, waypoints = tools.get_server_data(self.task, self.ref_pos)
 
@@ -238,7 +254,10 @@ class mainPlanner():
             current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
         except rospy.ROSException as e:
             print("No State msg recieved")
-            current_pos = msg_ned(0.,0.,0.)
+            if self.last_exists == True:
+                current_pos = self.last_waypoint
+            else:
+                current_pos = msg_ned(0.,0.,0.)
 
         planned_points.insert(0,current_pos)
 
