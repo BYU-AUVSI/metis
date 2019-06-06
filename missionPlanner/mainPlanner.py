@@ -56,7 +56,7 @@ class mainPlanner():
 
         self._ser_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
 
-        self._ser_clear = rospy.Service('clear_wpts', VoidSrv, self.clear_waypoints)
+        self._ser_clear = rospy.Service('clear_wpts', UploadPath, self.clear_waypoints)
         #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
         #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
 
