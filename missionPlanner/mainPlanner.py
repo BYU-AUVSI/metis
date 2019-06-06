@@ -269,6 +269,7 @@ class mainPlanner():
                 planned_points = [msg_ned(0, 0, 0)]
                 print("No landing waypoints specified")
                 print(len(landing_msg.waypoint_list))
+            self.landing = True
 
         elif(self.task == JudgeMission.MISSION_TYPE_EMERGENT): # I believe the emergent object is just within the normal search boundaries
             pass
