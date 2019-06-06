@@ -10,7 +10,7 @@ import rospkg
 rospack = rospkg.RosPack()
 sys.path.append(rospack.get_path('metis'))
 from uav_msgs.msg import JudgeMission, Waypoint, State #Waypoint, State are copied from rosplane_msgs so rosplane is not neededs for metis
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints #NewWaypoints is copied from the rosplane_msgs so rosplane is not needed for metis
+from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints, UpdateSearchParams #NewWaypoints is copied from the rosplane_msgs so rosplane is not needed for metis
 
 #from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
 #from rosplane_msgs.srv import NewWaypoints
@@ -66,6 +66,8 @@ class mainPlanner():
 
         #self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
         self._plan_server = rospy.Service('plan_path', PlanMissionPoints, self.update_task_callback)
+
+        self._ser_search_params = rospy.Service('update_search_params', UpdateSearchParams, self.update_search_params)
 
         #Load the values that identify the various objectives
         #This needs to match what is being used in the GUI
@@ -173,6 +175,18 @@ class mainPlanner():
         resp = waypoint_update(waypoints)
 
         print("Waypoints cleared")
+
+        return True
+
+    def update_search_params(self, req):
+        """
+        This function is called to change desired search params
+
+
+        """
+        self._plan_search.height = req.height
+        self._plan_search.waypoint_distance = req.waypoint_distance
+
 
         return True
 

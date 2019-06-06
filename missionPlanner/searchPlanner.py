@@ -32,8 +32,9 @@ class SearchPlanner():
         self.flight_poly = makeBoundaryPoly(self.flight_boundaries)
         self.obstalces = obstacles
         self.waypoint_distance = waypoint_distance
+	self.height = 30.
 
-    def plan(self, search_boundaries, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=True, height=30):
+    def plan(self, search_boundaries, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=True):
         """
         Creates a lawn mower path over the search area
 
@@ -93,13 +94,13 @@ class SearchPlanner():
         while cur_pos.n >= s_bound: #Stop adding points once we are below the bounding box
             while cur_pos.e >= w_bound and cur_pos.e <= e_bound: #Add points on an East-West or West-East line until we leave the bounding box
                 cur_pos.e = cur_pos.e + direction*self.waypoint_distance 
-                all_points.append(msg_ned(cur_pos.n, cur_pos.e, -height))
+                all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
             direction = -direction #When we leave the bounding box, turn around
             cur_pos.n = cur_pos.n - self.waypoint_distance #Advance path one step in a South direction
-            all_points.append(msg_ned(cur_pos.n, cur_pos.e, -height))
+            all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
             while cur_pos.e <= w_bound or cur_pos.e >= e_bound: #Bring the path back inside the bounding box area
                 cur_pos.e = cur_pos.e + direction*self.waypoint_distance
-                all_points.append(msg_ned(cur_pos.n, cur_pos.e, -height))
+                all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
         
         # Eliminate points that are too close to the flight boundary or too far from the search area
         final_waypoints = []
@@ -107,7 +108,7 @@ class SearchPlanner():
             waypoint_circle_large = Point(waypoint.n, waypoint.e).buffer(clearance) # Creates a point with a radius of clearance
             waypoint_circle_small = Point(waypoint.n, waypoint.e).buffer(self.waypoint_distance) # Point with a radius of waypoint_distance
             if waypoint_circle_large.within(self.flight_poly) and waypoint_circle_small.intersects(self.search_boundaries): # Check if the point is too close or far from boundaries
-                final_waypoints.append(msg_ned(waypoint.n, waypoint.e,-height))
+                final_waypoints.append(msg_ned(waypoint.n, waypoint.e,-self.height))
 
         # Plot the planned points and all boundaries
         if visualize:
