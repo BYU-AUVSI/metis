@@ -70,15 +70,6 @@ class mainPlanner():
 
         self._ser_search_params = rospy.Service('update_search_params', UpdateSearchParams, self.update_search_params)
 
-        #Load the values that identify the various objectives
-        #This needs to match what is being used in the GUI
-        self._SEARCH_PLANNER = JudgeMission.MISSION_TYPE_SEARCH
-        self._PAYLOAD_PLANNER = JudgeMission.MISSION_TYPE_DROP
-        self._LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
-        self._OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
-
-
-
         #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
         mission_type, obstacles, boundary_list, boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
 
@@ -210,11 +201,11 @@ class mainPlanner():
         #These classes can be switched out depending on the desired functionality
         connect = False
 
-        if(self.task == self._SEARCH_PLANNER):
+        if(self.task == JudgeMission.MISSION_TYPE_SEARCH):
             rospy.loginfo('SEARCH TASK BEING PLANNED')
             planned_points = self._plan_search.plan(waypoints)
 
-        elif(self.task == self._PAYLOAD_PLANNER):
+        elif(self.task == JudgeMission.MISSION_TYPE_DROP):
             rospy.loginfo('PAYLOAD TASK BEING PLANNED')
             try:
                 state_msg = rospy.wait_for_message("/state", State, timeout=10)
@@ -226,7 +217,7 @@ class mainPlanner():
             planned_points, drop_location = self._plan_payload.plan(wind)
             rospy.set_param('DROP_LOCATION', drop_location)
 
-        elif(self.task == self._LOITER_PLANNER):
+        elif(self.task == JudgeMission.MISSION_TYPE_LOITER):
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
             try:
                 pos_msg = rospy.wait_for_message("/state", State, timeout=1)
@@ -236,7 +227,7 @@ class mainPlanner():
                 current_pos = msg_ned(0.,0.,0.)
             planned_points = self._plan_loiter.plan(current_pos)
 
-        elif(self.task == self._OBJECTIVE_PLANNER): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
+        elif(self.task == JudgeMission.MISSION_TYPE_WAYPOINT): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
             rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
             planned_points = self._plan_objective.plan(waypoints)
             connect = True
@@ -249,8 +240,10 @@ class mainPlanner():
             rospy.loginfo('LANDING PATH BEING PLANNED')
             landing_msg = req.landing_waypoints
             if (len(landing_msg.waypoint_list) == 2):
+                pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+                curr_altitude = pos_msg.position[2]
                 landing_wypts = tools.msg3wypts(landing_msg)
-                planned_points = self._plan_landing.plan(landing_wypts)
+                planned_points = self._plan_landing.plan(landing_wypts, curr_altitude)
             else:
                 planned_points = [msg_ned(0, 0, 0)]
                 print("No landing waypoints specified")
