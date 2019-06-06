@@ -9,13 +9,13 @@ import rospy
 import rospkg
 rospack = rospkg.RosPack()
 sys.path.append(rospack.get_path('metis'))
-from uav_msgs.msg import JudgeMission#, Waypoint
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath#, NewWaypoints
+from uav_msgs.msg import JudgeMission, Waypoint, State #Waypoint, State are copied from rosplane_msgs so rosplane is not neededs for metis
+from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints #NewWaypoints is copied from the rosplane_msgs so rosplane is not needed for metis
 
-from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
-from rosplane_msgs.srv import NewWaypoints
+#from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
+#from rosplane_msgs.srv import NewWaypoints
 
-from rosplane_msgs.msg import State
+#from rosplane_msgs.msg import State
 
 import numpy as np
 
@@ -54,7 +54,9 @@ class mainPlanner():
         #Keeps track of what task is currently being executed
         self.task = 0
 
-        self._sub_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
+        self._ser_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
+
+        self._ser_clear = rospy.Service('clear_wpts', VoidSrv, self.clear_waypoints)
         #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
         #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
 
@@ -79,7 +81,7 @@ class mainPlanner():
 
         #Initiate the planner classes
         self._plan_payload = PayloadPlanner(drop_location[0], obstacles, boundary_list, boundary_poly)
-        self._plan_loiter = LoiterPlanner(obstacles)
+        self._plan_loiter = LoiterPlanner(obstacles, boundary_poly)
         self._plan_search = SearchPlanner(boundary_list, obstacles)
         self._plan_objective = ObjectivePointsPlanner(obstacles)
         self._plan_offaxis = OffaxisPlanner(boundary_list, obstacles)
@@ -134,11 +136,12 @@ class mainPlanner():
             new_point.set_current = False
             new_point.clear_wp_list = False
             new_point.loiter_point = False
-            new_point.priority = 0
+            new_point.priority = 1
 
             waypoints.append(new_point)
 
         waypoints[-1].loiter_point = True
+        waypoints[-1].priority = 0
 
         #Send the service call with the desired mission type number
         resp = waypoint_update(waypoints)
@@ -146,6 +149,34 @@ class mainPlanner():
         print("Waypoints sent")
 
         return True
+
+    def clear_waypoints(self, req):
+
+        print("Clearing waypoints")
+
+        rospy.wait_for_service('waypoint_path')
+
+        #Set up a service call to poll the interop server
+        waypoint_update = rospy.ServiceProxy('waypoint_path', NewWaypoints)
+
+        waypoints = []
+
+
+        new_point = Waypoint()
+
+        new_point.clear_wp_list = True
+
+
+        waypoints.append(new_point)
+
+        #Send the service call with the desired mission type number
+        resp = waypoint_update(waypoints)
+
+        print("Waypoints cleared")
+
+        return True
+
+
 
     
 
