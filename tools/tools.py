@@ -76,7 +76,7 @@ def msg2wypts(message):
     """
 
     waypoints = []
-    for point in message.planned_waypoints.waypoint_list:
+    for point in message.waypoint_list:
         waypoints.append(msg_ned(point.N, point.E, point.D))
 
     return waypoints
