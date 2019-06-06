@@ -240,13 +240,19 @@ class mainPlanner():
             rospy.loginfo('LANDING PATH BEING PLANNED')
             landing_msg = req.landing_waypoints
             if (len(landing_msg.waypoint_list) == 2):
-                pos_msg = rospy.wait_for_message("/state", State, timeout=1)
-                curr_altitude = pos_msg.position[2]
-                landing_wypts = tools.msg3wypts(landing_msg)
+                try:
+                    pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+                    curr_altitude = pos_msg.position[2]
+                except rospy.ROSException as e:
+                    print("Landing - No State msg recieved")
+                    curr_altitude = 0.0
+
+                landing_wypts = tools.msg2wypts(landing_msg)
                 planned_points = self._plan_landing.plan(landing_wypts, curr_altitude)
             else:
                 planned_points = [msg_ned(0, 0, 0)]
                 print("No landing waypoints specified")
+                print(len(landing_msg.waypoint_list))
 
         elif(self.task == JudgeMission.MISSION_TYPE_EMERGENT): # I believe the emergent object is just within the normal search boundaries
             pass
