@@ -26,6 +26,7 @@ from loiterPlanner import LoiterPlanner
 from searchPlanner import SearchPlanner
 from objectivePointsPlanner import ObjectivePointsPlanner
 from offaxisPlanner import OffaxisPlanner
+from landingPlanner import LandingPlanner
 
 from pathPlanner.rrt import RRT
 
@@ -85,6 +86,7 @@ class mainPlanner():
         self._plan_search = SearchPlanner(boundary_list, obstacles)
         self._plan_objective = ObjectivePointsPlanner(obstacles)
         self._plan_offaxis = OffaxisPlanner(boundary_list, obstacles)
+        self._plan_landing = LandingPlanner(boundary_list, obstacles)
 
         self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
 
@@ -186,7 +188,9 @@ class mainPlanner():
 
         self.task = req.mission_type
 
-        mission_type, obstacles, boundary_list, boundary_poly, waypoints = tools.get_server_data(self.task, self.ref_pos)
+        # interop server doesn't provide landing info
+        if(self.task != JudgeMission.MISSION_TYPE_LAND):
+            mission_type, obstacles, boundary_list, boundary_poly, waypoints = tools.get_server_data(self.task, self.ref_pos)
 
         #Each task_planner class function should return a NED_list msg
         #These classes can be switched out depending on the desired functionality
@@ -226,6 +230,16 @@ class mainPlanner():
         elif(self.task == JudgeMission.MISSION_TYPE_OFFAXIS):
             rospy.loginfo('OFFAXIS PLANNER TASK BEING PLANNED')
             planned_points = self._plan_offaxis.plan(waypoints)
+
+        elif(self.task == JudgeMission.MISSION_TYPE_LAND):
+            rospy.loginfo('LANDING PATH BEING PLANNED')
+            landing_msg = req.landing_waypoints
+            if (len(landing_msg.waypoint_list) == 2):
+                landing_wypts = tools.msg3wypts(landing_msg)
+                planned_points = self._plan_landing.plan(landing_wypts)
+            else:
+                planned_points = [msg_ned(0, 0, 0)]
+                print("No landing waypoints specified")
 
         elif(self.task == JudgeMission.MISSION_TYPE_EMERGENT): # I believe the emergent object is just within the normal search boundaries
             pass
