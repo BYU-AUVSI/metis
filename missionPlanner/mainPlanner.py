@@ -74,7 +74,7 @@ class mainPlanner():
         self._LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
         self._OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
 
-        
+
 
         #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
         mission_type, obstacles, boundary_list, boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
@@ -177,9 +177,6 @@ class mainPlanner():
         return True
 
 
-
-    
-
     def update_task_callback(self, req):
         """
         This function is called when the desired task is changed by the GUI. The proper mission is then called.
@@ -201,7 +198,15 @@ class mainPlanner():
 
         elif(self.task == self._PAYLOAD_PLANNER):
             rospy.loginfo('PAYLOAD TASK BEING PLANNED')
-            planned_points = self._plan_payload.plan()
+            try:
+                state_msg = rospy.wait_for_message("/state", State, timeout=10)
+                wind = np.array([state_msg.wn,state_msg.we,0.])
+            except rospy.ROSException as e:
+                print("no state message received")
+                wind = np.array([0.0,0.0,0.0])
+
+            planned_points, drop_location = self._plan_payload.plan(wind)
+            rospy.set_param('DROP_LOCATION', drop_location)
 
         elif(self.task == self._LOITER_PLANNER):
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
@@ -234,7 +239,7 @@ class mainPlanner():
         except rospy.ROSException as e:
             print("No State msg recieved")
             current_pos = msg_ned(0.,0.,0.)
-        
+
         planned_points.insert(0,current_pos)
 
         final_path = self.rrt.findFullPath(planned_points, connect=connect)
@@ -255,4 +260,3 @@ if __name__ == "__main__":
     test_planner = mainPlanner()
     while not rospy.is_shutdown():
         rospy.spin()
-

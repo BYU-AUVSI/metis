@@ -53,6 +53,7 @@ class PayloadPlanner():
         self.ii = 0
 
     def plan(self,wind=np.array([0.,0.,0.])):
+
         """
         function called by mainplanner that returns bombdrop waypoint
 
@@ -66,6 +67,11 @@ class PayloadPlanner():
         waypoints : list of NED class objects
             A list of NED class objects where each object describes the NED position of each waypoint
         """
+        # Debugging
+        print("wind = ",self.wind)
+        print("drop location = ",self.dropLocation.n,",",self.dropLocation.e,",",self.dropLocation.d)
+
+
         self.wind = wind
         flag = True
         # keep creating release locations while the location is inside an obstacle or out of bounds
@@ -77,7 +83,8 @@ class PayloadPlanner():
             self.calcReleaseLocation(self.displacement0_1,self.displacement1_2)
             self.waypoints = self.calcSupportingPoints()
             self.chi_offset += np.radians(15.)
-        return self.waypoints
+        drop_output = [self.NED_release_location.item(0),self.NED_release_location.item(1),self.NED_release_location.item(2)]
+        return self.waypoints, drop_output
 
     def calcClosedParachuteDrop(self):
         """
@@ -107,7 +114,6 @@ class PayloadPlanner():
         displacement1_2 : numpy array
             array that includes the displacement of the open parachute drop in the north and east directions
         """
-        print(self.dropLocation)
         target_north = self.dropLocation.n    # target north location
         target_east = self.dropLocation.e     # target east location
         target_down = self.dropLocation.d   # target down location
