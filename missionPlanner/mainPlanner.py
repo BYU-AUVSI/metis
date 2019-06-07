@@ -143,7 +143,7 @@ class mainPlanner():
         waypoints[-1].priority = 0
 
         self.last_exists = True
-        self.last_waypoint = planned_waypoint[-1]
+        self.last_waypoint = self.planned_waypoints[-1]
 
         if self.landing == True:
             waypoints[-1].loiter_point = False
