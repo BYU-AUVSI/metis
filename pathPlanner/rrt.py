@@ -25,7 +25,7 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
-    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=20, maxIncline=.5, maxRelChi=np.inf, iterations=50, resolution=.5, scaleHeight=1.5, distance=15, animate=False):
+    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=20, maxIncline=.5, maxRelChi=np.pi/2, iterations=50, resolution=.5, scaleHeight=1.5, distance=15, animate=False):
         """The constructor for the RRT class.
 
         Parameters
@@ -58,6 +58,10 @@ class RRT():
         scaleHeight : double
             This is a scaling value when finding which leaf is closest to the randomly chosen new point. This scales the
             height in the distance formula so that preference is given to leaves that are closer to the ending altitude.
+        
+        distance : double
+            In order to fly directly through a primary waypoint, an additional waypoint is added on the opposite side of the primary
+            waypoint at a distance of distance. This forces the plane to go through the primary waypoint before beginning a fillet turn.
 
         animate : boolean
             True if a visual output is wanted, False otherwise
@@ -139,6 +143,10 @@ class RRT():
         waypoints : msg_ned
             A list of waypoints
 
+        connect : boolean
+            If true, the path will be generated such that an additional waypoint is created after every primary waypoint to 
+            force the plane to go through the primary waypoint before beginning a turn
+
         Returns
         -------
         fullPath : msg_ned
@@ -174,6 +182,7 @@ class RRT():
                 if index2 < numWaypoints-1:
                     index2 += 1
                     way2 = waypoints[index2]
+                    print("Waypoint is out of bounds or on an obstacle")
                 else:
                     break
 
@@ -241,6 +250,10 @@ class RRT():
         start_chi : float
             The current heading of the path. If 8888, indicates first step in the full path and is ignored
 
+        connect : boolean
+            If true, the path will be generated such that an additional waypoint is created after every primary waypoint to 
+            force the plane to go through the primary waypoint before beginning a turn
+
         Returns
         -------
         smoothedPath :  msg_ned
@@ -266,10 +279,10 @@ class RRT():
 
         add_node = last_node + q*self.distance
 
-        if self.flyablePath(waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0) and connect:
+        if self.flyablePath(waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), start_chi, chi) and connect:
             return waypoint1, waypoint2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
 
-        elif self.flyablePath(waypoint1, waypoint2, 0, 0) and not connect:
+        elif self.flyablePath(waypoint1, waypoint2, start_chi, chi) and not connect:
             return waypoint1, waypoint2
         
         #END NEW TESTING CODE
@@ -721,11 +734,23 @@ class RRT():
                 rot_theta = 0
 
             rot_direction = -np.sign(np.cross(r1v[:,0], r2v[:,0]).item(2))
-            
+
+            start2hp = r1v - start_node
+            start2mid = mid_node - start_node
+
+            end2hp = r2v - last_node
+            end2mid = mid_node - last_node
+
+            dir1 = np.matmul(start2hp.T, start2mid)
+            dir2 = np.matmul(end2hp.T, end2mid)
+
+            forwards = True
+            if dir1 < 0 or dir2 < 0:
+                forwards = False
 
 
             # Checking here to see if the halfplanes or start and end nodes are closer
-            if (np.linalg.norm(r1 - mid_node) < np.linalg.norm(start_node - mid_node)) and (np.linalg.norm(r2 - mid_node) < np.linalg.norm(last_node - mid_node)):
+            if forwards and (np.linalg.norm(r1 - mid_node) < np.linalg.norm(start_node - mid_node)) and (np.linalg.norm(r2 - mid_node) < np.linalg.norm(last_node - mid_node)):
                 current_position = np.array([[startN.n], [startN.e], [startN.d]])
                 pre_position = current_position
 

@@ -9,13 +9,13 @@ import rospy
 import rospkg
 rospack = rospkg.RosPack()
 sys.path.append(rospack.get_path('metis'))
-from uav_msgs.msg import JudgeMission#, Waypoint
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath#, NewWaypoints
+from uav_msgs.msg import JudgeMission, Waypoint, State #Waypoint, State are copied from rosplane_msgs so rosplane is not neededs for metis
+from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints, UpdateSearchParams #NewWaypoints is copied from the rosplane_msgs so rosplane is not needed for metis
 
-from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
-from rosplane_msgs.srv import NewWaypoints
+#from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
+#from rosplane_msgs.srv import NewWaypoints
 
-from rosplane_msgs.msg import State
+#from rosplane_msgs.msg import State
 
 import numpy as np
 
@@ -26,6 +26,7 @@ from loiterPlanner import LoiterPlanner
 from searchPlanner import SearchPlanner
 from objectivePointsPlanner import ObjectivePointsPlanner
 from offaxisPlanner import OffaxisPlanner
+from landingPlanner import LandingPlanner
 
 from pathPlanner.rrt import RRT
 
@@ -54,7 +55,9 @@ class mainPlanner():
         #Keeps track of what task is currently being executed
         self.task = 0
 
-        self._sub_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
+        self._ser_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
+
+        self._ser_clear = rospy.Service('clear_wpts', UploadPath, self.clear_waypoints)
         #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
         #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
 
@@ -65,24 +68,22 @@ class mainPlanner():
         #self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
         self._plan_server = rospy.Service('plan_path', PlanMissionPoints, self.update_task_callback)
 
-        #Load the values that identify the various objectives
-        #This needs to match what is being used in the GUI
-        self._SEARCH_PLANNER = JudgeMission.MISSION_TYPE_SEARCH
-        self._PAYLOAD_PLANNER = JudgeMission.MISSION_TYPE_DROP
-        self._LOITER_PLANNER = JudgeMission.MISSION_TYPE_LOITER
-        self._OBJECTIVE_PLANNER = JudgeMission.MISSION_TYPE_WAYPOINT
-
-
+        self._ser_search_params = rospy.Service('update_search_params', UpdateSearchParams, self.update_search_params)
 
         #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
         mission_type, obstacles, boundary_list, boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
 
         #Initiate the planner classes
         self._plan_payload = PayloadPlanner(drop_location[0], obstacles, boundary_list, boundary_poly)
-        self._plan_loiter = LoiterPlanner(obstacles)
+        self._plan_loiter = LoiterPlanner(obstacles, boundary_poly)
         self._plan_search = SearchPlanner(boundary_list, obstacles)
         self._plan_objective = ObjectivePointsPlanner(obstacles)
         self._plan_offaxis = OffaxisPlanner(boundary_list, obstacles)
+        self._plan_landing = LandingPlanner(boundary_list, obstacles)
+
+        self.landing = False
+        self.last_exists = False
+        self.last_waypoint = msg_ned(0.,0.,0.)
 
         self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
 
@@ -134,11 +135,23 @@ class mainPlanner():
             new_point.set_current = False
             new_point.clear_wp_list = False
             new_point.loiter_point = False
-            new_point.priority = 0
+            new_point.priority = 1
 
             waypoints.append(new_point)
 
         waypoints[-1].loiter_point = True
+        waypoints[-1].priority = 0
+
+        self.last_exists = True
+        self.last_waypoint = self.planned_waypoints[-1]
+
+        if self.landing == True:
+            waypoints[-1].loiter_point = False
+            waypoints[-1].priority = 1
+            waypoints[-1].landing = True
+
+            self.last_exists = False
+
 
         #Send the service call with the desired mission type number
         resp = waypoint_update(waypoints)
@@ -147,6 +160,43 @@ class mainPlanner():
 
         return True
 
+    def clear_waypoints(self, req):
+
+        print("Clearing waypoints")
+
+        rospy.wait_for_service('waypoint_path')
+
+        #Set up a service call to poll the interop server
+        waypoint_update = rospy.ServiceProxy('waypoint_path', NewWaypoints)
+
+        waypoints = []
+
+
+        new_point = Waypoint()
+
+        new_point.clear_wp_list = True
+
+
+        waypoints.append(new_point)
+
+        #Send the service call with the desired mission type number
+        resp = waypoint_update(waypoints)
+
+        print("Waypoints cleared")
+
+        return True
+
+    def update_search_params(self, req):
+        """
+        This function is called to change desired search params
+
+
+        """
+        self._plan_search.height = req.height
+        self._plan_search.waypoint_distance = req.waypoint_distance
+
+
+        return True
 
 
     def update_task_callback(self, req):
@@ -157,18 +207,21 @@ class mainPlanner():
         """
 
         self.task = req.mission_type
+        self.landing = False
 
-        mission_type, obstacles, boundary_list, boundary_poly, waypoints = tools.get_server_data(self.task, self.ref_pos)
+        # interop server doesn't provide landing info
+        if(self.task != JudgeMission.MISSION_TYPE_LAND):
+            mission_type, obstacles, boundary_list, boundary_poly, waypoints = tools.get_server_data(self.task, self.ref_pos)
 
         #Each task_planner class function should return a NED_list msg
         #These classes can be switched out depending on the desired functionality
         connect = False
 
-        if(self.task == self._SEARCH_PLANNER):
+        if(self.task == JudgeMission.MISSION_TYPE_SEARCH):
             rospy.loginfo('SEARCH TASK BEING PLANNED')
             planned_points = self._plan_search.plan(waypoints)
 
-        elif(self.task == self._PAYLOAD_PLANNER):
+        elif(self.task == JudgeMission.MISSION_TYPE_DROP):
             rospy.loginfo('PAYLOAD TASK BEING PLANNED')
             try:
                 state_msg = rospy.wait_for_message("/state", State, timeout=10)
@@ -180,7 +233,7 @@ class mainPlanner():
             planned_points, drop_location = self._plan_payload.plan(wind)
             rospy.set_param('DROP_LOCATION', drop_location)
 
-        elif(self.task == self._LOITER_PLANNER):
+        elif(self.task == JudgeMission.MISSION_TYPE_LOITER):
             rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
             try:
                 pos_msg = rospy.wait_for_message("/state", State, timeout=1)
@@ -190,7 +243,7 @@ class mainPlanner():
                 current_pos = msg_ned(0.,0.,0.)
             planned_points = self._plan_loiter.plan(current_pos)
 
-        elif(self.task == self._OBJECTIVE_PLANNER): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
+        elif(self.task == JudgeMission.MISSION_TYPE_WAYPOINT): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
             rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
             planned_points = self._plan_objective.plan(waypoints)
             connect = True
@@ -198,6 +251,25 @@ class mainPlanner():
         elif(self.task == JudgeMission.MISSION_TYPE_OFFAXIS):
             rospy.loginfo('OFFAXIS PLANNER TASK BEING PLANNED')
             planned_points = self._plan_offaxis.plan(waypoints)
+
+        elif(self.task == JudgeMission.MISSION_TYPE_LAND):
+            rospy.loginfo('LANDING PATH BEING PLANNED')
+            landing_msg = req.landing_waypoints
+            if (len(landing_msg.waypoint_list) == 2):
+                try:
+                    pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+                    curr_altitude = pos_msg.position[2]
+                except rospy.ROSException as e:
+                    print("Landing - No State msg recieved")
+                    curr_altitude = 0.0
+
+                landing_wypts = tools.msg2wypts(landing_msg)
+                planned_points = self._plan_landing.plan(landing_wypts, curr_altitude)
+            else:
+                planned_points = [msg_ned(0, 0, 0)]
+                print("No landing waypoints specified")
+                print(len(landing_msg.waypoint_list))
+            self.landing = True
 
         elif(self.task == JudgeMission.MISSION_TYPE_EMERGENT): # I believe the emergent object is just within the normal search boundaries
             pass
@@ -210,7 +282,10 @@ class mainPlanner():
             current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
         except rospy.ROSException as e:
             print("No State msg recieved")
-            current_pos = msg_ned(0.,0.,0.)
+            if self.last_exists == True:
+                current_pos = self.last_waypoint
+            else:
+                current_pos = msg_ned(0.,0.,0.)
 
         planned_points.insert(0,current_pos)
 

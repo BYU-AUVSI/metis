@@ -6,8 +6,6 @@ from rosplane_msgs.msg import State
 
 def plot_x(msg):
 
-    print(msg)
-    print(msg.position[1], msg.position[0])
     plt.plot(msg.position[1], msg.position[0], 'r.')
     plt.axis("equal")
     plt.draw()
