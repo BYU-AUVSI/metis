@@ -11,6 +11,7 @@
   <node name="interop_client" pkg="interop_pkg" type="InteropClient.py" output="screen">
     <rosparam file="$(find interop_pkg)/param/client_params.yaml"/>
   </node>
+  <node name="payload_drop" pkg="metis" type="payloadDrop.py" output="screen" />
 
 
 </launch>
