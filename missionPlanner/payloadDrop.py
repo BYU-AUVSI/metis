@@ -24,7 +24,7 @@ class PayloadDrop():
         print("current waypoint =",currentWaypoint)
 
         if self.nextWaypoint:
-            if not (np.linalg.norm(np.array(currentWaypoint) - np.array(self.dropWaypoint)) < self.threshold):
+            if not (np.linalg.norm(np.subtract(currentWaypoint,self.dropWaypoint)) < self.threshold):
                 ii = 0
                 while ii < 10:
                     # drop the payload!
@@ -32,7 +32,7 @@ class PayloadDrop():
                     rospy.ServiceProxy('arm payload',arm_bomb) and rospy.ServiceProxy('drop payload',actuate_drop_bomb)
                     ii += 1
         else:
-            if np.linalg.norm(np.array(currentWaypoint) - np.array(self.dropWaypoint)) < self.threshold:
+            if np.linalg.norm(np.subtract(currentWaypoint,self.dropWaypoint)) < self.threshold:
                 print("\n\n\n\n\n  PAYLOAD DROP IS UP NEXT!!! \n\n\n\n\n")
                 self.nextWaypoint = True
 
