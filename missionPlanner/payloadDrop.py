@@ -31,6 +31,7 @@ class PayloadDrop():
                     print("\n\n\n\n\n  WE HAVE ATTEMPTED PAYLOAD DROP!!!   \n\n\n\n\n")
                     rospy.ServiceProxy('arm payload',arm_bomb) and rospy.ServiceProxy('drop payload',actuate_drop_bomb)
                     ii += 1
+                self.nextWaypoint = False
         else:
             if np.linalg.norm(np.subtract(currentWaypoint,self.dropWaypoint)) < self.threshold:
                 print("\n\n\n\n\n  PAYLOAD DROP IS UP NEXT!!! \n\n\n\n\n")
