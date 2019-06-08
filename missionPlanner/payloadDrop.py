@@ -3,6 +3,8 @@
 import rospy
 from rosplane_msgs.msg import Waypoint
 import numpy as np
+import std_srvs.srv
+import subprocess
 
 class PayloadDrop():
     def __init__(self):
@@ -23,13 +25,19 @@ class PayloadDrop():
         print("drop waypoint = ",self.dropWaypoint)
         print("current waypoint =",currentWaypoint)
 
+        print("distance = ", np.linalg.norm(np.subtract(currentWaypoint,self.dropWaypoint)));
+
         if self.nextWaypoint:
             if not (np.linalg.norm(np.subtract(currentWaypoint,self.dropWaypoint)) < self.threshold):
                 ii = 0
                 while ii < 10:
                     # drop the payload!
                     print("\n\n\n\n\n  WE HAVE ATTEMPTED PAYLOAD DROP!!!   \n\n\n\n\n")
-                    rospy.ServiceProxy('arm payload',arm_bomb) and rospy.ServiceProxy('drop payload',actuate_drop_bomb)
+
+                    # 'cause we couldn't get a real service call to work
+                    subprocess.call("rosservice call /arm_bomb && rosservice call /actuate_drop_bomb", shell=True)
+                    # rospy.ServiceProxy('arm_bomb', std_srvs.srv.Trigger)
+                    # rospy.ServiceProxy('actuate_drop_bomb', std_srvs.srv.Trigger)
                     ii += 1
                 self.nextWaypoint = False
         else:
