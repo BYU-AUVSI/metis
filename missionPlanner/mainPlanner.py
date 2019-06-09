@@ -209,6 +209,9 @@ class mainPlanner():
         self.task = req.mission_type
         self.landing = False
 
+        # change this to determine how tight of turns the path will create
+        self.rrt.maxRelChi = 15*np.pi/16
+
         # interop server doesn't provide landing info
         if(self.task != JudgeMission.MISSION_TYPE_LAND):
             mission_type, obstacles, boundary_list, boundary_poly, waypoints = tools.get_server_data(self.task, self.ref_pos)
@@ -223,6 +226,7 @@ class mainPlanner():
 
         elif(self.task == JudgeMission.MISSION_TYPE_DROP):
             rospy.loginfo('PAYLOAD TASK BEING PLANNED')
+            self.rrt.maxRelChi = 10*np.pi/16
             try:
                 state_msg = rospy.wait_for_message("/state", State, timeout=10)
                 wind = np.array([state_msg.wn,state_msg.we,0.])
@@ -255,6 +259,7 @@ class mainPlanner():
         elif(self.task == JudgeMission.MISSION_TYPE_LAND):
             rospy.loginfo('LANDING PATH BEING PLANNED')
             landing_msg = req.landing_waypoints
+            self.rrt.maxRelChi = 10*np.pi/16
             if (len(landing_msg.waypoint_list) == 2):
                 try:
                     pos_msg = rospy.wait_for_message("/state", State, timeout=1)
