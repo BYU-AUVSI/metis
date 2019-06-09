@@ -25,7 +25,7 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
-    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=15., min_R=20, maxIncline=.5, maxRelChi=np.pi/2, iterations=50, resolution=.5, scaleHeight=1.5, distance=15, animate=False):
+    def __init__(self, obstaclesList, boundariesList, clearance=5., maxDistance=50., min_R=20, maxIncline=.5, maxRelChi=15*np.pi/16, iterations=50, resolution=.5, scaleHeight=1.5, distance=15, animate=False):
         """The constructor for the RRT class.
 
         Parameters
@@ -268,7 +268,7 @@ class RRT():
         # check for if solution at the beginning
         dist = np.sqrt((waypoint1.n-waypoint2.n)**2 + (waypoint1.e-waypoint2.e)**2 + (waypoint1.d-waypoint2.d)**2)
         chi = np.arctan2((waypoint2.e - waypoint1.e), (waypoint2.n - waypoint1.n))
-        if dist < self.maxDistance and self.flyablePath(waypoint1, waypoint2, startNode[6], chi):
+        if self.flyablePath(waypoint1, waypoint2, startNode[6], chi):
             return waypoint1, waypoint2  # Returns the two waypoints as the succesful path
 
         #START NEW TESTING CODE
@@ -489,7 +489,7 @@ class RRT():
                 # Check to see if the new node can connect to the end node
                 dist = np.sqrt((endN.n - newNode.item(0)) ** 2 + (endN.e - newNode.item(1)) ** 2 + (endN.d - newNode.item(2)) ** 2)
                 chi = np.arctan2((endN.e - newNode.item(1)), (endN.n - newNode.item(0)))
-                if dist < self.maxDistance and self.flyablePath(msg_ned(newNode.item(0), newNode.item(1), newNode.item(2)), endN, newNode.item(6), chi):
+                if self.flyablePath(msg_ned(newNode.item(0), newNode.item(1), newNode.item(2)), endN, newNode.item(6), chi):
                     tree[np.size(tree, 0)-1, 5] = 1
                     return tree, 1  # Return the extended tree with the flag of a successful path to ending node
                 else:
@@ -629,8 +629,12 @@ class RRT():
 
         #Check for new leaf now above max relative chi angle
         if prevChi != 8888: #If not at the root node
-            wrappedPrevChi = self.wrap(prevChi, chi)
-            if abs(wrappedPrevChi-chi) > self.maxRelChi:
+            prevChi = self.wrapToPi(prevChi)
+            chi = self.wrapToPi(chi)
+            wrappedPrevChi = self.wrapAminusBToPi(prevChi, chi)
+            if abs(wrappedPrevChi) > self.maxRelChi: # changed > to < - don't we want to avoid tight turns?
+                print("Chi difference too large, {} > {}".format(abs(wrappedPrevChi) , self.maxRelChi))
+                print("prevChi = {}, chi = {}".format(prevChi, chi))
                 return False
 
 
@@ -869,6 +873,16 @@ class RRT():
         while chi_c-chi < -np.pi:
             chi_c = chi_c + 2.0 * np.pi
         return chi_c
+
+    def wrapToPi(self, x):
+        wrap = np.mod(x, 2*np.pi)
+        if np.abs(wrap) > np.pi:
+            wrap -= 2*np.pi*np.sign(wrap)
+        return wrap
+
+    def wrapAminusBToPi(self, A, B):
+        diff_wrap = self.wrapToPi(A - B)
+        return diff_wrap
 
 if __name__ == "__main__":
     test = RRT([msg_ned(-500,-500,10,5)],[msg_ned(-500,-500,10,5),msg_ned(-500,500,0), msg_ned(500, 500, 0), msg_ned(500, -500, 0)])
