@@ -210,6 +210,8 @@ class mainPlanner():
         self.landing = False
 
         # change this to determine how tight of turns the path will create
+        # 15*pi/16 seems reasonable for most tasks - large planning tasks will
+        # take an excessive amount of time if this is too low. 
         self.rrt.maxRelChi = 15*np.pi/16
 
         # interop server doesn't provide landing info
@@ -226,6 +228,7 @@ class mainPlanner():
 
         elif(self.task == JudgeMission.MISSION_TYPE_DROP):
             rospy.loginfo('PAYLOAD TASK BEING PLANNED')
+            # be more picky about tight turns while performing the payload drop
             self.rrt.maxRelChi = 10*np.pi/16
             try:
                 state_msg = rospy.wait_for_message("/state", State, timeout=10)
