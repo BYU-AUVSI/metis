@@ -212,26 +212,26 @@ class RRT():
         #     plt.gcf()
         #     plt.gca()
         #     plt.show()
-        if True: # This will plot path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
-            N = np.array([])
-            E = np.array([])
-            idx = 0
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
-            while idx < len(fullPath) - 2:
-                N_t, E_t, D = self.pointsAlongPath(fullPath[idx], fullPath[idx+1], 1, fullPath[idx+2], self.R)
-                N = np.append(N, N_t)
-                E = np.append(E, E_t)
-                idx = idx + 1
+        # if True: # This will plot path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
+            # N = np.array([])
+            # E = np.array([])
+            # idx = 0
+            # fig = plt.figure()
+            # ax = fig.add_subplot(111)
+            # while idx < len(fullPath) - 2:
+                # N_t, E_t, D = self.pointsAlongPath(fullPath[idx], fullPath[idx+1], 1, fullPath[idx+2], self.R)
+                # N = np.append(N, N_t)
+                # E = np.append(E, E_t)
+                # idx = idx + 1
 
-            for point in fullPath:
-                ax.scatter(point.e, point.n, c='r')
-            for point in waypoints:
-                ax.scatter(point.e, point.n, c='g', marker='x')
+            # for point in fullPath:
+                # ax.scatter(point.e, point.n, c='r')
+            # for point in waypoints:
+                # ax.scatter(point.e, point.n, c='g', marker='x')
             
-            ax.plot(E, N, 'b')
-            ax.axis('equal')
-            plt.show()
+            # ax.plot(E, N, 'b')
+            # ax.axis('equal')
+            # plt.show()
 
         return fullPath
 
@@ -809,15 +809,15 @@ class RRT():
                 D = np.append(D, current_position.item(2))
             
 
-                if False: # This will plot each individual path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
-                    fig = plt.figure()
-                    ax = fig.add_subplot(111)
-                    ax.scatter(E, N)
-                    ax.scatter(r1.item(1), r1.item(0),c='r')
-                    ax.scatter(r2.item(1), r2.item(0),c='r')
-                    ax.scatter(C.item(1), C.item(0),c='r')
-                    ax.axis('equal')
-                    plt.show()
+                # if False: # This will plot each individual path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
+                    # fig = plt.figure()
+                    # ax = fig.add_subplot(111)
+                    # ax.scatter(E, N)
+                    # ax.scatter(r1.item(1), r1.item(0),c='r')
+                    # ax.scatter(r2.item(1), r2.item(0),c='r')
+                    # ax.scatter(C.item(1), C.item(0),c='r')
+                    # ax.axis('equal')
+                    # plt.show()
 
             else:
                 start_node = msg_ned(start_node.item(0), start_node.item(1), start_node.item(2))

@@ -24,6 +24,8 @@ class MissionPlotter:
         self.state_track_e = []
         self.state_track_length = 1000
         self.state_plt =  None #self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
+
+    def initRosNode():
         # rospy.Subscriber("/fixedwing/state", State, self.plotState)
         rospy.Subscriber("/state", State, self.plotState)
 
@@ -68,8 +70,12 @@ class MissionPlotter:
         Add waypoints
         """
         points = self.NEDListToNEnp(pointList)
-        self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker);
+        self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker)
 
+    def addPathway(self, pointList, label, ptColor='red', pathColor='cyan'):
+        self.addWaypoints(pointList, label, color=ptColor, size=6, marker='x')
+        points = self.NEDListToNEnp(pointList)
+        self.ax.plot(points[:,0], points[:,1], c=pathColor);
 
     def plotState(self, msg):
         self.state_counter += 1
@@ -92,9 +98,9 @@ class MissionPlotter:
         self.show()
 
 
-    def show(self):
+    def show(self, block=True):
         plt.legend()
-        plt.show()
+        plt.show(block=block)
 
 
 

@@ -28,6 +28,7 @@ from objectivePointsPlanner import ObjectivePointsPlanner
 from offaxisPlanner import OffaxisPlanner
 from landingPlanner import LandingPlanner
 
+from missionPlotter import MissionPlotter
 from pathPlanner.rrt import RRT
 
 class mainPlanner():
@@ -98,6 +99,15 @@ class mainPlanner():
         print("Drop")
         for drop in drop_location:
             print(drop.n, drop.e, drop.d)
+
+        _, _, _, _, objective_waypts = tools.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, self.ref_pos)
+        _, _, _, _, search_boundary = tools.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos)
+        self.obstacles = obstacles 
+        self.drop_location = drop_location
+        self.objective_waypts = objective_waypts 
+        self.search_boundary = search_boundary
+        self.boundary_list = boundary_list
+
         #-----END DEBUG----
 
         self.Va = Va
@@ -106,6 +116,16 @@ class mainPlanner():
     #TODO replace lists of lists with NED msg type
     #TODO remove obstacle D position
 
+
+    def init_mission_plotter(self):
+        mp = MissionPlotter()
+        mp.addRegion(self.search_boundary, "Search Region", color='orange')
+        mp.addRegion(self.boundary_list, "Boundary")
+        mp.addObstacles(self.obstacles, "Obstacles")
+        mp.addWaypoints(self.drop_location, "Drop Target", color='green', size=25, marker='X')
+        mp.addWaypoints(self.objective_waypts, "Objective Waypoints", color='blue', size=12, marker='o')
+
+        self.mp = mp
 
 
     def update_path_callback(self, req):
@@ -304,6 +324,12 @@ class mainPlanner():
         #Convert python NED class to rospy ned msg
         wypts_msg = tools.wypts2msg(final_path,self.task)
         self.planned_waypoints = final_path
+
+
+        self.init_mission_plotter()
+        self.mp.addPathway(final_path, "Planned pathway")
+        self.mp.show(block=True)
+        
         print(wypts_msg)
         return wypts_msg
 
