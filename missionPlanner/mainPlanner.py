@@ -297,6 +297,7 @@ class mainPlanner():
 
         planned_points.insert(0,current_pos)
 
+        print("Starting RRT to find full path")
         final_path = self.rrt.findFullPath(planned_points, connect=connect)
 
 
