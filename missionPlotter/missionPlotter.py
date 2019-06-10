@@ -23,7 +23,7 @@ class MissionPlotter:
         self.state_track_n = []
         self.state_track_e = []
         self.state_track_length = 1000
-        self.state_plt, = self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", size=15)
+        self.state_plt =  None #self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
         rospy.Subscriber("/fixedwing/state", State, self.plotState)
 
 
@@ -84,8 +84,9 @@ class MissionPlotter:
             del self.state_track_n[0]
             del self.state_track_e[0]
 
-        self.state_plt.remove()
-        self.state_plt, = self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", size=15)
+        if self.state_plt is not None:
+            self.state_plt.remove()
+        self.state_plt = self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
 
 
     def show(self):
