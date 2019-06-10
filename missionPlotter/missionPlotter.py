@@ -24,7 +24,8 @@ class MissionPlotter:
         self.state_track_e = []
         self.state_track_length = 1000
         self.state_plt =  None #self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
-        rospy.Subscriber("/fixedwing/state", State, self.plotState)
+        # rospy.Subscriber("/fixedwing/state", State, self.plotState)
+        rospy.Subscriber("/state", State, self.plotState)
 
 
     def addRegion(self, regionPoints, label, color='black'):
@@ -87,6 +88,8 @@ class MissionPlotter:
         if self.state_plt is not None:
             self.state_plt.remove()
         self.state_plt = self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
+
+        self.show()
 
 
     def show(self):
