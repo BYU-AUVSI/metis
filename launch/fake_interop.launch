@@ -2,8 +2,8 @@
   <param name="ref_lat" value="39.98304881111"/>
   <param name="ref_lon" value="-111.9903776"/>
   <param name="ref_h" value="0"/>
-  <param name="DROP_LOCATION" value="[INF,INF,INF]"/>
-  <!--[99999.9,99999.9,99999.9]-->
+  <param name='DROP_LOCATION' value="[99999.9,99999.9,99999.9]"/>
+  <param name="ARMED_AND_READY" value="false"/>
 
   <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
   <node name="fake_interop" pkg="metis" type="FakeInteropElberta.py" output = "screen" />
