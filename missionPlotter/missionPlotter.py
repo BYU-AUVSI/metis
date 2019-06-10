@@ -11,7 +11,7 @@ sys.path.append(rospack.get_path('metis'))
 
 import numpy as np
 from matplotlib import pyplot as plt
-from uav_msgs.msg import JudgeMission, NED_pt, NED_list
+from uav_msgs.msg import JudgeMission, NED_pt, NED_list, State
 from tools import tools
 
 class MissionPlotter:
@@ -19,17 +19,23 @@ class MissionPlotter:
         fig, ax = plt.subplots()
         self.fig = fig
         self.ax = ax
+        self.state_counter = 0
+        self.state_track_n = []
+        self.state_track_e = []
+        self.state_track_length = 1000
+        self.state_plt, = self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", size=15)
+        rospy.Subscriber("/fixedwing/state", State, self.plotState)
 
 
     def addRegion(self, regionPoints, label, color='black'):
-        """ 
+        """
         Add a region polygon to be drawn
         ---------
         Parameters
 
         regionPoints : NED_list
         A list of NED points defining the vertices of the polygon
-        
+
         lable : string
         A name of the region to be used for the legend
         """
@@ -41,14 +47,14 @@ class MissionPlotter:
         self.ax.set_aspect('equal')
 
     def addObstacles(self, obstacles, label, color='red'):
-        """ 
+        """
         Add circles representing obstacles
         ---------
         Parameters
 
         obstacles
         A list of obstacles to draw
-        
+
         label : string
         A name of the region to be used for the legend
         """
@@ -62,7 +68,24 @@ class MissionPlotter:
         """
         points = self.NEDListToNEnp(pointList)
         self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker);
-        
+
+
+    def plotState(self, msg):
+        self.state_counter += 1
+        if self.state_counter < 50:
+            return
+        self.state_counter = 0
+
+        state_n = msg.position[0]
+        state_e = msg.position[1]
+        self.state_track_n.append(state_n)
+        self.state_track_e.append(state_e)
+        if len(self.state_track_n) > self.state_track_length:
+            del self.state_track_n[0]
+            del self.state_track_e[0]
+
+        self.state_plt.remove()
+        self.state_plt, = self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", size=15)
 
 
     def show(self):
@@ -72,7 +95,7 @@ class MissionPlotter:
 
 
     def NEDListToNEnp(self, pointList):
-        """ 
+        """
         Convert a list of NED points to a nx2 numpy array with col 1 = E and col 2 = N
         """
         npPoints = np.empty((0,2))
@@ -83,7 +106,7 @@ class MissionPlotter:
         return npPoints
 
 
-         
+
 
 if __name__ == "__main__":
     rospy.init_node("missionPlotter")
@@ -111,12 +134,8 @@ if __name__ == "__main__":
     mp.addRegion(search_boundary, "Search Region", color='orange')
     mp.addRegion(boundary_list, "Boundary")
     mp.addObstacles(obstacles, "Obstacles")
-    mp.addWaypoints(drop_location, "Drop Target", color='green', size=25, marker='X') 
-    mp.addWaypoints(objective_waypts, "Objective Waypoints", color='blue', size=12, marker='o') 
+    mp.addWaypoints(drop_location, "Drop Target", color='green', size=25, marker='X')
+    mp.addWaypoints(objective_waypts, "Objective Waypoints", color='blue', size=12, marker='o')
     mp.show()
 
     rospy.spin()
-
-
-
-
