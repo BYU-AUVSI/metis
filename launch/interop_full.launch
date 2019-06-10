@@ -6,6 +6,8 @@
   <param name="PAYLOAD" value="1"/>
   <param name="LOITER" value="7"/>
   <param name="OBJECTIVE" value="4"/>
+  <param name='DROP_LOCATION' value="[99999.,99999.,99999.]"/>
+  <param name="ARMED_AND_READY" value="false"/>
 
   <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
   <node name="interop_client" pkg="interop_pkg" type="InteropClient.py" output="screen">
