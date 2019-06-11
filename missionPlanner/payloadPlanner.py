@@ -35,12 +35,12 @@ class PayloadPlanner():
         self.obstacles = obstacles                  # competition obstacles
         self.boundariesPolygon = boundariesPolygon                # polygon of competition boundaries
         self.boundariesList = boundariesList       # This is only used once it seems, to plot the boundaries. Could we change it so we get the plotting points from the polygon? -JTA, 5/3/2019
-        self.drop_altitude = 45.0                   # altitude for waypoints in meters above 0.0 of ground station
-        self.time_delay = 1.4                       # seconds between command to open and baydoor opening
+        self.drop_altitude = 34.0                   # altitude for waypoints in meters above 0.0 of ground station
+        self.time_delay = 2.5                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
         self.ff = 1.0                               # fudge factor for closed parachute drag
         self.terminal_velocity = 2.28               # from experimental data [m/s]
-        self.Va = 17.5  # pull from yaml            # competition design Va [m/s]
+        self.Va = 17.0  # pull from yaml            # competition design Va [m/s]
         self.gravity = 9.8147 # pull from yaml      # acceleration of gravity [m/s**2]
         self.course_command = 0.0                   # initialize course commmand
         self.NED_parachute_open = np.array([0.0,0.0,0.0])   # location where the parachute oepns [N, E, D]
