@@ -202,6 +202,8 @@ class mainPlanner():
         #Send the service call with the desired mission type number
         resp = waypoint_update(waypoints)
 
+        # set the last waypoint to the origin
+        self.last_waypoint = msg_ned(0.,0.,0.)
         print("Waypoints cleared")
 
         return True
@@ -305,15 +307,12 @@ class mainPlanner():
         else:
             rospy.logfatal('TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER')
 
-        try:
-            pos_msg = rospy.wait_for_message("/state", State, timeout=1)
-            current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
-        except rospy.ROSException as e:
-            print("No State msg recieved")
-            if self.last_exists == True:
-                current_pos = self.last_waypoint
-            else:
-                current_pos = msg_ned(0.,0.,0.)
+        if self.last_exists == True:
+            print("Planning from last waypoint of previous path")
+            current_pos = self.last_waypoint
+        else:
+            print("Planning from origin")
+            current_pos = msg_ned(0.,0.,0.)
 
         planned_points.insert(0,current_pos)
 
