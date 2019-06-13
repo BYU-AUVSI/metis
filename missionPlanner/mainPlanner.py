@@ -51,7 +51,9 @@ class mainPlanner():
         ref_lat = rospy.get_param("ref_lat")
         ref_lon = rospy.get_param("ref_lon")
         ref_h = rospy.get_param("ref_h")
+        self.target_h = rospy.get_param("target_h")
         self.ref_pos = [ref_lat, ref_lon, ref_h]
+        self.DEFAULT_POS = (0., 0., -self.target_h)
 
         #Keeps track of what task is currently being executed
         self.task = 0
@@ -84,7 +86,7 @@ class mainPlanner():
 
         self.landing = False
         self.last_exists = False
-        self.last_waypoint = msg_ned(0.,0.,0.)
+        self.last_waypoint = msg_ned(*self.DEFAULT_POS)
 
         self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
 
@@ -194,6 +196,7 @@ class mainPlanner():
 
         new_point = Waypoint()
 
+        new_point.w = [self.DEFAULT_POS[0], self.DEFAULT_POS[1], self.DEFAULT_POS[2]]
         new_point.clear_wp_list = True
 
 
@@ -203,7 +206,7 @@ class mainPlanner():
         resp = waypoint_update(waypoints)
 
         # set the last waypoint to the origin
-        self.last_waypoint = msg_ned(0.,0.,0.)
+        self.last_waypoint = msg_ned(*self.DEFAULT_POS)
         print("Waypoints cleared")
 
         return True
@@ -269,7 +272,7 @@ class mainPlanner():
                 current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
             except rospy.ROSException as e:
                 print("Loiter - No State msg recieved")
-                current_pos = msg_ned(0.,0.,0.)
+                current_pos = msg_ned(*self.DEFAULT_POS)
             planned_points = self._plan_loiter.plan(current_pos)
 
         elif(self.task == JudgeMission.MISSION_TYPE_WAYPOINT): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
@@ -296,7 +299,7 @@ class mainPlanner():
                 landing_wypts = tools.msg2wypts(landing_msg)
                 planned_points = self._plan_landing.plan(landing_wypts, curr_altitude)
             else:
-                planned_points = [msg_ned(0, 0, 0)]
+                planned_points = [msg_ned(*self.DEFAULT_POS)]
                 print("No landing waypoints specified")
                 print(len(landing_msg.waypoint_list))
             self.landing = True
@@ -312,7 +315,7 @@ class mainPlanner():
             current_pos = self.last_waypoint
         else:
             print("Planning from origin")
-            current_pos = msg_ned(0.,0.,0.)
+            current_pos = msg_ned(*self.DEFAULT_POS)
 
         planned_points.insert(0,current_pos)
 
