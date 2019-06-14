@@ -55,7 +55,7 @@ class PayloadDrop():
                         print("\n\n\n\n\n  WE HAVE ATTEMPTED PAYLOAD DROP!!!   \n\n\n\n\n")
 
                         # 'cause we couldn't get a real service call to work
-                        subprocess.call("rosservice call /arm_bomb && rosservice call /actuate_drop_bomb", shell=True)
+                        subprocess.call("rosservice call /gpio_0_pulse_actuate", shell=True)
                         # rospy.ServiceProxy('arm_bomb', std_srvs.srv.Trigger)
                         # rospy.ServiceProxy('actuate_drop_bomb', std_srvs.srv.Trigger)
                         ii += 1
