@@ -2,6 +2,24 @@
 
 To run Metis as a standalone package, just pull the latest code from the repository.
 
+# State of the Package
+
+We reverted rosplane to "Vanilla," meaning the base MAGICC lab code. Previous teams had  modified rosplane itself, building in functionality such as "path_manager" and "path_planner". These are now gone, so a substitute must be created in order for this package to begin working again.
+
+To get the skeleton running (but without functionality), you need at least the following repositories:
+
+- rosplane
+- ros_groundstation (AUVSI-SUAS-2019 branch)
+- metis
+
+To run, execute the following commands (each will need its own terminal):
+
+```
+roslaunch rosplane_sim fixedwing.launch             # Launches the simulation. Make sure to hit "play" in Gazebo.
+roslaunch ros_groundstation gs_fixedwing.launch     # Launches groundstation
+roslaunch metis fake_interop.launch                 # Provides a mock interop server for testing
+```
+
 # Operation
 
 For testing, Metis currently has a fake_interop node that supplies waypoints that would normally be supplied by the interop server. 
