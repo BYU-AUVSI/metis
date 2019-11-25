@@ -1,7 +1,7 @@
 import sys
 sys.path.append('..')
 
-from tools.tools import collisionCheck, makeBoundaryPoly, convert
+from tools.tools import makeBoundaryPoly, convert, #collisionCheck
 from messages.ned import msg_ned
 from payloadPlanner import PayloadPlanner
 import numpy as np

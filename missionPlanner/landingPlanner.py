@@ -2,10 +2,10 @@ import sys
 sys.path.append('..')
 
 import numpy as np
-from messages.ned import msg_ned
+# from messages.ned import msg_ned
 from tools.tools import makeBoundaryPoly
-from shapely.geometry import Point
-import matplotlib.pyplot as plt
+# from shapely.geometry import Point
+# import matplotlib.pyplot as plt
 
 class LandingPlanner():
 

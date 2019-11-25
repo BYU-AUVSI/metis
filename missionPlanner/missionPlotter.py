@@ -11,7 +11,7 @@ sys.path.append(rospack.get_path('metis'))
 
 import numpy as np
 from matplotlib import pyplot as plt
-from uav_msgs.msg import JudgeMission, NED_pt, NED_list, State
+from uav_msgs.msg import JudgeMission, State #,NED_list, NED_pt
 from tools import tools
 
 class MissionPlotter:

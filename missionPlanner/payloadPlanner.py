@@ -4,7 +4,7 @@ sys.path.append('..')
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
+# from matplotlib.patches import Polygon
 #from matplotlib.patches import PatchCollection
 from tools.tools import collisionCheck, makeBoundaryPoly, convert
 from messages.ned import msg_ned
