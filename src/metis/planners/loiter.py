@@ -1,22 +1,47 @@
+# -*- coding: utf-8 -*-
+# Copyright 2018-2019 John Akagi and Jacob Willis
+# Copyright 2019-2020 Sequoia Ploeg
+
 from shapely.geometry import Point
 import numpy as np
-from messages.ned import msg_ned
+from metis.messages import msg_ned
 
-class LoiterPlanner():
+from . import Planner, PlannerData
 
-    def __init__(self, obstacles, bound_poly, radius=25., clearance=2.5):
-        self.obstacles = obstacles
+class LoiterPlanner(PlannerData, Planner):
+    """The Loiter Planner plans the loiter mission."""
+
+    def __init__(self, radius=25., clearance=2.5, *args, **kwargs):
+        """
+        obstacles : list
+        bound_poly
+        radius : float (optional)
+            I assume this is the orbital radius (default 25.0)?
+        clearance : float (optional)
+            Not sure what clearance is (default 2.5).
+        """
+        super().__init__(*args, **kwargs)
         self.radius = radius
-        self.bound_poly = bound_poly
         self.clearance = clearance
         
 
     def plan(self, waypoints):
+        """
+        We're not sure what it does yet. Will brb...
 
+        Parameters
+        ----------
+        waypoints : list[msg_ned]
+
+        Returns
+        -------
+        waypoints : list[msg_ned]
+            A list containing a single value.
+        """
         point = Point(waypoints.n, waypoints.e).buffer(self.radius+self.clearance)
 
         safe_point = True
-        if point.within(self.bound_poly):
+        if point.within(self.boundary_poly):
             for obs in self.obstacles:
                 if point.intersects(Point(obs.n, obs.e).buffer(obs.r)):
                     safe_point = False
@@ -40,7 +65,7 @@ class LoiterPlanner():
             point = Point(n, e).buffer(self.radius+self.clearance)
             
             safe_point = True
-            if point.within(self.bound_poly):
+            if point.within(self.boundary_poly):
                 for obs in self.obstacles:
                     if point.intersects(Point(obs.n, obs.e).buffer(obs.r)):
                         safe_point = False

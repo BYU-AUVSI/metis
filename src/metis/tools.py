@@ -1,15 +1,17 @@
-
+# -*- coding: utf-8 -*-
+# Copyright 2018-2019 John Akagi and Jacob Willis
+# Copyright 2019-2020 Sequoia Ploeg
 
 import rospy
-from uav_msgs.msg import NED_pt, NED_list
-from geographiclib.geodesic import Geodesic
 # from uav_msgs.msg import NED_pt, NED_list
+from metis.messages import NED_pt, NED_list
+from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-from messages.ned import msg_ned
+from metis.messages import msg_ned
 import numpy as np
 import math
-from uav_msgs.srv import GetMissionWithId
+# from uav_msgs.srv import GetMissionWithId
 
 def convert(lat1, lon1, h1, lat2, lon2, h2, ground_level=22., ft2m=True):
     """
@@ -175,7 +177,7 @@ def get_server_data(mission_type, ref_pos):
     rospy.wait_for_service('get_mission_with_id')
 
     #Set up a service call to poll the interop server
-    mission_data = rospy.ServiceProxy('get_mission_with_id', GetMissionWithId)
+    # mission_data = rospy.ServiceProxy('get_mission_with_id', GetMissionWithId)
 
     #Send the service call with the desired mission type number
     resp = mission_data(mission_type)

@@ -1,8 +1,14 @@
+# -*- coding: utf-8 -*-
+# Copyright 2018-2019 John Akagi and Jacob Willis
+# Copyright 2019-2020 Sequoia Ploeg
 
-class ObjectivePointsPlanner():
-    
-    def __init__(self, obstacles):
-        pass
+from . import Planner, PlannerData
+
+class ObjectivePointsPlanner(PlannerData, Planner):
+    """The Objective Planner class."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
     
     def plan(self, waypoints):
         """ Plans the path to hit the designated flight points

@@ -1,19 +1,22 @@
-import sys
-sys.path.append('..')
+# -*- coding: utf-8 -*-
+# Copyright 2018-2019 John Akagi and Jacob Willis
+# Copyright 2019-2020 Sequoia Ploeg
 
 import numpy as np
-from messages.ned import msg_ned
-from tools.tools import makeBoundaryPoly
+from metis.messages import msg_ned
+from metis.tools import makeBoundaryPoly
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
 
-class SearchPlanner():
+from . import Planner, PlannerData
+
+class SearchPlanner(PlannerData, Planner):
     """
     Class that plans the search mission. 
     This class makes a lawn mower path by determining the box that bounds the search area and then populating that box with points a set distance apart. The points are narrowed by removing any points that are too close to the flight boundaries or too far from the search area.
     """
 
-    def __init__(self, flight_boundaries, obstacles, waypoint_distance=50.):
+    def __init__(self, waypoint_distance=50.0, height=30.0, *args, **kwargs):
         """
         Initialize the variables for the planning algorithm.
         The flight boundaries are converted from a list to shapely object to allow checking if points are within the boundaries
@@ -27,12 +30,11 @@ class SearchPlanner():
         waypoint_distance : float
             The distance each point in the lawn mower path should be from its neighbors
         """
-        
-        self.flight_boundaries = flight_boundaries
-        self.flight_poly = makeBoundaryPoly(self.flight_boundaries)
-        self.obstalces = obstacles
+        super().__init__(*args, **kwargs)
+        self.flight_boundaries = self.boundary_list
+        self.flight_poly = self.boundary_poly
         self.waypoint_distance = waypoint_distance
-	self.height = 30.
+        self.height = height
 
     def plan(self, search_boundaries, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=True):
         """

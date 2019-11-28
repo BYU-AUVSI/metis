@@ -1,5 +1,6 @@
-#!/usr/bin/python
-
+# -*- coding: utf-8 -*-
+# Copyright 2018-2019 John Akagi and Jacob Willis
+# Copyright 2019-2020 Sequoia Ploeg
 
 #Get the path to the package so we can use files in the tools folder
 #ROS doesn't use the normal path so we can't just sys.path.append('..')
@@ -19,19 +20,21 @@ from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWay
 
 import numpy as np
 
-from messages.ned import msg_ned
-from tools import tools
-from payloadPlanner import PayloadPlanner
-from loiterPlanner import LoiterPlanner
-from searchPlanner import SearchPlanner
-from objectivePointsPlanner import ObjectivePointsPlanner
-from offaxisPlanner import OffaxisPlanner
-from landingPlanner import LandingPlanner
+from metis.messages import msg_ned
+from metis import tools
 
 from missionPlotter import MissionPlotter
 from pathPlanner.rrt import RRT
 
-class mainPlanner():
+from metis import mixins
+from metis.tools import makeBoundaryPoly
+from metis.planners import LoiterPlanner, LandingPlanner, ObjectivePointsPlanner, OffaxisPlanner, PayloadPlanner, SearchPlanner
+
+from shapely.geometry import Point
+import matplotlib.pyplot as plt
+
+
+class MissionPlanner(object):
     """Handles the passing of information for the competition
 
     This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners
@@ -76,13 +79,22 @@ class mainPlanner():
         #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
         mission_type, obstacles, boundary_list, boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
 
+        # Save all those variables so the mixins can access it.
+        self.mission_type = mission_type
+        self.obstacles = obstacles
+        self.boundary_list = boundary_list
+        self.boundary_poly = boundary_poly
+        self.drop_location = drop_location
+
         #Initiate the planner classes
-        self._plan_payload = PayloadPlanner(drop_location[0], obstacles, boundary_list, boundary_poly)
-        self._plan_loiter = LoiterPlanner(obstacles, boundary_poly)
-        self._plan_search = SearchPlanner(boundary_list, obstacles)
-        self._plan_objective = ObjectivePointsPlanner(obstacles)
-        self._plan_offaxis = OffaxisPlanner(boundary_list, obstacles)
-        self._plan_landing = LandingPlanner(boundary_list, obstacles)
+        self.planners = {
+            'loiter': LoiterPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            'landing': LandingPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            'offaxis': OffaxisPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            'payload': PayloadPlanner(drop_location[0], self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            'search': SearchPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            'objective': ObjectivePointsPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+        }
 
         self.landing = False
         self.last_exists = False
@@ -90,27 +102,27 @@ class mainPlanner():
 
         self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
 
-        #-----START DEBUG----
-        #This code is just used to visually check that everything worked ok. Can be removed anytime.
-        print("Obstacles")
-        for obstacle in obstacles:
-            print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
-        print("Boundaries")
-        for boundary in boundary_list:
-            print(boundary.n, boundary.e)
-        print("Drop")
-        for drop in drop_location:
-            print(drop.n, drop.e, drop.d)
+        # #-----START DEBUG----
+        # #This code is just used to visually check that everything worked ok. Can be removed anytime.
+        # print("Obstacles")
+        # for obstacle in obstacles:
+        #     print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
+        # print("Boundaries")
+        # for boundary in boundary_list:
+        #     print(boundary.n, boundary.e)
+        # print("Drop")
+        # for drop in drop_location:
+        #     print(drop.n, drop.e, drop.d)
 
-        _, _, _, _, objective_waypts = tools.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, self.ref_pos)
-        _, _, _, _, search_boundary = tools.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos)
-        self.obstacles = obstacles 
-        self.drop_location = drop_location
-        self.objective_waypts = objective_waypts 
-        self.search_boundary = search_boundary
-        self.boundary_list = boundary_list
+        # _, _, _, _, objective_waypts = tools.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, self.ref_pos)
+        # _, _, _, _, search_boundary = tools.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos)
+        # self.obstacles = obstacles 
+        # self.drop_location = drop_location
+        # self.objective_waypts = objective_waypts 
+        # self.search_boundary = search_boundary
+        # self.boundary_list = boundary_list
 
-        #-----END DEBUG----
+        # #-----END DEBUG----
 
         self.Va = Va
 
@@ -217,8 +229,8 @@ class mainPlanner():
 
 
         """
-        self._plan_search.height = req.height
-        self._plan_search.waypoint_distance = req.waypoint_distance
+        self.planners['search'].height = req.height
+        self.planners['search'].waypoint_distance = req.waypoint_distance
 
 
         return True
@@ -249,7 +261,7 @@ class mainPlanner():
 
         if(self.task == JudgeMission.MISSION_TYPE_SEARCH):
             rospy.loginfo('SEARCH TASK BEING PLANNED')
-            planned_points = self._plan_search.plan(waypoints)
+            planned_points = self.planners['search'].plan(waypoints)
 
         elif(self.task == JudgeMission.MISSION_TYPE_DROP):
             rospy.loginfo('PAYLOAD TASK BEING PLANNED')
@@ -262,7 +274,7 @@ class mainPlanner():
                 print("no state message received")
                 wind = np.array([0.0,0.0,0.0])
 
-            planned_points, drop_location = self._plan_payload.plan(wind)
+            planned_points, drop_location = self.planners['payload'].plan(wind)
             rospy.set_param('DROP_LOCATION', drop_location)
 
         elif(self.task == JudgeMission.MISSION_TYPE_LOITER):
@@ -273,16 +285,16 @@ class mainPlanner():
             except rospy.ROSException as e:
                 print("Loiter - No State msg recieved")
                 current_pos = msg_ned(*self.DEFAULT_POS)
-            planned_points = self._plan_loiter.plan(current_pos)
+            planned_points = self.planners['loiter'].plan(current_pos)
 
         elif(self.task == JudgeMission.MISSION_TYPE_WAYPOINT): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
             rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
-            planned_points = self._plan_objective.plan(waypoints)
+            planned_points = self.planners['objective'].plan(waypoints)
             connect = True
 
         elif(self.task == JudgeMission.MISSION_TYPE_OFFAXIS):
             rospy.loginfo('OFFAXIS PLANNER TASK BEING PLANNED')
-            planned_points = self._plan_offaxis.plan(waypoints)
+            planned_points = self.planners['offaxis'].plan(waypoints)
 
         elif(self.task == JudgeMission.MISSION_TYPE_LAND):
             rospy.loginfo('LANDING PATH BEING PLANNED')
@@ -297,7 +309,7 @@ class mainPlanner():
                     curr_altitude = 0.0
 
                 landing_wypts = tools.msg2wypts(landing_msg)
-                planned_points = self._plan_landing.plan(landing_wypts, curr_altitude)
+                planned_points = self.planners['landing'].plan(landing_wypts, curr_altitude)
             else:
                 planned_points = [msg_ned(*self.DEFAULT_POS)]
                 print("No landing waypoints specified")
@@ -341,6 +353,6 @@ class mainPlanner():
 if __name__ == "__main__":
 
     rospy.init_node('main_planner', anonymous=True)
-    test_planner = mainPlanner()
+    test_planner = MissionPlanner()
     while not rospy.is_shutdown():
         rospy.spin()

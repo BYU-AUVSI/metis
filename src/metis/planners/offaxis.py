@@ -1,18 +1,18 @@
-import sys
-sys.path.append('..')
+# -*- coding: utf-8 -*-
+# Copyright 2018-2019 John Akagi and Jacob Willis
+# Copyright 2019-2020 Sequoia Ploeg
 
 import numpy as np
-from messages.ned import msg_ned
-from tools.tools import makeBoundaryPoly
+from metis.messages import msg_ned
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
+from . import Planner, PlannerData
 
-class OffaxisPlanner():
+class OffaxisPlanner(PlannerData, Planner):
+    """The Off Axis Planner class."""
 
-    def __init__(self, boundary_list, obstacles):
-        self.boundary_list = boundary_list
-        self.boundary_poly = makeBoundaryPoly(self.boundary_list)
-        self.obstalces = obstacles
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
     
     def plan(self, object_location_list, altitude=70, clearance=10, waypoint_distance=100):
         object_location = object_location_list[0]

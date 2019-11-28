@@ -1,21 +1,21 @@
-import sys
-sys.path.append('..')
-
+# -*- coding: utf-8 -*-
+# Copyright 2018-2019 John Akagi and Jacob Willis
+# Copyright 2019-2020 Sequoia Ploeg
 
 import numpy as np
 import matplotlib.pyplot as plt
-# from matplotlib.patches import Polygon
-#from matplotlib.patches import PatchCollection
-from tools.tools import collisionCheck, makeBoundaryPoly, convert
-from messages.ned import msg_ned
+from metis.tools import collisionCheck, makeBoundaryPoly, convert
+from metis.messages import msg_ned
+
+from . import Planner, PlannerData
 
 
-class PayloadPlanner():
+class PayloadPlanner(PlannerData, Planner):
     """
     inputs: drop gps location, wind, obstacles
     outputs: X number of waypoints with a single drop waypoint
     """
-    def __init__(self,dropLocation,obstacles,boundariesList,boundariesPolygon,wind=np.array([0.,0.,0.])):
+    def __init__(self, dropLocation, wind=np.array([0.,0.,0.]), *args, **kwargs):
         """
         initializes global variables
 
@@ -30,11 +30,9 @@ class PayloadPlanner():
         wind : list
             current estimate for the wind vector in [north, east, down]
         """
+        super.__init__(*args, **kwargs)
         self.dropLocation = dropLocation            # location of where on the ground we want to hit [N, E, D]
         self.wind = wind                            # current wind vector [Wn,We,Wd]
-        self.obstacles = obstacles                  # competition obstacles
-        self.boundariesPolygon = boundariesPolygon                # polygon of competition boundaries
-        self.boundariesList = boundariesList       # This is only used once it seems, to plot the boundaries. Could we change it so we get the plotting points from the polygon? -JTA, 5/3/2019
         self.drop_altitude = 34.0                   # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 2.5                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
@@ -52,7 +50,7 @@ class PayloadPlanner():
         self.chi_offset = 0.0                       # offset for commanded chi calculation if waypoint is inside an obstacle
         self.ii = 0
 
-    def plan(self,wind=np.array([0.,0.,0.])):
+    def plan(self, wind=np.array([0.,0.,0.])):
 
         """
         function called by mainplanner that returns bombdrop waypoint
