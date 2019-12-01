@@ -2,17 +2,19 @@ import pytest
 import sys
 sys.path.append('../src')
 
-from metis.tools import makeBoundaryPoly, convert
 from metis.messages import msg_ned
-import numpy as np
-from metis.planners import PayloadPlanner
+from metis.tools import convert, makeBoundaryPoly
 
-def test_payload():
-    #List of obastacles and boundaries
-    obstaclesList = []
-    obstaclesList.append(msg_ned(-350.,450.,50.,50.))
-    obstaclesList.append(msg_ned(300.,-150.,100.,25.))
-    obstaclesList.append(msg_ned(-300.,-250.,75.,75.))
+def test_param():
+    # Testing locations
+    # All lists are in North, East, Down, Radius
+    drop_location_list = [100, -100, 0, 0]
+
+    obstacle_list = [[50, 50, -100, 20],
+                    [150, -200, -75, 40],
+                    [-200, 35, -80, 25],
+                    [150, -75, -100, 30]]
+
     boundariesList = []
 
     home = [38.146269,-76.428164, 0.0]
@@ -56,12 +58,10 @@ def test_payload():
     boundariesList.append(msg_ned(bd11_m[0],bd11_m[1]))
     boundaryPoly = makeBoundaryPoly(boundariesList)
 
+    drop_location = msg_ned(north=100., east=-100.)
 
-    dropLocation_gps = [38.145861, -76.426389, 0.0]
-    dropLocation = convert(home[0],home[1],home[2],dropLocation_gps[0],dropLocation_gps[1],dropLocation_gps[2])
-    dropLocation = np.array(dropLocation)
-    dropLocation = msg_ned(*dropLocation)
-    wind = np.array([0.5,12.8,0.1])
-    test = PayloadPlanner(dropLocation,boundariesList,obstaclesList,boundary_poly=boundaryPoly,wind=wind)
-    result = test.plan(wind)
-    test.plot()
+    obstacles = []
+    for ind_obstacle in obstacle_list:
+        obstacles.append(msg_ned(ind_obstacle[0], ind_obstacle[1], ind_obstacle[3], ind_obstacle[3]))
+
+    boundaries = boundaryPoly

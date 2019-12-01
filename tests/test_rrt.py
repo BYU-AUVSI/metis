@@ -1,10 +1,14 @@
-from rrt import RRT
+import pytest
+import sys
+sys.path.append('../src')
+
+from metis.rrt import RRT
 import numpy as np
-import time
-from messages.ned import msg_ned
+# import time
+from metis.messages import msg_ned
 
 
-if __name__ == '__main__':
+def test_rrt():
     show_animation = True
 
 
