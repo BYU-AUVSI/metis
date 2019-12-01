@@ -7,12 +7,11 @@ find_package(catkin REQUIRED COMPONENTS
   rosplane
 )
 
+catkin_python_setup()
 
 catkin_package(
   CATKIN_DEPENDS rospy uav_msgs rosplane
 )
-
-catkin_python_setup()
 
 include_directories(include)
 include_directories(
