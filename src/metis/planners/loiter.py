@@ -6,12 +6,12 @@ from shapely.geometry import Point
 import numpy as np
 from metis.messages import msg_ned
 
-from . import Planner, PlannerData
+from metis.planners import Planner
 
-class LoiterPlanner(PlannerData, Planner):
+class LoiterPlanner(Planner):
     """The Loiter Planner plans the loiter mission."""
 
-    def __init__(self, radius=25., clearance=2.5, *args, **kwargs):
+    def __init__(self, boundary_list, obstacles, boundary_poly=None, radius=25., clearance=2.5):
         """
         obstacles : list
         bound_poly
@@ -20,7 +20,7 @@ class LoiterPlanner(PlannerData, Planner):
         clearance : float (optional)
             Not sure what clearance is (default 2.5).
         """
-        super().__init__(*args, **kwargs)
+        super(LoiterPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
         self.radius = radius
         self.clearance = clearance
         

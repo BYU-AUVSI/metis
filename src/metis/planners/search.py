@@ -7,16 +7,15 @@ from metis.messages import msg_ned
 from metis.tools import makeBoundaryPoly
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
+from metis.planners import Planner
 
-from . import Planner, PlannerData
-
-class SearchPlanner(PlannerData, Planner):
+class SearchPlanner(Planner):
     """
     Class that plans the search mission. 
     This class makes a lawn mower path by determining the box that bounds the search area and then populating that box with points a set distance apart. The points are narrowed by removing any points that are too close to the flight boundaries or too far from the search area.
     """
 
-    def __init__(self, waypoint_distance=50.0, height=30.0, *args, **kwargs):
+    def __init__(self, boundary_list, obstacles, boundary_poly=None, waypoint_distance=50.0, height=30.0):
         """
         Initialize the variables for the planning algorithm.
         The flight boundaries are converted from a list to shapely object to allow checking if points are within the boundaries
@@ -30,7 +29,7 @@ class SearchPlanner(PlannerData, Planner):
         waypoint_distance : float
             The distance each point in the lawn mower path should be from its neighbors
         """
-        super().__init__(*args, **kwargs)
+        super(SearchPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
         self.flight_boundaries = self.boundary_list
         self.flight_poly = self.boundary_poly
         self.waypoint_distance = waypoint_distance

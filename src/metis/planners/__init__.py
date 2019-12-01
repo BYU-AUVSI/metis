@@ -8,14 +8,11 @@ __all__ = [
 ]
 
 class Planner(object):
-    pass
-
-
-class PlannerData(object):
     def __init__(self, boundary_list, obstacles, boundary_poly=None):
         self.boundary_list = boundary_list
         self.obstacles = obstacles
         self.boundary_poly = makeBoundaryPoly(self.boundary_list) if boundary_poly is None else boundary_poly
+    
 
 from . import *
 

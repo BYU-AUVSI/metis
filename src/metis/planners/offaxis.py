@@ -6,13 +6,13 @@ import numpy as np
 from metis.messages import msg_ned
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
-from . import Planner, PlannerData
+from metis.planners import Planner
 
-class OffaxisPlanner(PlannerData, Planner):
+class OffaxisPlanner(Planner):
     """The Off Axis Planner class."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, boundary_list, obstacles, boundary_poly=None):
+        super(OffaxisPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
     
     def plan(self, object_location_list, altitude=70, clearance=10, waypoint_distance=100):
         object_location = object_location_list[0]

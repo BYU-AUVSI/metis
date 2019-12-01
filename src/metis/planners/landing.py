@@ -3,13 +3,13 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 import numpy as np
-from . import Planner, PlannerData
+from metis.planners import Planner
 
-class LandingPlanner(PlannerData, Planner):
+class LandingPlanner(Planner):
     """The Landing Planner mixin plans the landing waypoints."""
 
-    def __init__(self, alt_threshold=10, alt_default=30, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, boundary_list, obstacles, boundary_poly=None, alt_threshold=10, alt_default=30):
+        super(LandingPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
         self.altitude_threshold = alt_threshold
         self.altitude_default = alt_default
 

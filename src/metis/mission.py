@@ -2,32 +2,18 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
-#Get the path to the package so we can use files in the tools folder
-#ROS doesn't use the normal path so we can't just sys.path.append('..')
-import sys
-
 import rospy
-import rospkg
-rospack = rospkg.RosPack()
-sys.path.append(rospack.get_path('metis'))
-from uav_msgs.msg import JudgeMission, Waypoint, State #Waypoint, State are copied from rosplane_msgs so rosplane is not neededs for metis
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints, UpdateSearchParams #NewWaypoints is copied from the rosplane_msgs so rosplane is not needed for metis
-
-#from rosplane_msgs.msg import Waypoint #This is where the msgs and srv were originally but couldn't import them
-#from rosplane_msgs.srv import NewWaypoints
-
-#from rosplane_msgs.msg import State
+from uav_msgs.msg import JudgeMission, Waypoint, State
+from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints, UpdateSearchParams
 
 import numpy as np
 
 from metis.messages import msg_ned
 from metis import tools
 
-from missionPlotter import MissionPlotter
-from pathPlanner.rrt import RRT
+from metis.plotter import MissionPlotter
+from metis.rrt import RRT
 
-from metis import mixins
-from metis.tools import makeBoundaryPoly
 from metis.planners import LoiterPlanner, LandingPlanner, ObjectivePointsPlanner, OffaxisPlanner, PayloadPlanner, SearchPlanner
 
 from shapely.geometry import Point
@@ -88,12 +74,12 @@ class MissionPlanner(object):
 
         #Initiate the planner classes
         self.planners = {
-            'loiter': LoiterPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
             'landing': LandingPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            'loiter': LoiterPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            'objective': ObjectivePointsPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
             'offaxis': OffaxisPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
             'payload': PayloadPlanner(drop_location[0], self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
             'search': SearchPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
-            'objective': ObjectivePointsPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
         }
 
         self.landing = False
@@ -102,27 +88,27 @@ class MissionPlanner(object):
 
         self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
 
-        # #-----START DEBUG----
-        # #This code is just used to visually check that everything worked ok. Can be removed anytime.
-        # print("Obstacles")
-        # for obstacle in obstacles:
-        #     print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
-        # print("Boundaries")
-        # for boundary in boundary_list:
-        #     print(boundary.n, boundary.e)
-        # print("Drop")
-        # for drop in drop_location:
-        #     print(drop.n, drop.e, drop.d)
+        #-----START DEBUG----
+        #This code is just used to visually check that everything worked ok. Can be removed anytime.
+        print("Obstacles")
+        for obstacle in obstacles:
+            print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
+        print("Boundaries")
+        for boundary in boundary_list:
+            print(boundary.n, boundary.e)
+        print("Drop")
+        for drop in drop_location:
+            print(drop.n, drop.e, drop.d)
 
-        # _, _, _, _, objective_waypts = tools.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, self.ref_pos)
-        # _, _, _, _, search_boundary = tools.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos)
-        # self.obstacles = obstacles 
-        # self.drop_location = drop_location
-        # self.objective_waypts = objective_waypts 
-        # self.search_boundary = search_boundary
-        # self.boundary_list = boundary_list
+        _, _, _, _, objective_waypts = tools.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, self.ref_pos)
+        _, _, _, _, search_boundary = tools.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos)
+        self.obstacles = obstacles 
+        self.drop_location = drop_location
+        self.objective_waypts = objective_waypts 
+        self.search_boundary = search_boundary # Except it would seem this line is necessary right now.
+        self.boundary_list = boundary_list
 
-        # #-----END DEBUG----
+        #-----END DEBUG----
 
         self.Va = Va
 

@@ -2,13 +2,13 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
-from . import Planner, PlannerData
+from metis.planners import Planner
 
-class ObjectivePointsPlanner(PlannerData, Planner):
+class ObjectivePointsPlanner(Planner):
     """The Objective Planner class."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, boundary_list, obstacles, boundary_poly=None):
+        super(ObjectivePointsPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
     
     def plan(self, waypoints):
         """ Plans the path to hit the designated flight points
