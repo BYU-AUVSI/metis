@@ -11,7 +11,7 @@ from shapely.geometry.polygon import Polygon
 from metis.messages import msg_ned
 import numpy as np
 import math
-# from uav_msgs.srv import GetMissionWithId
+from uav_msgs.srv import GetMissionWithId
 
 def convert(lat1, lon1, h1, lat2, lon2, h2, ground_level=22., ft2m=True):
     """
@@ -177,7 +177,7 @@ def get_server_data(mission_type, ref_pos):
     rospy.wait_for_service('get_mission_with_id')
 
     #Set up a service call to poll the interop server
-    # mission_data = rospy.ServiceProxy('get_mission_with_id', GetMissionWithId)
+    mission_data = rospy.ServiceProxy('get_mission_with_id', GetMissionWithId)
 
     #Send the service call with the desired mission type number
     resp = mission_data(mission_type)

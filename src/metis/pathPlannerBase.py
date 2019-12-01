@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 import rospy
-import time
+# import time
 import numpy as np
-import os
-import sys
-import rospkg
-rospack = rospkg.RosPack()
-sys.path.append(rospack.get_path('metis'))
+# import os
+# import sys
+# import rospkg
+# rospack = rospkg.RosPack()
+# sys.path.append(rospack.get_path('metis'))
 from uav_msgs.msg import JudgeMission
 from uav_msgs.srv import PlanMissionPoints
 # from rosplane_msgs.msg import Controller_Commands, State
-from messages.ned import msg_ned
-from tools import tools
+# from metis.messages import msg_ned
+from metis import tools
 from rrt import RRT
 
 import cProfile

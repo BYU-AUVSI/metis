@@ -2,17 +2,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import cm
-from mpl_toolkits.mplot3d import Axes3D
-import sys
+# from mpl_toolkits.mplot3d import Axes3D
+# import sys
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-sys.path.append('..')
-from messages.ned import msg_ned
-from tools.tools import collisionCheck
+# sys.path.append('..')
+from metis.messages import msg_ned
+from metis.tools import collisionCheck
 
-import cProfile
+# import cProfile
 
-import time
+# import time
 
 # To do: A buffer for incline when planning, that way it can smooth
 # Find all possible paths, smooth all, then pick best
