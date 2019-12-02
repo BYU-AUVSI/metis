@@ -28,7 +28,7 @@ Metis can be run with `roslaunch metis fake_interop.launch`, which will run the 
 
 The various missions can be called with the `/plan_path` rosservice call. The arguments for this service call are the mission that should be run and the arguments associated with the PlanMissionPath service call. 
 
-The plan_mission service call will return a list of the major waypoints that the aircraft needs to fly thorough. These may be the drop location and points leading to the drop location, points that create a lawnmower path over the search area, points that allow detection of objects outside the mission area, or objective waypoints given by the interop server.
+The plan_mission service call will return a list of the major waypoints that the aircraft needs to fly through. These may be the drop location and points leading to the drop location, points that create a lawnmower path over the search area, points that allow detection of objects outside the mission area, or objective waypoints given by the interop server.
 
 ## Planner Commands
 
