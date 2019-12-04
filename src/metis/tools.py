@@ -3,8 +3,8 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 import rospy
-# from uav_msgs.msg import NED_pt, NED_list
-from metis.messages import NED_pt, NED_list
+from uav_msgs.msg import NED_pt, NED_list
+# from metis.messages import NED_pt, NED_list
 from geographiclib.geodesic import Geodesic
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
