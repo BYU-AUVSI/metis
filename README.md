@@ -2,9 +2,28 @@
 
 To run Metis as a standalone package, just pull the latest code from the repository.
 
+# API
+
+## Available ROS Services
+
+`/clear_wpts`  
+`/plan_path`  
+`/update_search_params`  
+
+## Available ROS Topics
+
+`/current_task`
+
+## Required ROS Services
+
+`/waypoint_path`  
+`/get_mission_with_id`  
+
+## Required ROS Topics
+
 # State of the Package
 
-We reverted rosplane to "Vanilla," meaning the base MAGICC lab code. Previous teams had  modified rosplane itself, building in functionality such as "path_manager" and "path_planner". These are now gone, so a substitute must be created in order for this package to begin working again.
+We reverted rosplane to "Vanilla," meaning the base MAGICC lab code. 
 
 To get the skeleton running (but without functionality), you need at least the following repositories:
 
@@ -28,7 +47,7 @@ Metis can be run with `roslaunch metis fake_interop.launch`, which will run the 
 
 The various missions can be called with the `/plan_path` rosservice call. The arguments for this service call are the mission that should be run and the arguments associated with the PlanMissionPath service call. 
 
-The plan_mission service call will return a list of the major waypoints that the aircraft needs to fly thorough. These may be the drop location and points leading to the drop location, points that create a lawnmower path over the search area, points that allow detection of objects outside the mission area, or objective waypoints given by the interop server.
+The plan_mission service call will return a list of the major waypoints that the aircraft needs to fly through. These may be the drop location and points leading to the drop location, points that create a lawnmower path over the search area, points that allow detection of objects outside the mission area, or objective waypoints given by the interop server.
 
 ## Planner Commands
 
@@ -116,6 +135,12 @@ of its path, the space where points are added can be simplified back to essentia
 This allows for shorter solve times, and for more paths to be tested. 
 
 ---
+
+# Coding Standard
+
+This package adheres to the numpydoc style of documentation using Python docstrings.
+Additionally, the code is formatted with the `black` code formatter provided by the 
+Python Software Foundation.
 
 # Notes
 
