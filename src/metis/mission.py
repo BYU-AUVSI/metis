@@ -4,20 +4,30 @@
 
 import rospy
 from uav_msgs.msg import JudgeMission, Waypoint, State
-from uav_msgs.srv import GetMissionWithId, PlanMissionPoints, UploadPath, NewWaypoints, UpdateSearchParams
+from uav_msgs.srv import (
+    GetMissionWithId,
+    PlanMissionPoints,
+    UploadPath,
+    NewWaypoints,
+    UpdateSearchParams,
+)
 
+import matplotlib.pyplot as plt
 import numpy as np
+from shapely.geometry import Point
 
-from metis.messages import msg_ned
 from metis import tools
-
+from metis.messages import msg_ned
+from metis.planners import (
+    LoiterPlanner,
+    LandingPlanner,
+    ObjectivePointsPlanner,
+    OffaxisPlanner,
+    PayloadPlanner,
+    SearchPlanner,
+)
 from metis.plotter import MissionPlotter
 from metis.rrt import RRT
-
-from metis.planners import LoiterPlanner, LandingPlanner, ObjectivePointsPlanner, OffaxisPlanner, PayloadPlanner, SearchPlanner
-
-from shapely.geometry import Point
-import matplotlib.pyplot as plt
 
 
 class MissionPlanner(object):
@@ -35,35 +45,46 @@ class MissionPlanner(object):
         with the drop location known.
         """
 
-
-        #Get ref lat, lon from launch file
+        # Get ref lat, lon from launch file
         ref_lat = rospy.get_param("ref_lat")
         ref_lon = rospy.get_param("ref_lon")
         ref_h = rospy.get_param("ref_h")
         self.target_h = rospy.get_param("target_h")
         self.ref_pos = [ref_lat, ref_lon, ref_h]
-        self.DEFAULT_POS = (0., 0., -self.target_h)
+        self.DEFAULT_POS = (0.0, 0.0, -self.target_h)
 
-        #Keeps track of what task is currently being executed
+        # Keeps track of what task is currently being executed
         self.task = 0
 
-        self._ser_waypoints = rospy.Service('approved_path', UploadPath, self.update_path_callback)
+        self._ser_waypoints = rospy.Service(
+            "approved_path", UploadPath, self.update_path_callback
+        )
 
-        self._ser_clear = rospy.Service('clear_wpts', UploadPath, self.clear_waypoints)
-        #Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
-        #self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
+        self._ser_clear = rospy.Service("clear_wpts", UploadPath, self.clear_waypoints)
+        # Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
+        # self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
 
-        self._pub_task = rospy.Publisher('current_task', JudgeMission, queue_size=5)
-        #Proposing a switch to a service call rather than a topic to get info to the GUI. If that holds, delete this line
-        #self._pub_waypoints = rospy.Publisher('desired_waypoints', NED_list, queue_size=5)
+        self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
+        # Proposing a switch to a service call rather than a topic to get info to the GUI. If that holds, delete this line
+        # self._pub_waypoints = rospy.Publisher('desired_waypoints', NED_list, queue_size=5)
 
-        #self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
-        self._plan_server = rospy.Service('plan_path', PlanMissionPoints, self.update_task_callback)
+        # self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
+        self._plan_server = rospy.Service(
+            "plan_path", PlanMissionPoints, self.update_task_callback
+        )
 
-        self._ser_search_params = rospy.Service('update_search_params', UpdateSearchParams, self.update_search_params)
+        self._ser_search_params = rospy.Service(
+            "update_search_params", UpdateSearchParams, self.update_search_params
+        )
 
-        #Get the obstacles, boundaries, and drop location in order to initialize the planner classes
-        mission_type, obstacles, boundary_list, boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
+        # Get the obstacles, boundaries, and drop location in order to initialize the planner classes
+        (
+            mission_type,
+            obstacles,
+            boundary_list,
+            boundary_poly,
+            drop_location,
+        ) = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
 
         # Save all those variables so the mixins can access it.
         self.mission_type = mission_type
@@ -72,24 +93,40 @@ class MissionPlanner(object):
         self.boundary_poly = boundary_poly
         self.drop_location = drop_location
 
-        #Initiate the planner classes
+        # Initiate the planner classes
         self.planners = {
-            'landing': LandingPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
-            'loiter': LoiterPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
-            'objective': ObjectivePointsPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
-            'offaxis': OffaxisPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
-            'payload': PayloadPlanner(drop_location[0], self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
-            'search': SearchPlanner(self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly),
+            "landing": LandingPlanner(
+                self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly
+            ),
+            "loiter": LoiterPlanner(
+                self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly
+            ),
+            "objective": ObjectivePointsPlanner(
+                self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly
+            ),
+            "offaxis": OffaxisPlanner(
+                self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly
+            ),
+            "payload": PayloadPlanner(
+                drop_location[0],
+                self.boundary_list,
+                self.obstacles,
+                boundary_poly=self.boundary_poly,
+            ),
+            "search": SearchPlanner(
+                self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly
+            ),
         }
 
         self.landing = False
         self.last_exists = False
         self.last_waypoint = msg_ned(*self.DEFAULT_POS)
 
-        self.rrt = RRT(obstacles, boundary_list, animate=False) #Other arguments are available but have been given default values in the RRT constructor
+        # Other arguments are available but have been given default values in the RRT constructor
+        self.rrt = RRT(obstacles, boundary_list, animate=False)
 
-        #-----START DEBUG----
-        #This code is just used to visually check that everything worked ok. Can be removed anytime.
+        # -----START DEBUG----
+        # This code is just used to visually check that everything worked ok. Can be removed anytime.
         print("Obstacles")
         for obstacle in obstacles:
             print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
@@ -100,33 +137,43 @@ class MissionPlanner(object):
         for drop in drop_location:
             print(drop.n, drop.e, drop.d)
 
-        _, _, _, _, objective_waypts = tools.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, self.ref_pos)
-        _, _, _, _, search_boundary = tools.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos)
-        self.obstacles = obstacles 
+        _, _, _, _, objective_waypts = tools.get_server_data(
+            JudgeMission.MISSION_TYPE_WAYPOINT, self.ref_pos
+        )
+        _, _, _, _, search_boundary = tools.get_server_data(
+            JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos
+        )
+        self.obstacles = obstacles
         self.drop_location = drop_location
-        self.objective_waypts = objective_waypts 
-        self.search_boundary = search_boundary # Except it would seem this line is necessary right now.
+        self.objective_waypts = objective_waypts
+        # Except it would seem this line is necessary right now.
+        self.search_boundary = search_boundary
         self.boundary_list = boundary_list
 
-        #-----END DEBUG----
+        # -----END DEBUG----
 
         self.Va = Va
 
-
-    #TODO replace lists of lists with NED msg type
-    #TODO remove obstacle D position
-
+    # TODO replace lists of lists with NED msg type
+    # TODO remove obstacle D position
 
     def init_mission_plotter(self):
         mp = MissionPlotter()
-        mp.addRegion(self.search_boundary, "Search Region", color='orange')
+        mp.addRegion(self.search_boundary, "Search Region", color="orange")
         mp.addRegion(self.boundary_list, "Boundary")
         mp.addObstacles(self.obstacles, "Obstacles")
-        mp.addWaypoints(self.drop_location, "Drop Target", color='green', size=25, marker='X')
-        mp.addWaypoints(self.objective_waypts, "Objective Waypoints", color='blue', size=12, marker='o')
+        mp.addWaypoints(
+            self.drop_location, "Drop Target", color="green", size=25, marker="X"
+        )
+        mp.addWaypoints(
+            self.objective_waypts,
+            "Objective Waypoints",
+            color="blue",
+            size=12,
+            marker="o",
+        )
 
         self.mp = mp
-
 
     def update_path_callback(self, req):
         """
@@ -136,11 +183,11 @@ class MissionPlanner(object):
         """
 
         print("Waiting For Rosplane service")
-        #Wait for the interop client service call to initiate
-        rospy.wait_for_service('waypoint_path')
+        # Wait for the interop client service call to initiate
+        rospy.wait_for_service("waypoint_path")
 
-        #Set up a service call to poll the interop server
-        waypoint_update = rospy.ServiceProxy('waypoint_path', NewWaypoints)
+        # Set up a service call to poll the interop server
+        waypoint_update = rospy.ServiceProxy("waypoint_path", NewWaypoints)
 
         msg = NewWaypoints()
 
@@ -172,8 +219,7 @@ class MissionPlanner(object):
 
             self.last_exists = False
 
-
-        #Send the service call with the desired mission type number
+        # Send the service call with the desired mission type number
         resp = waypoint_update(waypoints)
 
         print("Waypoints sent")
@@ -184,23 +230,21 @@ class MissionPlanner(object):
 
         print("Clearing waypoints")
 
-        rospy.wait_for_service('waypoint_path')
+        rospy.wait_for_service("waypoint_path")
 
-        #Set up a service call to poll the interop server
-        waypoint_update = rospy.ServiceProxy('waypoint_path', NewWaypoints)
+        # Set up a service call to poll the interop server
+        waypoint_update = rospy.ServiceProxy("waypoint_path", NewWaypoints)
 
         waypoints = []
-
 
         new_point = Waypoint()
 
         new_point.w = [self.DEFAULT_POS[0], self.DEFAULT_POS[1], self.DEFAULT_POS[2]]
         new_point.clear_wp_list = True
 
-
         waypoints.append(new_point)
 
-        #Send the service call with the desired mission type number
+        # Send the service call with the desired mission type number
         resp = waypoint_update(waypoints)
 
         # set the last waypoint to the origin
@@ -215,12 +259,10 @@ class MissionPlanner(object):
 
 
         """
-        self.planners['search'].height = req.height
-        self.planners['search'].waypoint_distance = req.waypoint_distance
-
+        self.planners["search"].height = req.height
+        self.planners["search"].waypoint_distance = req.waypoint_distance
 
         return True
-
 
     def update_task_callback(self, req):
         """
@@ -234,59 +276,68 @@ class MissionPlanner(object):
 
         # change this to determine how tight of turns the path will create
         # 15*pi/16 seems reasonable for most tasks - large planning tasks will
-        # take an excessive amount of time if this is too low. 
-        self.rrt.maxRelChi = 15*np.pi/16
+        # take an excessive amount of time if this is too low.
+        self.rrt.maxRelChi = 15 * np.pi / 16
 
         # interop server doesn't provide landing info
-        if(self.task != JudgeMission.MISSION_TYPE_LAND):
-            mission_type, obstacles, boundary_list, boundary_poly, waypoints = tools.get_server_data(self.task, self.ref_pos)
+        if self.task != JudgeMission.MISSION_TYPE_LAND:
+            (
+                mission_type,
+                obstacles,
+                boundary_list,
+                boundary_poly,
+                waypoints,
+            ) = tools.get_server_data(self.task, self.ref_pos)
 
-        #Each task_planner class function should return a NED_list msg
-        #These classes can be switched out depending on the desired functionality
+        # Each task_planner class function should return a NED_list msg
+        # These classes can be switched out depending on the desired functionality
         connect = False
 
-        if(self.task == JudgeMission.MISSION_TYPE_SEARCH):
-            rospy.loginfo('SEARCH TASK BEING PLANNED')
-            planned_points = self.planners['search'].plan(waypoints)
+        if self.task == JudgeMission.MISSION_TYPE_SEARCH:
+            rospy.loginfo("SEARCH TASK BEING PLANNED")
+            planned_points = self.planners["search"].plan(waypoints)
 
-        elif(self.task == JudgeMission.MISSION_TYPE_DROP):
-            rospy.loginfo('PAYLOAD TASK BEING PLANNED')
+        elif self.task == JudgeMission.MISSION_TYPE_DROP:
+            rospy.loginfo("PAYLOAD TASK BEING PLANNED")
             # be more picky about tight turns while performing the payload drop
-            self.rrt.maxRelChi = 10*np.pi/16
+            self.rrt.maxRelChi = 10 * np.pi / 16
             try:
                 state_msg = rospy.wait_for_message("/state", State, timeout=10)
-                wind = np.array([state_msg.wn,state_msg.we,0.])
+                wind = np.array([state_msg.wn, state_msg.we, 0.0])
             except rospy.ROSException as e:
                 print("no state message received")
-                wind = np.array([0.0,0.0,0.0])
+                wind = np.array([0.0, 0.0, 0.0])
 
-            planned_points, drop_location = self.planners['payload'].plan(wind)
-            rospy.set_param('DROP_LOCATION', drop_location)
+            planned_points, drop_location = self.planners["payload"].plan(wind)
+            rospy.set_param("DROP_LOCATION", drop_location)
 
-        elif(self.task == JudgeMission.MISSION_TYPE_LOITER):
-            rospy.loginfo('LOITER PLANNER TASK BEING PLANNED')
+        elif self.task == JudgeMission.MISSION_TYPE_LOITER:
+            rospy.loginfo("LOITER PLANNER TASK BEING PLANNED")
             try:
                 pos_msg = rospy.wait_for_message("/state", State, timeout=1)
-                current_pos = msg_ned(pos_msg.position[0],pos_msg.position[1],pos_msg.position[2])
+                current_pos = msg_ned(
+                    pos_msg.position[0], pos_msg.position[1], pos_msg.position[2]
+                )
             except rospy.ROSException as e:
                 print("Loiter - No State msg recieved")
                 current_pos = msg_ned(*self.DEFAULT_POS)
-            planned_points = self.planners['loiter'].plan(current_pos)
+            planned_points = self.planners["loiter"].plan(current_pos)
 
-        elif(self.task == JudgeMission.MISSION_TYPE_WAYPOINT): # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
-            rospy.loginfo('OBJECTIVE PLANNER TASK BEING PLANNED')
-            planned_points = self.planners['objective'].plan(waypoints)
+        # This is the task that deals with flying the mission waypoints. We call it objective to avoid confusion with the waypoints that are used to define the drop flight path or search flight path
+        elif self.task == JudgeMission.MISSION_TYPE_WAYPOINT:
+            rospy.loginfo("OBJECTIVE PLANNER TASK BEING PLANNED")
+            planned_points = self.planners["objective"].plan(waypoints)
             connect = True
 
-        elif(self.task == JudgeMission.MISSION_TYPE_OFFAXIS):
-            rospy.loginfo('OFFAXIS PLANNER TASK BEING PLANNED')
-            planned_points = self.planners['offaxis'].plan(waypoints)
+        elif self.task == JudgeMission.MISSION_TYPE_OFFAXIS:
+            rospy.loginfo("OFFAXIS PLANNER TASK BEING PLANNED")
+            planned_points = self.planners["offaxis"].plan(waypoints)
 
-        elif(self.task == JudgeMission.MISSION_TYPE_LAND):
-            rospy.loginfo('LANDING PATH BEING PLANNED')
+        elif self.task == JudgeMission.MISSION_TYPE_LAND:
+            rospy.loginfo("LANDING PATH BEING PLANNED")
             landing_msg = req.landing_waypoints
-            self.rrt.maxRelChi = 10*np.pi/16
-            if (len(landing_msg.waypoint_list) == 2):
+            self.rrt.maxRelChi = 10 * np.pi / 16
+            if len(landing_msg.waypoint_list) == 2:
                 try:
                     pos_msg = rospy.wait_for_message("/state", State, timeout=1)
                     curr_altitude = pos_msg.position[2]
@@ -295,18 +346,21 @@ class MissionPlanner(object):
                     curr_altitude = 0.0
 
                 landing_wypts = tools.msg2wypts(landing_msg)
-                planned_points = self.planners['landing'].plan(landing_wypts, curr_altitude)
+                planned_points = self.planners["landing"].plan(
+                    landing_wypts, curr_altitude
+                )
             else:
                 planned_points = [msg_ned(*self.DEFAULT_POS)]
                 print("No landing waypoints specified")
                 print(len(landing_msg.waypoint_list))
             self.landing = True
 
-        elif(self.task == JudgeMission.MISSION_TYPE_EMERGENT): # I believe the emergent object is just within the normal search boundaries
+        # I believe the emergent object is just within the normal search boundaries
+        elif self.task == JudgeMission.MISSION_TYPE_EMERGENT:
             pass
 
         else:
-            rospy.logfatal('TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER')
+            rospy.logfatal("TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER")
 
         if self.last_exists == True:
             print("Planning from last waypoint of previous path")
@@ -315,30 +369,27 @@ class MissionPlanner(object):
             print("Planning from origin")
             current_pos = msg_ned(*self.DEFAULT_POS)
 
-        planned_points.insert(0,current_pos)
+        planned_points.insert(0, current_pos)
 
         print("Starting RRT to find full path")
         final_path = self.rrt.findFullPath(planned_points, connect=connect)
 
-
-        #Convert python NED class to rospy ned msg
-        wypts_msg = tools.wypts2msg(final_path,self.task)
+        # Convert python NED class to rospy ned msg
+        wypts_msg = tools.wypts2msg(final_path, self.task)
         self.planned_waypoints = final_path
-
 
         self.init_mission_plotter()
         self.mp.addPathway(final_path, "Planned pathway")
         self.mp.show(block=True)
-        
+
         print(wypts_msg)
         return wypts_msg
 
 
-
-#Run the main planner
+# Run the main planner
 if __name__ == "__main__":
 
-    rospy.init_node('main_planner', anonymous=True)
+    rospy.init_node("main_planner", anonymous=True)
     test_planner = MissionPlanner()
     while not rospy.is_shutdown():
         rospy.spin()

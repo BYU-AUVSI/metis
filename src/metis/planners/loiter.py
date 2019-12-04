@@ -13,6 +13,9 @@ class LoiterPlanner(Planner):
 
     def __init__(self, boundary_list, obstacles, boundary_poly=None, radius=25., clearance=2.5):
         """
+        Parameters
+        ----------
+        boundary_list
         obstacles : list
         bound_poly
         radius : float (optional)

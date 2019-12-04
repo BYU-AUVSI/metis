@@ -2,17 +2,13 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
-
 import sys
 
-import rospy
-# import rospkg
-# rospack = rospkg.RosPack()
-# sys.path.append(rospack.get_path('metis'))
-
 import numpy as np
+import rospy
 from matplotlib import pyplot as plt
 from uav_msgs.msg import JudgeMission, State #,NED_list, NED_pt
+
 from metis import tools
 
 class MissionPlotter:

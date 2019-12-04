@@ -5,11 +5,21 @@
 import numpy as np
 from metis.planners import Planner
 
+
 class LandingPlanner(Planner):
     """The Landing Planner mixin plans the landing waypoints."""
 
-    def __init__(self, boundary_list, obstacles, boundary_poly=None, alt_threshold=10, alt_default=30):
-        super(LandingPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
+    def __init__(
+        self,
+        boundary_list,
+        obstacles,
+        boundary_poly=None,
+        alt_threshold=10,
+        alt_default=30,
+    ):
+        super(LandingPlanner, self).__init__(
+            boundary_list, obstacles, boundary_poly=None
+        )
         self.altitude_threshold = alt_threshold
         self.altitude_default = alt_default
 
@@ -33,12 +43,11 @@ class LandingPlanner(Planner):
 
         # set landing waypoint to 1 meter above the ground
         landing_wpt.d = -1
-        
+
         # use current altitude if above 10m, otherwise approach from 30m
-        if (curr_altitude > self.altitude_threshold):
+        if curr_altitude > self.altitude_threshold:
             approach_wpt.d = curr_altitude
         else:
             approach_wpt.d = self.altitude_default
 
         return [approach_wpt, landing_wpt]
-    
