@@ -142,6 +142,14 @@ This package adheres to the numpydoc style of documentation using Python docstri
 Additionally, the code is formatted with the `black` code formatter provided by the 
 Python Software Foundation.
 
+# Notes from 12/4/2019
+
+In the old rosplane, `/waypoint_path` used to be a service. It is now a topic. This needs
+to be amended in `mission.py`, since it is calling a service proxy instead of publishing
+to the topic.
+
+This topic can be found in the old rosplane under `rosplane/rosplane/src/path_planner.cpp`.
+
 # Notes
 
 Scripts to start nodes ought to be placed in /bin. Regardless of the language they are

@@ -2,6 +2,7 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
+from __future__ import print_function
 import rospy
 from uav_msgs.msg import JudgeMission, Waypoint, State
 from uav_msgs.srv import (
@@ -33,29 +34,34 @@ from metis.rrt import RRT
 class MissionPlanner(object):
     """Handles the passing of information for the competition
 
-    This class handles passing information between the interop server, the GUI, the path planner, and the various mission planners
+    This class handles passing information between the interop server, the GUI,
+    the path planner, and the various mission planners
     """
 
     def __init__(self, Va=17):
         """brief Creates a new main planner objectives
 
-        This initializes a new main planner. The reference latitude, longitude, and altitude are taken from the .launch files
-        A service call is made to get the stationary obstacles, boundaries, and payload drop location.
-        The various mission planners are initilized with the obstacles and boundaries. The paylod planer additionally is initialized
-        with the drop location known.
+        This initializes a new main planner. The reference latitude, longitude,
+        and altitude are taken from the .launch files. A service call is made 
+        to get the stationary obstacles, boundaries, and payload drop location.
+        The various mission planners are initilized with the obstacles and 
+        boundaries. The paylod planer additionally is initialized with the drop
+        location known.
         """
 
-        # Get ref lat, lon from launch file
+        # Get reference latitude and longitude from the launch file 
+        # (it's a <param> in the XML file).
         ref_lat = rospy.get_param("ref_lat")
         ref_lon = rospy.get_param("ref_lon")
         ref_h = rospy.get_param("ref_h")
         self.target_h = rospy.get_param("target_h")
         self.ref_pos = [ref_lat, ref_lon, ref_h]
-        self.DEFAULT_POS = (0.0, 0.0, -self.target_h)
+        self.DEFAULT_POS = (0.0, 0.0, -1*self.target_h)
 
         # Keeps track of what task is currently being executed
         self.task = 0
 
+        # Provide a service 
         self._ser_waypoints = rospy.Service(
             "approved_path", UploadPath, self.update_path_callback
         )
@@ -146,7 +152,7 @@ class MissionPlanner(object):
         self.obstacles = obstacles
         self.drop_location = drop_location
         self.objective_waypts = objective_waypts
-        # Except it would seem this line is necessary right now.
+        # V V V Except it would seem this line is necessary right now. V V V
         self.search_boundary = search_boundary
         self.boundary_list = boundary_list
 
