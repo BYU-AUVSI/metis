@@ -1,18 +1,19 @@
 <launch>
-  <param name="ref_lat" value="39.98304881111"/>
-  <param name="ref_lon" value="-111.9903776"/>
-  <param name="ref_h" value="0"/>
-  <param name="target_h" value="40" />
-  <param name='DROP_LOCATION' value="[99999.9,99999.9,99999.9]"/>
-  <param name="ARMED_AND_READY" value="false"/>
+  <group ns="fixedwing">
+    <param name="ref_lat" value="39.98304881111"/>
+    <param name="ref_lon" value="-111.9903776"/>
+    <param name="ref_h" value="0"/>
+    <param name="target_h" value="40" />
+    <param name='DROP_LOCATION' value="[99999.9,99999.9,99999.9]"/>
+    <param name="ARMED_AND_READY" value="false"/>
 
-  <node name="mission_planner" pkg="metis" type="main" output="screen" />
-  <node name="fake_interop" pkg="metis" type="FakeInteropElberta.py" output = "screen" />
-  <!--<node name="plotter" pkg="metis" type="plotter.py" output="screen" />
--->
-  <node name="truth_throttle" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 1.0 /truth_slow" />
-  <node name="state_convert" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 3.0 /state" />
-  <node name="payload_drop" pkg="metis" type="payload_drop" output="screen" />
+    <node name="mission_planner" pkg="metis" type="main" output="screen" />
+    <node name="fake_interop" pkg="metis" type="FakeInteropElberta.py" output = "screen" />
+    <!--<node name="plotter" pkg="metis" type="plotter.py" output="screen" />-->
+    <node name="truth_throttle" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 1.0 /truth_slow" />
+    <node name="state_convert" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 3.0 /state" />
+    <node name="payload_drop" pkg="metis" type="payload_drop" output="screen" />
+  </group>
 
 
 </launch>
