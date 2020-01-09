@@ -4,7 +4,8 @@
 
 from __future__ import print_function
 import rospy
-from uav_msgs.msg import JudgeMission, Waypoint, State
+from uav_msgs.msg import JudgeMission, State #, Waypoint
+from rosplane_msgs.msg import Waypoint
 from uav_msgs.srv import (
     GetMissionWithId,
     PlanMissionPoints,
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from shapely.geometry import Point
 
+import metis.ros.utils as utils
 from metis import tools
 from metis.messages import msg_ned
 from metis.planners import (
@@ -39,14 +41,32 @@ class MissionPlanner(object):
     """
 
     def __init__(self, Va=17):
-        """brief Creates a new main planner objectives
+        """Creates a new MissionPlanner class with planner objectives
 
-        This initializes a new main planner. The reference latitude, longitude,
+        This initializes a new MissionPlanner. The reference latitude, longitude,
         and altitude are taken from the .launch files. A service call is made 
         to get the stationary obstacles, boundaries, and payload drop location.
         The various mission planners are initilized with the obstacles and 
-        boundaries. The paylod planer additionally is initialized with the drop
+        boundaries. The payload planer additionally is initialized with the drop
         location known.
+
+        Attributes
+        ----------
+        target_h : float
+            Target altitude in <units>.
+        ref_pos : list of floats
+            A list of floats, size 3, in the form [latitude, longitude, height].
+        DEFAULT_POS : tuple of floats
+            A tuple of floats, length 3, equal to [0, 0, -target_height]
+        task : int
+            The task currently being executed.
+        planners : dict
+            A dictionary of planner names to planner objects.
+        mission_type : int
+        obstacles : list
+        boundary_list : list
+        boundary_poly : list
+        drop_location : point
         """
 
         # Get reference latitude and longitude from the launch file 
@@ -58,46 +78,26 @@ class MissionPlanner(object):
         self.ref_pos = [ref_lat, ref_lon, ref_h]
         self.DEFAULT_POS = (0.0, 0.0, -1*self.target_h)
 
-        # Keeps track of what task is currently being executed
+        # Keep track of what task is currently being executed
         self.task = 0
 
-        # Provide a service 
-        self._ser_waypoints = rospy.Service(
-            "approved_path", UploadPath, self.update_path_callback
-        )
-
+        # Provide services and publishers
+        self._ser_waypoints = rospy.Service("approved_path", UploadPath, self.update_path_callback)
         self._ser_clear = rospy.Service("clear_wpts", UploadPath, self.clear_waypoints)
-        # Proposing a switch to a service call rather than a topic to get info from GUI. If that holds then delete this line
-        # self._sub_mission = rospy.Subscriber('task_command', JudgeMission, self.update_task, queue_size=5)
-
         self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        # Proposing a switch to a service call rather than a topic to get info to the GUI. If that holds, delete this line
-        # self._pub_waypoints = rospy.Publisher('desired_waypoints', NED_list, queue_size=5)
+        self._plan_server = rospy.Service("plan_path", PlanMissionPoints, self.update_task_callback)
+        self._ser_search_params = rospy.Service("update_search_params", UpdateSearchParams, self.update_search_params)
 
-        # self._plan_server = rospy.Service('plan_mission', PlanMissionPoints, self.update_task_callback)
-        self._plan_server = rospy.Service(
-            "plan_path", PlanMissionPoints, self.update_task_callback
-        )
-
-        self._ser_search_params = rospy.Service(
-            "update_search_params", UpdateSearchParams, self.update_search_params
-        )
+        self.wp_pub = rospy.Publisher("waypoint_path", Waypoint, queue_size=10)
 
         # Get the obstacles, boundaries, and drop location in order to initialize the planner classes
         (
-            mission_type,
-            obstacles,
-            boundary_list,
-            boundary_poly,
-            drop_location,
+            self.mission_type,
+            self.obstacles,
+            self.boundary_list,
+            self.boundary_poly,
+            self.drop_location,
         ) = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
-
-        # Save all those variables so the mixins can access it.
-        self.mission_type = mission_type
-        self.obstacles = obstacles
-        self.boundary_list = boundary_list
-        self.boundary_poly = boundary_poly
-        self.drop_location = drop_location
 
         # Initiate the planner classes
         self.planners = {
@@ -114,7 +114,7 @@ class MissionPlanner(object):
                 self.boundary_list, self.obstacles, boundary_poly=self.boundary_poly
             ),
             "payload": PayloadPlanner(
-                drop_location[0],
+                self.drop_location[0],
                 self.boundary_list,
                 self.obstacles,
                 boundary_poly=self.boundary_poly,
@@ -129,18 +129,18 @@ class MissionPlanner(object):
         self.last_waypoint = msg_ned(*self.DEFAULT_POS)
 
         # Other arguments are available but have been given default values in the RRT constructor
-        self.rrt = RRT(obstacles, boundary_list, animate=False)
+        self.rrt = RRT(self.obstacles, self.boundary_list, animate=False)
 
         # -----START DEBUG----
         # This code is just used to visually check that everything worked ok. Can be removed anytime.
         print("Obstacles")
-        for obstacle in obstacles:
+        for obstacle in self.obstacles:
             print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
         print("Boundaries")
-        for boundary in boundary_list:
+        for boundary in self.boundary_list:
             print(boundary.n, boundary.e)
         print("Drop")
-        for drop in drop_location:
+        for drop in self.drop_location:
             print(drop.n, drop.e, drop.d)
 
         _, _, _, _, objective_waypts = tools.get_server_data(
@@ -149,12 +149,12 @@ class MissionPlanner(object):
         _, _, _, _, search_boundary = tools.get_server_data(
             JudgeMission.MISSION_TYPE_SEARCH, self.ref_pos
         )
-        self.obstacles = obstacles
-        self.drop_location = drop_location
+        # self.obstacles = obstacles
+        # self.drop_location = drop_location
         self.objective_waypts = objective_waypts
         # V V V Except it would seem this line is necessary right now. V V V
         self.search_boundary = search_boundary
-        self.boundary_list = boundary_list
+        # self.boundary_list = boundary_list
 
         # -----END DEBUG----
 
@@ -183,18 +183,23 @@ class MissionPlanner(object):
 
     def update_path_callback(self, req):
         """
-        This function is called when waypoints are approved by the GUI and adds the waypoints to the approved path.
-        The approved waypoints are sent from the GUI to the path manner via the approve_path
-        message and topic.
+        Adds waypoints to the approved path and publishes to the `waypoint_path` topic.
+
+        This function is called when waypoints are approved by the GUI in 
+        `ros_groundstation` and adds the waypoints to the approved path.
+        The approved waypoints are sent from the GUI to the path manner via 
+        the `approve_path` message and topic.
+
+        Parameters
+        ----------
+        req : UploadPath
+            The `UploadPath` ROS service (from `uav_msgs`).
+
+        Returns
+        -------
+        val : bool
+            Returns true no matter what, for some inexplicable reason.
         """
-
-        print("Waiting For Rosplane service")
-        # Wait for the interop client service call to initiate
-        rospy.wait_for_service("waypoint_path")
-
-        # Set up a service call to poll the interop server
-        waypoint_update = rospy.ServiceProxy("waypoint_path", NewWaypoints)
-
         msg = NewWaypoints()
 
         waypoints = []
@@ -202,56 +207,52 @@ class MissionPlanner(object):
         for point in self.planned_waypoints:
             new_point = Waypoint()
             new_point.w = [point.n, point.e, point.d]
-            new_point.Va_d = self.Va
-            new_point.drop_bomb = False
-            new_point.landing = False
-            new_point.set_current = False
-            new_point.clear_wp_list = False
-            new_point.loiter_point = False
-            new_point.priority = 1
+            new_point.Va_d = self.Va    # airspeed (m/s)
+            new_point.set_current = False # erases list, sets this as current waypoint
+            new_point.clear_wp_list = False # removes all waypoints, returns to origin
+
+            # # From the old Waypoint message
+            # new_point.drop_bomb = False
+            # new_point.landing = False
+            # new_point.loiter_point = False
+            # new_point.priority = 1
+
+            # # Things we don't have that are in the new Waypoint message
+            # new_point.chi_d = 0 # Deseired course at this waypoint (rad)
+            # new_point.chi_valid = True # Desired course valid (dubin or fillet paths)
 
             waypoints.append(new_point)
 
-        waypoints[-1].loiter_point = True
-        waypoints[-1].priority = 0
+        # waypoints[-1].loiter_point = True
+        # waypoints[-1].priority = 0
 
         self.last_exists = True
         self.last_waypoint = self.planned_waypoints[-1]
 
         if self.landing == True:
-            waypoints[-1].loiter_point = False
-            waypoints[-1].priority = 1
-            waypoints[-1].landing = True
+        #     waypoints[-1].loiter_point = False
+        #     waypoints[-1].priority = 1
+        #     waypoints[-1].landing = True
 
             self.last_exists = False
 
         # Send the service call with the desired mission type number
-        resp = waypoint_update(waypoints)
+        # resp = waypoint_update(waypoints)
+        for point in waypoints:
+            self.wp_pub.publish(point)
 
         print("Waypoints sent")
 
         return True
 
     def clear_waypoints(self, req):
-
-        print("Clearing waypoints")
-
-        rospy.wait_for_service("waypoint_path")
-
-        # Set up a service call to poll the interop server
-        waypoint_update = rospy.ServiceProxy("waypoint_path", NewWaypoints)
-
-        waypoints = []
-
         new_point = Waypoint()
-
         new_point.w = [self.DEFAULT_POS[0], self.DEFAULT_POS[1], self.DEFAULT_POS[2]]
         new_point.clear_wp_list = True
 
-        waypoints.append(new_point)
-
         # Send the service call with the desired mission type number
-        resp = waypoint_update(waypoints)
+        # resp = waypoint_update(waypoints)
+        self.wp_pub.publish(new_point)
 
         # set the last waypoint to the origin
         self.last_waypoint = msg_ned(*self.DEFAULT_POS)
@@ -263,7 +264,9 @@ class MissionPlanner(object):
         """
         This function is called to change desired search params
 
-
+        Parameters
+        ----------
+        req : uav_msgs.srv.UpdateSearchParams
         """
         self.planners["search"].height = req.height
         self.planners["search"].waypoint_distance = req.waypoint_distance
@@ -274,7 +277,9 @@ class MissionPlanner(object):
         """
         This function is called when the desired task is changed by the GUI. The proper mission is then called.
 
-
+        Parameters
+        ----------
+        req : uav_msgs.srv.PlanMissionPoints
         """
 
         self.task = req.mission_type
@@ -351,7 +356,7 @@ class MissionPlanner(object):
                     print("Landing - No State msg recieved")
                     curr_altitude = 0.0
 
-                landing_wypts = tools.msg2wypts(landing_msg)
+                landing_wypts = utils.msg2wypts(landing_msg)
                 planned_points = self.planners["landing"].plan(
                     landing_wypts, curr_altitude
                 )
@@ -381,7 +386,7 @@ class MissionPlanner(object):
         final_path = self.rrt.findFullPath(planned_points, connect=connect)
 
         # Convert python NED class to rospy ned msg
-        wypts_msg = tools.wypts2msg(final_path, self.task)
+        wypts_msg = utils.wypts2msg(final_path, self.task)
         self.planned_waypoints = final_path
 
         self.init_mission_plotter()

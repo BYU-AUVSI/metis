@@ -19,33 +19,23 @@ def convert(lat1, lon1, h1, lat2, lon2, h2, ground_level=22., ft2m=True):
 
     Paramters
     ---------
-
     lat1 : float
         The latitude of the reference point
-    
     lon1 : float
         The longitude of the reference point
-    
     h1 : float
         The height of the reference point
-    
     lat2 : float
         The latitude of the desired point
-    
     lon2 : float
         The longitude of the desired point
-
     h2 : float
         The height of the desired point
-    
     ground_level : float
         Height of the ground above MSL
-    
     ft2m : boolean
         If heights are input as ft and need to be returned as meters, this should be true
         For meter to meter conversion or feet to feet conversion, should be false
-    
-
     """
     if ft2m:
         h1 = h1/3.2808
@@ -54,34 +44,34 @@ def convert(lat1, lon1, h1, lat2, lon2, h2, ground_level=22., ft2m=True):
     solution = [diction['s12']*math.cos(math.radians(diction['azi1'])), diction['s12']*math.sin(math.radians(diction['azi1'])), float(-(h2-h1+ground_level))]
     return solution
 
-def wypts2msg(waypoints, mission_type):
-    """
-    This function converts a list of lists of waypoints to a rosmsg
-    """
+# def wypts2msg(waypoints, mission_type):
+#     """
+#     This function converts a list of lists of waypoints to a rosmsg
+#     """
 
 
-    rsp = NED_list()
+#     rsp = NED_list()
 
-    for i in waypoints:
-        tmp_wypt = NED_pt()
-        tmp_wypt.N = i.n
-        tmp_wypt.E = i.e
-        tmp_wypt.D = i.d
-        tmp_wypt.task = mission_type
-        rsp.waypoint_list.append(tmp_wypt)
+#     for i in waypoints:
+#         tmp_wypt = NED_pt()
+#         tmp_wypt.N = i.n
+#         tmp_wypt.E = i.e
+#         tmp_wypt.D = i.d
+#         tmp_wypt.task = mission_type
+#         rsp.waypoint_list.append(tmp_wypt)
 
-    return rsp
+#     return rsp
 
-def msg2wypts(message):
-    """
-    Converts a ros message to a list of msg_ned classes
-    """
+# def msg2wypts(message):
+#     """
+#     Converts a ros message to a list of msg_ned classes
+#     """
 
-    waypoints = []
-    for point in message.waypoint_list:
-        waypoints.append(msg_ned(point.N, point.E, point.D))
+#     waypoints = []
+#     for point in message.waypoint_list:
+#         waypoints.append(msg_ned(point.N, point.E, point.D))
 
-    return waypoints
+#     return waypoints
 
 def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
 	"""Checks points for collisions with obstacles and boundaries
@@ -190,33 +180,33 @@ def get_server_data(mission_type, ref_pos):
     return mission_type, obstacles, boundary_list, boundary_poly, waypoints
 
 def convert_obstacles(ref_pos, msg):
-        """
-        Converts the obstacles from the rospy message to a list of NED classes
+    """
+    Converts the obstacles from the rospy message to a list of NED classes
 
-        Parameters
-        ----------
-        msg : JudgeMission message
-            The message received from the interop server
-        ref_pos : list
-            The reference latitude, longitude, and height (in m)
+    Parameters
+    ----------
+    msg : JudgeMission message
+        The message received from the interop server
+    ref_pos : list
+        The reference latitude, longitude, and height (in m)
 
-        Returns
-        -------
-        obstacle_list : list of NED classes
-            Describes the position and height of each obstacle
+    Returns
+    -------
+    obstacle_list : list of NED classes
+        Describes the position and height of each obstacle
 
-        """
-        ref_lat = ref_pos[0]
-        ref_lon = ref_pos[1]
-        ref_h = ref_pos[2]
+    """
+    ref_lat = ref_pos[0]
+    ref_lon = ref_pos[1]
+    ref_h = ref_pos[2]
 
-        obstacle_list = []
+    obstacle_list = []
 
-        for i in msg.stationary_obstacles:
-            obs_NED = convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
-            obstacle_list.append(msg_ned(obs_NED[0], obs_NED[1], i.cylinder_height, i.cylinder_radius))
+    for i in msg.stationary_obstacles:
+        obs_NED = convert(ref_lat, ref_lon, ref_h, i.point.latitude, i.point.longitude, i.point.altitude)
+        obstacle_list.append(msg_ned(obs_NED[0], obs_NED[1], i.cylinder_height, i.cylinder_radius))
 
-        return obstacle_list
+    return obstacle_list
 
 def convert_waypoints(ref_pos, msg):
     """
