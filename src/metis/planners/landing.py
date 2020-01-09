@@ -3,6 +3,7 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 import numpy as np
+
 from metis.planners import Planner
 
 

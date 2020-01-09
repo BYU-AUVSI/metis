@@ -4,6 +4,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 from metis.tools import collisionCheck, makeBoundaryPoly, convert
 from metis.messages import msg_ned
 from metis.planners import Planner

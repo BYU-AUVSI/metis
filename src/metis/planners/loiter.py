@@ -4,8 +4,8 @@
 
 from shapely.geometry import Point
 import numpy as np
-from metis.messages import msg_ned
 
+from metis.messages import msg_ned
 from metis.planners import Planner
 
 class LoiterPlanner(Planner):

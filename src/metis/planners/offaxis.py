@@ -3,13 +3,25 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 import numpy as np
-from metis.messages import msg_ned
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
+
+from metis.messages import msg_ned
 from metis.planners import Planner
 
 class OffaxisPlanner(Planner):
-    """The Off Axis Planner class."""
+    """
+    The OffaxisPlanner class plans a flight path to image out-of-bounds objects.
+
+    This planner accomplishes one of the requirements for the the imaging 
+    mission of the AUVSI competition. One of the targets is located outside of
+    the mission flight boundaries. As a result, a camera fixed within the body
+    of the aircraft cannot image the target unless the aircraft banks away 
+    from the target, orienting the camera towards the object. The offaxis 
+    planner plans the path that allows the aircraft to fly towards the object,
+    banking away at the right time to provide the appropriate field of view 
+    to the camera.
+    """
 
     def __init__(self, boundary_list, obstacles, boundary_poly=None):
         super(OffaxisPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)

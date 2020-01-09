@@ -3,10 +3,11 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 import numpy as np
-from metis.messages import msg_ned
-from metis.tools import makeBoundaryPoly
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
+
+from metis.messages import msg_ned
+from metis.tools import makeBoundaryPoly
 from metis.planners import Planner
 
 class SearchPlanner(Planner):
@@ -123,12 +124,3 @@ class SearchPlanner(Planner):
             plt.show()
         
         return final_waypoints
-
-
-
-        
-
-        
-
-        
-
