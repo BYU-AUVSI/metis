@@ -3,8 +3,20 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 """
-The exceptions and errors of the metis package.
+Metis
 """
 
-class Error(Exception):
-    pass
+import logging
+
+from metis.core import *
+
+# Set up logger
+logger = logging.getLogger('METIS')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(levelname)s] [%(asctime)s] %(name)s: %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+logger.info("Metis initialized.")
