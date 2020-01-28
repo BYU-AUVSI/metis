@@ -102,6 +102,7 @@ class MissionPlanner(object):
         for point in waypoints:
             self.wp_pub.publish(point)
         rospy.loginfo("Waypoints sent.")
+        return True
 
     def clear_waypoints(self, req):
         new_point = Waypoint()
@@ -110,6 +111,7 @@ class MissionPlanner(object):
 
         self.wp_pub.publish(new_point)
         rospy.loginfo("Waypoints cleared.")
+        return True
 
 
     def update_search_params(self, req):
@@ -121,6 +123,7 @@ class MissionPlanner(object):
         req : uav_msgs.srv.UpdateSearchParams
         """
         self.manager.set_search_params(req.height, req.waypoint_distance)
+        return True
 
 
     def update_task_callback(self, req):
