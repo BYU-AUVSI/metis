@@ -50,6 +50,7 @@ class MissionPlanner(object):
             The manager class used to perform all planning functions and 
             autopilot state management.
         """
+        rospy.logwarn("Is your home location set correctly (see ref_params in .launch file)?")
 
         self.mission = utils.get_mission()
         self.manager = MissionManager(self.mission)
