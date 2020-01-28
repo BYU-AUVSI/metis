@@ -8,7 +8,7 @@ from uav_msgs.srv import PlanMissionPoints
 
 from metis import tools
 from metis.rrt import RRT
-
+from metis.ros import utils
 
 class pathPlannerBase():
 
@@ -25,7 +25,7 @@ class pathPlannerBase():
 
         print("Reference position received")
         #Get the obstacles, boundaries, and drop location in order to initialize the RRT class
-        mission_type, self.obstacles, self.boundary_list, self.boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
+        mission_type, self.obstacles, self.boundary_list, self.boundary_poly, drop_location = utils.get_server_data(JudgeMission.MISSION_TYPE_DROP, self.ref_pos)
         print("Server response:", mission_type, self.obstacles)
 
         self.RRT_planner = RRT(self.obstacles, self.boundary_list, animate=True) #Other arguments are available but have been given default values in the RRT constructor
