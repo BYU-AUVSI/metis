@@ -10,11 +10,11 @@
   <param name='DROP_LOCATION' value="[99999.,99999.,99999.]"/>
   <param name="ARMED_AND_READY" value="false"/>
 
-  <node name="mission_planner" pkg="metis" type="mainPlanner.py" output = "screen" />
-  <node name="interop_client" pkg="interop_pkg" type="InteropClient.py" output="screen">
+  <node name="mission_planner" pkg="metis" type="main" output = "screen" />
+  <!-- <node name="interop_client" pkg="interop_pkg" type="InteropClient.py" output="screen">
     <rosparam file="$(find interop_pkg)/param/client_params.yaml"/>
-  </node>
-  <node name="payload_drop" pkg="metis" type="payloadDrop.py" output="screen" />
+  </node> -->
+  <node name="payload_drop" pkg="metis" type="payload_drop" output="screen" />
 
 
 </launch>
