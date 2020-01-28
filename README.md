@@ -1,8 +1,46 @@
+# Metis
+
+The path planner package of the BYU UAS team.
+
+Metis, named for the mythical Titaness and the mother of wisdom and deep thought, is
+path planner package built for use with [ROSplane](https://github.com/byu-magicc/rosplane).
+
+Metis is highly object oriented. It's guiding design philosophy is that each object or
+component can operate independently of the either the rest of the program or ROS.
+This means that functions are written from the standpoint of, "give me all the parameters
+and values I need to be able to return the result," instead of, "tell me what you need,
+and I'll go find everything I need to calculate it." The latter approach is not robust;
+it leads to global variables, unclear paths of execution through the code, and leads 
+maintainers on a long hunt for methods that call other services that may disappear when
+a dependency's API changes.
+
+To ensure maintainability, Metis is organized such that its ROS methods and its core functionality
+are separated. Following the previously mentioned design philosophy, functions should not
+directly call ROS services; rather, they should take whatever data they need as parameters,
+allowing the callers to provide all necessary data.
+
+All ROS interactions are defined in the `metis.ros` submodule. 
+
 # Installation
 
 To run Metis as a standalone package, just pull the latest code from the repository.
 
-# API
+```
+git clone https://github.com/BYU-AUVSI/metis.git
+```
+
+# Testing
+
+Metis uses the [pytest](https://docs.pytest.org/en/latest/) testing framework. Since Metis can be
+run without ROS, this allows tests to be written that actually test core functionality instead
+of dependency on ROS. Test can be run in the terminal when the pytest framework is installed by
+navigating to the toplevel directory of this codebase and running the following command:
+
+```
+pytest
+```
+
+# ROS API
 
 ## Available ROS Services
 
@@ -19,19 +57,15 @@ To run Metis as a standalone package, just pull the latest code from the reposit
 `/waypoint_path`  
 `/get_mission_with_id`  
 
-## Required ROS Topics
+# Running in Simulation
 
-# State of the Package
-
-We reverted rosplane to "Vanilla," meaning the base MAGICC lab code. 
-
-To get the skeleton running (but without functionality), you need at least the following repositories:
+To run Metis in simulation, you need at least the following repositories:
 
 - rosplane
 - ros_groundstation (AUVSI-SUAS-2019 branch)
 - metis
 
-To run, execute the following commands (each will need its own terminal):
+To run, execute the following commands (each will need its own shell):
 
 ```
 roslaunch rosplane_sim fixedwing.launch             # Launches the simulation. Make sure to hit "play" in Gazebo.
@@ -69,20 +103,6 @@ Once the waypoints are planned, use the ```approved_path``` command to pass the 
 
 ### Planner Notes
 
-# Mission Planner
-
-`mainPlanner.py` This is a description about the mission planner
-
-
-## Objective Points Planner
-This is a description about this planner
-
-## Search Planner
-This is a description about this planner
-
-## Loiter Planner
-This is a description about this planner
-
 ## Payload Planner
 
 The payload path planner is calculated using two distinct regions. The final path plan is shown below
@@ -113,9 +133,6 @@ The final step of  the payload planner is to create supporting waypoints (green 
 The planner first tries to fly directly into the wind. If that commanded chi angle
 would hit an obstacle or go out of bounds, it iterates on the command chi angle by adding 15 degrees until it finds a successful waypoint path.
 
-## Current Task
-This is a description about this planner
-
 ---
 
 # Path Planner
@@ -142,80 +159,22 @@ This package adheres to the numpydoc style of documentation using Python docstri
 Additionally, the code is formatted with the `black` code formatter provided by the 
 Python Software Foundation.
 
-# Notes from 12/4/2019
-
-In the old rosplane, `/waypoint_path` used to be a service. It is now a topic. This needs
-to be amended in `mission.py`, since it is calling a service proxy instead of publishing
-to the topic.
-
-This topic can be found in the old rosplane under `rosplane/rosplane/src/path_planner.cpp`.
-
 # Notes
 
-Scripts to start nodes ought to be placed in /bin. Regardless of the language they are
+Scripts to start ROS nodes ought to be placed in /bin. Regardless of the language they are
 written in, be sure to include the shebang at the top of the file; for example, in Python:
 
 ```
 #! /usr/bin/env python
 ```
 
-The file also needs to be marked as executable.
+Extensions are usually left off for shell scripts and Python files. The file also needs to be marked as executable.
 
 ```
 chmod u+x <filename>
 ```
 
 ---
-
-Current behavior is as follows
-```
-user:~$ rosservice call /plan_path 0
-ERROR: Incompatible arguments to call service:
-Not enough arguments:
- * Given: [0]
- * Expected: ['mission_type', 'landing_waypoints']
-Provided arguments are:
- * 0 (type int)
-
-Service arguments are: [mission_type landing_waypoints.waypoint_list]
-```
-
-`landing_waypoints` is a set of ROS messages (type `NED_list`, comprised of `NED_pt`)from `uav_msg`.
-
-The `NED_pt` message is as follows:
-
-`NED_pt.msg`
-```
-#General points, used by the mission planner and GUI
-
-float64 N
-float64 E
-float64 D
-uint16 task #Determines the task associated with the waypoint
-```
-
-where `uint16 task` is an integer as defined by the `JudgeMission` message.
-
-`JudgeMission.msg`
-```
-# Representation of mission data received from the judges.
-
-uint8 mission_type # An integer to tell the UAV which mission this message represents. Types described by constants below.
-uint8 MISSION_TYPE_WAYPOINT = 0
-uint8 MISSION_TYPE_DROP = 1
-uint8 MISSION_TYPE_SEARCH = 2
-uint8 MISSION_TYPE_OTHER = 3
-uint8 MISSION_TYPE_LAND = 4
-uint8 MISSION_TYPE_EMERGENT = 5
-uint8 MISSION_TYPE_OFFAXIS = 6
-uint8 MISSION_TYPE_LOITER = 7 #Custom to give a loiter mission
-
-bool now # Whether the plane should begin executing this mission immediately (true), or wait for confirmation (false)
-
-OrderedPoint[] waypoints # These are the primary mission waypoints.
-OrderedPoint[] boundaries # An array of GPS points that denote the flight boundaries of the competition.
-StationaryObstacle[] stationary_obstacles # The static obstacles that will be placed throughout the competition field.
-```
 
 To see the proper syntax for `rosservice call /plan_path <args>`, simply enter `rosservice call /plan_path` into the terminal and tab complete until it autofills a template for what the message looks like. Doing so will provide the following:
 
@@ -234,72 +193,3 @@ To see the mission specified by `FakeInteropElberta.py`, you can run that file (
 ```
 user:~/ros/uas_ws/src/metis/testingCode$ rosservice call /get_mission_with_id "mission_type: 0" 
 ```
-This returns:
-```
-mission: 
-  mission_type: 0
-  now: False
-  waypoints: 
-    - 
-      point: 
-        latitude: 39.983031
-        longitude: -111.991051
-        altitude: 30.0
-        chi: 0.0
-      ordinal: 1
-    - 
-      point: 
-        latitude: 39.983449
-        longitude: -111.99216
-        altitude: 45.0
-        chi: 0.0
-      ordinal: 2
-  boundaries: 
-    - 
-      point: 
-        latitude: 39.985229
-        longitude: -111.993796
-        altitude: 0.0
-        chi: 0.0
-      ordinal: 1
-    - 
-      point: 
-        latitude: 39.981026
-        longitude: -111.986903
-        altitude: 0.0
-        chi: 0.0
-      ordinal: 2
-    - 
-      point: 
-        latitude: 39.977468
-        longitude: -111.993858
-        altitude: 0.0
-        chi: 0.0
-      ordinal: 3
-    - 
-      point: 
-        latitude: 39.983239
-        longitude: -112.000138
-        altitude: 0.0
-        chi: 0.0
-      ordinal: 4
-  stationary_obstacles: 
-    - 
-      point: 
-        latitude: 39.983258
-        longitude: -111.994228
-        altitude: 0.0
-        chi: 0.0
-      cylinder_height: 60.0
-      cylinder_radius: 20.0
-    - 
-      point: 
-        latitude: 39.981556
-        longitude: -111.993697
-        altitude: 0.0
-        chi: 0.0
-      cylinder_height: 40.0
-      cylinder_radius: 10.0
-```
-
-Still the wrong format for providing to `rosservice call /plan_path` because the message is not a NED_list, but this is progress, people!
