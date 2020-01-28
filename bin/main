@@ -1,10 +1,12 @@
 #! /usr/bin/env python
 
 import rospy
-from metis.mission import MissionPlanner
+# from metis.mission import MissionPlanner
+from metis.ros.mission import MissionPlanner
 
 if __name__ == '__main__':
-    rospy.init_node('main_planner', anonymous=True)
+    rospy.init_node('main_planner', log_level=rospy.DEBUG, anonymous=True)
     test_planner = MissionPlanner()
+
     while not rospy.is_shutdown():
         rospy.spin()

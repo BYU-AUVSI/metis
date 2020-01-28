@@ -2,18 +2,27 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
-import sys
-
 import numpy as np
-import rospy
+# import rospy
 from matplotlib import pyplot as plt
-from uav_msgs.msg import JudgeMission, State #,NED_list, NED_pt
+# from uav_msgs.msg import JudgeMission, State #,NED_list, NED_pt
 
-from metis import tools
+# from metis import tools
+# from metis.ros import utils
 
 class MissionPlotter:
-    """A general purpose 2D plotter, capable of drawing mission related features."""
-    def __init__(self):
+    """
+    A general purpose 2D plotter, capable of drawing mission related features.
+    """
+    def __init__(self, mission=None):
+        """
+        Initializes the MissionPlotter object.
+
+        Parameters
+        ----------
+        mission : metis.core.Mission, optional
+            A Mission object for initializing all boundaries and waypoints.
+        """
         fig, ax = plt.subplots()
         self.fig = fig
         self.ax = ax
@@ -21,24 +30,30 @@ class MissionPlotter:
         self.state_track_n = []
         self.state_track_e = []
         self.state_track_length = 1000
-        self.state_plt =  None #self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
+        self.state_plt =  None 
+        #self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
+        if mission:
+            self.add_region(mission.search_area, "Search Region", color="orange")
+            self.add_region(mission.boundary_list, "Boundary")
+            self.add_obstacles(mission.obstacles, "Obstacles")
+            self.add_waypoints([mission.drop_location], "Drop Target", color="green", size=25, marker="X")
+            self.add_waypoints(mission.waypoints,"Objective Waypoints",color="blue",size=12,marker="o",)
 
-    def initRosNode():
-        # rospy.Subscriber("/fixedwing/state", State, self.plotState)
-        rospy.Subscriber("/state", State, self.plotState)
+    # def initRosNode():
+    #     # rospy.Subscriber("/fixedwing/state", State, self.plotState)
+    #     rospy.Subscriber("/state", State, self.plotState)
 
 
-    def addRegion(self, regionPoints, label, color='black'):
+    def add_region(self, regionPoints, label, color='black'):
         """
-        Add a region polygon to be drawn
-        ---------
+        Add a region polygon to be drawn.
+        
         Parameters
-
+        ----------
         regionPoints : NED_list
-        A list of NED points defining the vertices of the polygon
-
+            A list of NED points defining the vertices of the polygon
         lable : string
-        A name of the region to be used for the legend
+            A name of the region to be used for the legend
         """
         points = self.NEDListToNEnp(regionPoints)
         poly = plt.Polygon(points, closed=True, fill=False, color=color, label=label)
@@ -47,31 +62,30 @@ class MissionPlotter:
         self.ax.set_ylim((int(1.1*min(points[:,1])), int(1.1*max(points[:,1]))))
         self.ax.set_aspect('equal')
 
-    def addObstacles(self, obstacles, label, color='red'):
+    def add_obstacles(self, obstacles, label, color='red'):
         """
         Add circles representing obstacles
-        ---------
+        
         Parameters
-
+        ----------
         obstacles
-        A list of obstacles to draw
-
+            A list of obstacles to draw
         label : string
-        A name of the region to be used for the legend
+            A name of the region to be used for the legend
         """
         for obs in obstacles:
             circ = plt.Circle((obs.e, obs.n), obs.r, fill=False, color=color, label=label)
             self.ax.add_artist(circ)
 
-    def addWaypoints(self, pointList, label, color='green', size=1, marker='.'):
+    def add_waypoints(self, pointList, label, color='green', size=1, marker='.'):
         """
         Add waypoints
         """
         points = self.NEDListToNEnp(pointList)
         self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker)
 
-    def addPathway(self, pointList, label, ptColor='red', pathColor='cyan'):
-        self.addWaypoints(pointList, label, color=ptColor, size=6, marker='x')
+    def add_pathway(self, pointList, label, ptColor='red', pathColor='cyan'):
+        self.add_waypoints(pointList, label, color=ptColor, size=6, marker='x')
         points = self.NEDListToNEnp(pointList)
         self.ax.plot(points[:,0], points[:,1], c=pathColor);
 
@@ -116,34 +130,34 @@ class MissionPlotter:
 
 
 
-if __name__ == "__main__":
-    rospy.init_node("missionPlotter")
+# if __name__ == "__main__":
+#     rospy.init_node("missionPlotter")
 
-    #Get ref lat, lon from launch file
-    ref_lat = rospy.get_param("ref_lat")
-    ref_lon = rospy.get_param("ref_lon")
-    ref_h = rospy.get_param("ref_h")
-    ref_pos = [ref_lat, ref_lon, ref_h]
-    mission_type, obstacles, boundary_list, boundary_poly, drop_location = tools.get_server_data(JudgeMission.MISSION_TYPE_DROP, ref_pos)
-    _, _, _, _, objective_waypts = tools.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, ref_pos)
-    _, _, _, _, search_boundary = tools.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, ref_pos)
+#     #Get ref lat, lon from launch file
+#     ref_lat = rospy.get_param("ref_lat")
+#     ref_lon = rospy.get_param("ref_lon")
+#     ref_h = rospy.get_param("ref_h")
+#     ref_pos = [ref_lat, ref_lon, ref_h]
+#     mission_type, obstacles, boundary_list, boundary_poly, drop_location = utils.get_server_data(JudgeMission.MISSION_TYPE_DROP, ref_pos)
+#     _, _, _, _, objective_waypts = utils.get_server_data(JudgeMission.MISSION_TYPE_WAYPOINT, ref_pos)
+#     _, _, _, _, search_boundary = utils.get_server_data(JudgeMission.MISSION_TYPE_SEARCH, ref_pos)
 
-    print("Obstacles")
-    for obstacle in obstacles:
-        print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
-    print("Boundaries")
-    for boundary in boundary_list:
-        print(boundary.n, boundary.e)
-    print("Drop")
-    for drop in drop_location:
-        print(drop.n, drop.e, drop.d)
+#     print("Obstacles")
+#     for obstacle in obstacles:
+#         print(obstacle.n, obstacle.e, obstacle.d, obstacle.r)
+#     print("Boundaries")
+#     for boundary in boundary_list:
+#         print(boundary.n, boundary.e)
+#     print("Drop")
+#     for drop in drop_location:
+#         print(drop.n, drop.e, drop.d)
 
-    mp = MissionPlotter()
-    mp.addRegion(search_boundary, "Search Region", color='orange')
-    mp.addRegion(boundary_list, "Boundary")
-    mp.addObstacles(obstacles, "Obstacles")
-    mp.addWaypoints(drop_location, "Drop Target", color='green', size=25, marker='X')
-    mp.addWaypoints(objective_waypts, "Objective Waypoints", color='blue', size=12, marker='o')
-    mp.show()
+#     mp = MissionPlotter()
+#     mp.addRegion(search_boundary, "Search Region", color='orange')
+#     mp.addRegion(boundary_list, "Boundary")
+#     mp.addObstacles(obstacles, "Obstacles")
+#     mp.addWaypoints(drop_location, "Drop Target", color='green', size=25, marker='X')
+#     mp.addWaypoints(objective_waypts, "Objective Waypoints", color='blue', size=12, marker='o')
+#     mp.show()
 
-    rospy.spin()
+#     rospy.spin()
