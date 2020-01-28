@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import cm
-# from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D
 # import sys
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
@@ -94,44 +94,45 @@ class RRT():
         self.minN = min(nList) #Min north position of boundaries
         self.minE = min(eList) #Min east position of boundaries
 
-        # if animate:
-        #     mpl.rcParams['legend.fontsize'] = 10
-        #     self.fig = plt.figure()
-        #     self.ax = self.fig.gca(projection='3d')
-        #     for obstacle in obstaclesList:
-        #         # Cylinder
-        #         x = np.linspace((obstacle.n - obstacle.r), (obstacle.n + obstacle.r), 100)
-        #         z = np.linspace(0, obstacle.d, 100)
-        #         # x = np.linspace(-1, 1, 25)
-        #         # z = np.linspace(-2, 2, 25)
-        #         Xc, Zc = np.meshgrid(x, z)
-        #         Yc = np.sqrt(obstacle.r**2 - (Xc - obstacle.n)**2) + obstacle.e
 
-        #         # Draw parameters
-        #         self.ax.plot_surface(Xc, Yc, Zc, alpha=0.9, color='b')
-        #         self.ax.plot_surface(Xc, (2.*obstacle.e-Yc), Zc, alpha=0.9, color='b')
-        #     first = True
-        #     boundaries = []
-        #     last = []
-        #     for bounds in boundariesList:
-        #         if first:
-        #             boundaries = np.array([[bounds.n, bounds.e, 0.]])
-        #             last = np.array([[bounds.n, bounds.e, 0.]])
-        #             first = False
-        #             continue
-        #         boundaries = np.append(boundaries, [[bounds.n, bounds.e, 0.]], axis=0)
-        #     boundaries = np.append(boundaries, last, axis=0)
-        #     self.ax.plot(boundaries[:, 0], boundaries[:, 1], boundaries[:, 2], label='Boundaries')
-        #     self.ax.set_xlabel('X axis')
-        #     self.ax.set_ylabel('Y axis')
-        #     self.ax.set_zlabel('Z axis')
-        #     plt.xlim(self.maxN*1.1, self.minN*1.1)
-        #     plt.ylim(self.minE * 1.1, self.maxE * 1.1)
-        #     self.ax.elev = 90 #55
-        #     self.ax.azim = 0 #80
-        #     self.viridis = cm.get_cmap('viridis', 12)
-        #     self.viridis = cm.get_cmap('viridis')
-        #     self.ax.legend()
+        if animate:
+            mpl.rcParams['legend.fontsize'] = 10
+            self.fig = plt.figure()
+            self.ax = self.fig.gca(projection='3d')
+            for obstacle in obstaclesList:
+                # Cylinder
+                x = np.linspace((obstacle.n - obstacle.r), (obstacle.n + obstacle.r), 100)
+                z = np.linspace(0, obstacle.d, 100)
+                # x = np.linspace(-1, 1, 25)
+                # z = np.linspace(-2, 2, 25)
+                Xc, Zc = np.meshgrid(x, z)
+                Yc = np.sqrt(obstacle.r**2 - (Xc - obstacle.n)**2) + obstacle.e
+
+                # Draw parameters
+                self.ax.plot_surface(Xc, Yc, Zc, alpha=0.9, color='b')
+                self.ax.plot_surface(Xc, (2.*obstacle.e-Yc), Zc, alpha=0.9, color='b')
+            first = True
+            boundaries = []
+            last = []
+            for bounds in boundariesList:
+                if first:
+                    boundaries = np.array([[bounds.n, bounds.e, 0.]])
+                    last = np.array([[bounds.n, bounds.e, 0.]])
+                    first = False
+                    continue
+                boundaries = np.append(boundaries, [[bounds.n, bounds.e, 0.]], axis=0)
+            boundaries = np.append(boundaries, last, axis=0)
+            self.ax.plot(boundaries[:, 0], boundaries[:, 1], boundaries[:, 2], label='Boundaries')
+            self.ax.set_xlabel('X axis')
+            self.ax.set_ylabel('Y axis')
+            self.ax.set_zlabel('Z axis')
+            plt.xlim(self.maxN*1.1, self.minN*1.1)
+            plt.ylim(self.minE * 1.1, self.maxE * 1.1)
+            self.ax.elev = 90 #55
+            self.ax.azim = 0 #80
+            self.viridis = cm.get_cmap('viridis', 12)
+            self.viridis = cm.get_cmap('viridis')
+            self.ax.legend()
 
 
     def findFullPath(self, waypoints, connect=False):
@@ -166,7 +167,7 @@ class RRT():
         index = 0 
         way1 = waypoints[index]
         chi = 8888
-        while index < numWaypoints-1:  # Do each segment of the path individually
+        while index < numWaypoints-1:  # Do each segment of the path 
 
             index2 = index+1
             way2 = waypoints[index2]
@@ -200,38 +201,39 @@ class RRT():
             way1 = fullPath[-1]
             pre_way = fullPath[-2]
             chi = np.arctan2((way1.e - pre_way.e), (way1.n - pre_way.n))
-        # if self.animate:  # This block of animate code shows the full planned path
-        #     for i in range(0, len(fullPath)-1):
-        #         way1 = fullPath[i]
-        #         way2 = fullPath[i+1]
-        #         if (self.wayMax == self.wayMin):
-        #             scaler = 1
-        #         else:
-        #             scaler = (self.wayMin - way2.d) / (self.wayMin - self.wayMax)
-        #         self.ax.plot([way1.n, way2.n], [way1.e, way2.e],[-way1.d, -way2.d], color=self.viridis(scaler))
-        #     plt.gcf()
-        #     plt.gca()
-        #     plt.show()
-        # if True: # This will plot path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
-            # N = np.array([])
-            # E = np.array([])
-            # idx = 0
-            # fig = plt.figure()
-            # ax = fig.add_subplot(111)
-            # while idx < len(fullPath) - 2:
-                # N_t, E_t, D = self.pointsAlongPath(fullPath[idx], fullPath[idx+1], 1, fullPath[idx+2], self.R)
-                # N = np.append(N, N_t)
-                # E = np.append(E, E_t)
-                # idx = idx + 1
 
-            # for point in fullPath:
-                # ax.scatter(point.e, point.n, c='r')
-            # for point in waypoints:
-                # ax.scatter(point.e, point.n, c='g', marker='x')
+        if self.animate:  # This block of animate code shows the full planned path
+            for i in range(0, len(fullPath)-1):
+                way1 = fullPath[i]
+                way2 = fullPath[i+1]
+                if (self.wayMax == self.wayMin):
+                    scaler = 1
+                else:
+                    scaler = (self.wayMin - way2.d) / (self.wayMin - self.wayMax)
+                self.ax.plot([way1.n, way2.n], [way1.e, way2.e],[-way1.d, -way2.d], color=self.viridis(scaler))
+            plt.gcf()
+            plt.gca()
+            plt.show()
+        if True: # This will plot path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
+            N = np.array([])
+            E = np.array([])
+            idx = 0
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            while idx < len(fullPath) - 2:
+                N_t, E_t, D = self.pointsAlongPath(fullPath[idx], fullPath[idx+1], 1, fullPath[idx+2], self.R)
+                N = np.append(N, N_t)
+                E = np.append(E, E_t)
+                idx = idx + 1
+
+            for point in fullPath:
+                ax.scatter(point.e, point.n, c='r')
+            for point in waypoints:
+                ax.scatter(point.e, point.n, c='g', marker='x')
             
-            # ax.plot(E, N, 'b')
-            # ax.axis('equal')
-            # plt.show()
+            ax.plot(E, N, 'b')
+            ax.axis('equal')
+            plt.show()
 
         return fullPath
 
