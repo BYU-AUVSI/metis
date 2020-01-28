@@ -7,10 +7,10 @@ from metis.planners import Planner
 class ObjectivePointsPlanner(Planner):
     """The Objective Planner class."""
 
-    def __init__(self, boundary_list, obstacles, boundary_poly=None):
-        super(ObjectivePointsPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
+    def __init__(self, mission):
+        super(ObjectivePointsPlanner, self).__init__(mission)
     
-    def plan(self, waypoints):
+    def plan(self):
         """ Plans the path to hit the designated flight points
 
         Since our architecture is such that all mission tasks (payload, search) take in parameters and then determine points they want to fly through, this just passes the mission waypoints straight through.
@@ -27,4 +27,4 @@ class ObjectivePointsPlanner(Planner):
             The objective points that we want to fly through.
 
         """
-        return(waypoints)
+        return self.mission.waypoints

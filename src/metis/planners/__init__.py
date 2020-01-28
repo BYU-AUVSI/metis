@@ -16,11 +16,20 @@ __all__ = [
 ]
 
 class Planner(object):
-    def __init__(self, boundary_list, obstacles, boundary_poly=None):
-        self.boundary_list = boundary_list
-        self.obstacles = obstacles
-        self.boundary_poly = makeBoundaryPoly(self.boundary_list) if boundary_poly is None else boundary_poly
+    def __init__(self, mission):
+        self.mission = mission
     
+    @property
+    def boundary_list(self):
+        return self.mission.boundary_list
+
+    @property
+    def obstacles(self):
+        return self.mission.obstacles
+
+    @property
+    def boundary_poly(self):
+        return self.mission.boundary_poly
 
 from . import *
 

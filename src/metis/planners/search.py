@@ -16,27 +16,27 @@ class SearchPlanner(Planner):
     This class makes a lawn mower path by determining the box that bounds the search area and then populating that box with points a set distance apart. The points are narrowed by removing any points that are too close to the flight boundaries or too far from the search area.
     """
 
-    def __init__(self, boundary_list, obstacles, boundary_poly=None, waypoint_distance=50.0, height=30.0):
+    def __init__(self, mission, waypoint_distance=50.0, height=30.0):
         """
         Initialize the variables for the planning algorithm.
         The flight boundaries are converted from a list to shapely object to allow checking if points are within the boundaries
 
         Parameters
         ----------
-        flight_boundaries : list of NED class
-            The points that define the fly zone
-        obstacles : list of NED class
-            The location and description of the obstacles
+        mission : metis.core.Mission
+            A mission description object.
         waypoint_distance : float
             The distance each point in the lawn mower path should be from its neighbors
+        height : float
+            
         """
-        super(SearchPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
-        self.flight_boundaries = self.boundary_list
-        self.flight_poly = self.boundary_poly
+        super(SearchPlanner, self).__init__(mission)
+        self.flight_boundaries = mission.boundary_list
+        self.flight_poly = mission.boundary_poly
         self.waypoint_distance = waypoint_distance
         self.height = height
 
-    def plan(self, search_boundaries, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=True):
+    def plan(self, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=True):
         """
         Creates a lawn mower path over the search area
 
@@ -67,7 +67,7 @@ class SearchPlanner(Planner):
         If visualize is true, the code looks like it stops and does not continue executing until the plot is closed.
 
         """
-        
+        search_boundaries = self.mission.search_area
         self.search_boundaries = makeBoundaryPoly(search_boundaries)
 
         # Find the box that fits the search area

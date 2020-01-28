@@ -12,15 +12,11 @@ class LandingPlanner(Planner):
 
     def __init__(
         self,
-        boundary_list,
-        obstacles,
-        boundary_poly=None,
+        mission,
         alt_threshold=10,
         alt_default=30,
     ):
-        super(LandingPlanner, self).__init__(
-            boundary_list, obstacles, boundary_poly=None
-        )
+        super(LandingPlanner, self).__init__(mission)
         self.altitude_threshold = alt_threshold
         self.altitude_default = alt_default
 

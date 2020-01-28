@@ -11,7 +11,7 @@ from metis.planners import Planner
 class LoiterPlanner(Planner):
     """The Loiter Planner plans the loiter mission."""
 
-    def __init__(self, boundary_list, obstacles, boundary_poly=None, radius=25., clearance=2.5):
+    def __init__(self, mission, radius=25., clearance=2.5):
         """
         Parameters
         ----------
@@ -23,7 +23,7 @@ class LoiterPlanner(Planner):
         clearance : float (optional)
             Not sure what clearance is (default 2.5).
         """
-        super(LoiterPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
+        super(LoiterPlanner, self).__init__(mission)
         self.radius = radius
         self.clearance = clearance
         

@@ -23,11 +23,19 @@ class OffaxisPlanner(Planner):
     to the camera.
     """
 
-    def __init__(self, boundary_list, obstacles, boundary_poly=None):
-        super(OffaxisPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
+    def __init__(self, mission):
+        """
+        Initialize the Offaxis planner.
+
+        Parameters
+        ----------
+        mission : metis.core.Mission
+            A mission description object.
+        """
+        super(OffaxisPlanner, self).__init__(mission)
     
-    def plan(self, object_location_list, altitude=70, clearance=10, waypoint_distance=100):
-        object_location = object_location_list[0]
+    def plan(self, altitude=70, clearance=10, waypoint_distance=100):
+        object_location = self.mission.offaxis_location
         location_point = Point(object_location.n, object_location.e).buffer(clearance)
 
         if location_point.within(self.boundary_poly):

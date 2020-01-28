@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from metis.tools import collisionCheck, makeBoundaryPoly, convert
+from metis.tools import collisionCheck#, makeBoundaryPoly, convert
 from metis.messages import msg_ned
 from metis.planners import Planner
 
@@ -15,7 +15,8 @@ class PayloadPlanner(Planner):
     inputs: drop gps location, wind, obstacles
     outputs: X number of waypoints with a single drop waypoint
     """
-    def __init__(self, dropLocation, boundary_list, obstacles, boundary_poly=None, wind=np.array([0.,0.,0.])):
+    # def __init__(self, dropLocation, boundary_list, obstacles, boundary_poly=None, wind=np.array([0.,0.,0.])):
+    def __init__(self, mission, wind=np.array([0.,0.,0.])):
         """
         initializes global variables
 
@@ -30,8 +31,8 @@ class PayloadPlanner(Planner):
         wind : list
             current estimate for the wind vector in [north, east, down]
         """
-        super(PayloadPlanner, self).__init__(boundary_list, obstacles, boundary_poly=None)
-        self.dropLocation = dropLocation            # location of where on the ground we want to hit [N, E, D]
+        super(PayloadPlanner, self).__init__(mission)
+        self.dropLocation = mission.drop_location   # location of where on the ground we want to hit [N, E, D]
         self.wind = wind                            # current wind vector [Wn,We,Wd]
         self.drop_altitude = 34.0                   # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 2.5                       # seconds between command to open and baydoor opening
