@@ -37,6 +37,8 @@ class MissionManager(object):
     default_pos : metis.messages.msg_ned
         A default fallback position for the aircraft to loiter about when no \
         mission is being performed.
+    current_pos : metis.messages.msg_ned
+        The current position of the aircraft.
     """
 
     def __init__(self, mission, target_height=35.):
@@ -53,7 +55,6 @@ class MissionManager(object):
         """
         self.mission = mission
         self.default_pos = msg_ned(0., 0., -target_height)
-        self.task = 0
         self.planners = {}
         if self.mission:
             self._init_planners(self.mission)
