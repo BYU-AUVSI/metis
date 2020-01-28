@@ -63,7 +63,7 @@ class MissionPlanner(object):
         self._services.append(rospy.Service("update_search_params", UpdateSearchParams, self.update_search_params))
 
         # self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        self.wp_pub = rospy.Publisher("waypoint_path", Waypoint, queue_size=10)
+        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10)
 
         self.plan = None
         print(self.mission)
