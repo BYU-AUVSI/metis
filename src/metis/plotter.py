@@ -55,12 +55,13 @@ class MissionPlotter:
         lable : string
             A name of the region to be used for the legend
         """
-        points = self.NEDListToNEnp(regionPoints)
-        poly = plt.Polygon(points, closed=True, fill=False, color=color, label=label)
-        self.ax.add_artist(poly)
-        self.ax.set_xlim((int(1.1*min(points[:,0])), int(1.1*max(points[:,0]))))
-        self.ax.set_ylim((int(1.1*min(points[:,1])), int(1.1*max(points[:,1]))))
-        self.ax.set_aspect('equal')
+        if len(regionPoints) > 0:
+            points = self.NEDListToNEnp(regionPoints)
+            poly = plt.Polygon(points, closed=True, fill=False, color=color, label=label)
+            self.ax.add_artist(poly)
+            self.ax.set_xlim((int(1.1*min(points[:,0])), int(1.1*max(points[:,0]))))
+            self.ax.set_ylim((int(1.1*min(points[:,1])), int(1.1*max(points[:,1]))))
+            self.ax.set_aspect('equal')
 
     def add_obstacles(self, obstacles, label, color='red'):
         """
