@@ -7,11 +7,30 @@ Python representations of ROS messages required for the metis package.
 """
 
 class msg_ned(object):
+    """
+    A North-East-Down (NED) representation of an object or position.
+
+    All position are assumed relative to some known home location and are 
+    represented in meters.
+
+    Parameters
+    ----------
+    north : float, optional
+        The north position from home in meters (default 0).
+    east : float, optional
+        The east position from home in meters (default 0).
+    down : float, optional
+        The down position from home in meters (default 0). Altitudes above ground level
+        are therefore represented as negative values. For obstacles, the height
+        is stored in this attribute.
+    radius : float, optional
+        Radius of object in meters (default 0). Used for obstacles.
+    """
     def __init__(self, north=0., east=0., down=0., radius=0.):
-        self.n = north  # North position
-        self.e = east  # East position
-        self.d = down  # Down position. Height for obstacles
-        self.r = radius  # Radius for obstacles. Not sure if there is another message type for this
+        self.n = north
+        self.e = east
+        self.d = down
+        self.r = radius
 
     def to_array(self, radius=True):
         """
