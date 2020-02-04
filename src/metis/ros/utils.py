@@ -10,7 +10,6 @@ from metis.messages import msg_ned
 from metis import Mission, GPSWaypoint
 from metis import tools
 
-
 def wypts2msg(waypoints, mission_type):
     """
     This function converts a list of lists of waypoints to a rosmsg.
@@ -129,7 +128,8 @@ def get_server_data(mission_type, ref_pos):
     Returns
     -------
     mission_type : int
-        The mission type number for which data was obtained (number defined in the JudgeMission message)
+        The mission type number for which data was obtained (number defined 
+        in the JudgeMission message)
     obstacles : list of metis.messages.msg_ned
         A list of NED messages
     boundary_list : list of metis.messages.msg_ned
@@ -176,6 +176,8 @@ def _convert_obstacles(msg, ref_pos):
     ----------
     msg : uav_msgs.msg.JudgeMission
         The message received from the interop server.
+        Latitude and longitude are expressed as floats. Altitude is expressed
+        in meters.
     ref_pos : metis.GPSWaypoint
         The reference position for relative position calculations.
 
@@ -187,7 +189,7 @@ def _convert_obstacles(msg, ref_pos):
     obstacle_list = []
 
     for i in msg.stationary_obstacles:
-        obs = GPSWaypoint(i.point.latitude, i.point.longitude, ft2m(i.point.altitude))
+        obs = GPSWaypoint(i.point.latitude, i.point.longitude, i.point.altitude)
         ned = obs.ned_from(ref_pos)
         ned.d = i.cylinder_height
         ned.r = i.cylinder_radius
@@ -209,6 +211,8 @@ def _convert_waypoints(msg, ref_pos):
     ----------
     msg : uav_msgs.msg.JudgeMission
         The message received from the interop server.
+        Latitude and longitude are expressed as floats. Altitude is expressed
+        in meters.
     ref_pos : metis.GPSWaypoint
         The reference position for relative position calculations.
 
@@ -220,7 +224,7 @@ def _convert_waypoints(msg, ref_pos):
     waypoint_list = []
 
     for i in msg.waypoints:
-        wpt = GPSWaypoint(i.point.latitude, i.point.longitude, ft2m(i.point.altitude))
+        wpt = GPSWaypoint(i.point.latitude, i.point.longitude, i.point.altitude)
         ned = wpt.ned_from(ref_pos)
         ned.d -= 22.0 # TODO: For some reason, ground level is -22.0
         waypoint_list.append(ned)
@@ -237,6 +241,8 @@ def _convert_boundaries(msg, ref_pos):
     ----------
     msg : uav_msgs.msg.JudgeMission
         The message received from the interop server.
+        Latitude and longitude are expressed as floats. Altitude is expressed
+        in meters.
     ref_pos : metis.GPSWaypoint
         The reference position for relative position calculations.
 
@@ -248,7 +254,7 @@ def _convert_boundaries(msg, ref_pos):
     boundary_list = []
 
     for i in msg.boundaries:
-        bnd = GPSWaypoint(i.point.latitude, i.point.longitude, ft2m(i.point.altitude))
+        bnd = GPSWaypoint(i.point.latitude, i.point.longitude, i.point.altitude)
         boundary_list.append(bnd.ned_from(ref_pos))
 
     boundary_poly = tools.makeBoundaryPoly(boundary_list)
