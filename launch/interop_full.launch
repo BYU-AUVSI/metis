@@ -1,7 +1,18 @@
 <launch>
-  <param name="ref_lat" value="38.379318"/>
-  <param name="ref_lon" value="-76.805290"/>
-  <param name="ref_h" value="0"/>
+  <!-- Maryland Park -->
+  <!-- <param name="ref_lat" value="38.379318"/>
+  <param name="ref_lon" value="-76.805290"/> -->
+
+  <!-- Naval Air Base -->
+  <!-- <param name="ref_lat" value="38.146293"/>
+  <param name="ref_lon" value="-76.429509"/>
+  <param name="ref_h" value="0"/> -->
+
+  <!-- Springville -->
+  <param name="ref_lat" value="40.174571"/>
+  <param name="ref_lon" value="-111.651641"/>
+  <param name="ref_h" value="1402.08"/>
+
   <param name="target_h" value="40" />
   <param name="SEARCH" value="2"/>
   <param name="PAYLOAD" value="1"/>
