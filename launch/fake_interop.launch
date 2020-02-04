@@ -1,5 +1,5 @@
 <launch>
-  <group ns="fixedwing">
+  <!-- <group ns="fixedwing"> -->
     <param name="ref_lat" value="39.98304881111"/>
     <param name="ref_lon" value="-111.9903776"/>
     <param name="ref_h" value="0"/>
@@ -13,7 +13,7 @@
     <node name="truth_throttle" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 1.0 /truth_slow" />
     <node name="state_convert" type="throttle" pkg="topic_tools" args="messages /fixedwing/truth 3.0 /state" />
     <node name="payload_drop" pkg="metis" type="payload_drop" output="screen" />
-  </group>
+  <!-- </group> -->
 
 
 </launch>
