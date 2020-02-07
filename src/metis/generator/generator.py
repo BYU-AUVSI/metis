@@ -34,7 +34,7 @@ class MissionGenerator(object):
         n = 1000 * np.random.random_sample((num,)) - 500
         e = 1000 * np.random.random_sample((num,)) - 500
         d = 50 * np.random.random_sample((num,))
-        r = 50 * np.random.randn(num) + 10
+        r = np.abs(50 * np.random.randn(num) + 10)
         for i in range(num):
             msg = msg_ned(n[i], e[i], d[i], r[i])
             obs.append(msg)
@@ -73,6 +73,8 @@ class MissionGenerator(object):
     def get_mission(self):
         return self.mission
 
-mission = MissionGenerator().get_mission()
-mp = MissionPlotter(mission)
-mp.show()
+
+if __name__ == "__main__":
+    mission = MissionGenerator().get_mission()
+    mp = MissionPlotter(mission)
+    mp.show()
