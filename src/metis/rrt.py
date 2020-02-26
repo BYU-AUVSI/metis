@@ -2,6 +2,8 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
+from __future__ import print_function
+
 import logging
 
 import numpy as np
@@ -17,14 +19,16 @@ from metis.tools import collisionCheck
 
 # import cProfile
 
-# import time
+times_old = []
+times_new = []
 
 # To do: A buffer for incline when planning, that way it can smooth
 # Find all possible paths, smooth all, then pick best
 # Could do an improved smoother where is doesn't just check adjacent nodes. But can't be a factorial check.
 
 log = logging.getLogger('METIS')
-
+_module_logger = logging.getLogger(__name__)
+# log = _module_logger
 
 class Config(object):
     clearance = 5.0
@@ -77,6 +81,8 @@ class Config(object):
 
 
 class Animation(object):
+    _logger = _module_logger.getChild('Animation')
+
     def __init__(self, obstacles, boundaries):
         mpl.rcParams['legend.fontsize'] = 10
         self.fig = plt.figure()
@@ -116,12 +122,66 @@ class Animation(object):
         self.viridis = cm.get_cmap('viridis')
         self.ax.legend()
 
+    def drawPath(self, path, color):
+        """ RRT class function that draws the path between a list of waypoints
+
+        Parameters
+        ----------
+        path : msg_ned
+            List of waypoints
+        color : string
+            Desired color in format for matplot (e.g. 'r','y','b',etc.)
+        """
+        for i in range(0, len(path) - 1):
+            way1 = path[i]
+            way2 = path[i + 1]
+            self.ax.plot([way1.n, way2.n], [way1.e, way2.e], [-way1.d, -way2.d], color=color)
+
+class Tree(object):
+    _logger = _module_logger.getChild('Tree')
+
+    def __init__(self, root=None):
+        """
+        Parameters
+        ----------
+        root : Node
+            The root Node of the tree.
+        """
+        super(Tree, self).__init__()
+        self.nodes = [root] if root else []
+
+    def __getitem__(self, index):
+        return self.nodes[index]
+
+    def __len__(self):
+        return len(self.nodes)
+
+    def closest(self, node):
+        """
+        Parameters
+        ----------
+        node : Node
+            The node we're trying to get close to.
+        
+        Returns
+        -------
+        Node
+            The closest node already in the tree to the passed in Node.
+        """
+        dists = []
+        for child in self.nodes:
+            dists.append(child.distance(node))
+        min_idx = np.argmin(dists)
+        return self.nodes[min_idx]
+
+    def add(self, node):
+        self.nodes.append(node)
+
 
 class Node(object):
-    """
-    Represents a node in the tree for the RRT expansion algorithm.
-    """
-    def __init__(self, n, e, d, cost, parent, connects, chi):
+    _logger = _module_logger.getChild('Node')
+
+    def __init__(self, n, e, d, cost=0., parent=None, connects=False, chi=0.):
         """
         Parameters
         ----------
@@ -141,13 +201,43 @@ class Node(object):
         chi : float
             Heading.
         """
-        self.n = n
-        self.e = e
-        self.d = d
+        super(Node, self).__init__()
+        self.ned = msg_ned(n, e, d)
         self.cost = cost
         self.parent = parent
         self.connects = connects
         self.chi = chi
+
+    @property
+    def n(self):
+        return self.ned.n
+    
+    @n.setter
+    def n(self, value):
+        self.ned.n = value
+
+    @property
+    def e(self):
+        return self.ned.e
+    
+    @e.setter
+    def e(self, value):
+        self.ned.e = value
+
+    @property
+    def d(self):
+        return self.ned.d
+    
+    @d.setter
+    def d(self, value):
+        self.ned.d = value
+
+    @property
+    def isroot(self):
+        return self.parent == None
+
+    def distance(self, other):
+        return np.linalg.norm((other.ned - self.ned).nparray)
 
 
 class RRT():
@@ -155,6 +245,8 @@ class RRT():
     An RRT object plans plans flyable paths in the mission environment. It also holds the information concerning
     the physical boundaries and obstacles in the competition.
     """
+    _logger = _module_logger.getChild('RRT')
+
     def __init__(self, obstaclesList, boundariesList, animate=False, config=Config()):
         """The constructor for the RRT class.
 
@@ -175,115 +267,11 @@ class RRT():
         self.boundariesList = boundariesList
         self.animate = animate
 
-        self.bound_poly = Polygon([[bound.n, bound.e] for bound in boundariesList]) #Boundaries now contained in a Polygon object        
-        self.maxN = max([bound.n for bound in boundariesList]) #Max north position of boundaries
-        self.maxE = max([bound.e for bound in boundariesList]) #Max east position of boundaries
-        self.minN = min([bound.n for bound in boundariesList]) #Min north position of boundaries
-        self.minE = min([bound.e for bound in boundariesList]) #Min east position of boundaries
+        # Boundaries now contained in a Polygon object
+        self.bound_poly = Polygon([[bound.n, bound.e] for bound in boundariesList])
 
         # if animate:
         #     self.animation = Animation(self.obstaclesList, self.boundariesList)
-
-
-    # def findFullPath(self, waypoints, connect=False):
-    #     """RRT class function that finds a path to all of the waypoints passed in. This path takes into account obstacles,
-    #     boundaries, and all other parameters set in the init function.
-
-    #     Parameters
-    #     ----------
-    #     waypoints : list of metis.messages.msg_ned
-    #         A list of waypoints
-    #     connect : bool, optional
-    #         If true, the path will be generated such that an additional waypoint is created after every primary waypoint to 
-    #         force the plane to go through the primary waypoint before beginning a turn
-
-    #     Returns
-    #     -------
-    #     fullPath : msg_ned
-    #         The full list of waypoints which outlines a safe path to follow in order to reach all of the waypoints
-    #         passed in.
-    #     """
-    #     # if self.animate:
-    #     #     self.wayMax = 0  # This min/max stuff is for making the animated path different colors depending on altitude
-    #     #     self.wayMin = 0
-    #     #     if waypoints[0].d > self.wayMax:
-    #     #         self.wayMax = waypoints[0].d
-    #     #     if waypoints[0].d < self.wayMin:
-    #     #         self.wayMin = waypoints[0].d
-    #     numWaypoints = len(waypoints)
-    #     fullPath = []
-    #     index = 0 
-    #     way1 = waypoints[index]
-    #     chi = 8888
-    #     while index < numWaypoints-1:  # Do each segment of the path 
-
-    #         index2 = index+1
-    #         way2 = waypoints[index2]
-    #         # Check to make sure if the waypoints are possible
-    #         if not collisionCheck(self.obstaclesList,self.bound_poly,np.array([way1.n]), np.array([way1.e]), np.array([way1.d]), self.config.clearance):
-    #             if index == 0:
-    #                 pass #Don't worry about if the first waypoint is flyable because that is the start position and we want to plot a path even if we start out of bounds
-    #             else:
-    #                 index += 1
-    #                 way1 = waypoints[index]
-    #                 continue
-    #         while not collisionCheck(self.obstaclesList, self.bound_poly, np.array([way2.n]), np.array([way2.e]), np.array([way2.d]), self.config.clearance):
-    #             if index2 < numWaypoints-1:
-    #                 index2 += 1
-    #                 way2 = waypoints[index2]
-    #                 print("Waypoint is out of bounds or on an obstacle")
-    #             else:
-    #                 break
-
-    #         # if self.animate:
-    #         #     if way2.d > self.wayMax:
-    #         #         self.wayMax = way2.d
-    #         #     if way2.d < self.wayMin:
-    #         #         self.wayMin = way2.d
-    #         newPath = self.findPath(way1, way2, chi, connect=connect)  # call the findPath function to find path between these two waypoints
-    #         print("Individual Path Found")
-    #         if (len(fullPath) > 0) and (fullPath[-1].n == newPath[0].n) and (fullPath[-1].e == newPath[0].e) and (fullPath[-1].d == newPath[0].d):
-    #             newPath = newPath[1:]
-    #         fullPath += newPath  # Append this segment of the path to the full path
-    #         index += index2-index
-    #         way1 = fullPath[-1]
-    #         pre_way = fullPath[-2]
-    #         chi = np.arctan2((way1.e - pre_way.e), (way1.n - pre_way.n))
-
-    #     # if self.animate:  # This block of animate code shows the full planned path
-    #     #     for i in range(0, len(fullPath)-1):
-    #     #         way1 = fullPath[i]
-    #     #         way2 = fullPath[i+1]
-    #     #         if (self.wayMax == self.wayMin):
-    #     #             scaler = 1
-    #     #         else:
-    #     #             scaler = (self.wayMin - way2.d) / (self.wayMin - self.wayMax)
-    #     #         self.ax.plot([way1.n, way2.n], [way1.e, way2.e],[-way1.d, -way2.d], color=self.viridis(scaler))
-    #     #     plt.gcf()
-    #     #     plt.gca()
-    #     #     plt.show()
-    #     # if True: # This will plot path when this function is called. Good for debugging but you don't want it accidentially running when you're trying to actually do a flight. Hence the hardcoded false option. For debuggin, switch to true
-    #     #     N = np.array([])
-    #     #     E = np.array([])
-    #     #     idx = 0
-    #     #     fig = plt.figure()
-    #     #     ax = fig.add_subplot(111)
-    #     #     while idx < len(fullPath) - 2:
-    #     #         N_t, E_t, D = pointsAlongPath(fullPath[idx], fullPath[idx+1], 1, fullPath[idx+2], self.config.min_radius)
-    #     #         N = np.append(N, N_t)
-    #     #         E = np.append(E, E_t)
-    #     #         idx = idx + 1
-
-    #     #     for point in fullPath:
-    #     #         ax.scatter(point.e, point.n, c='r')
-    #     #     for point in waypoints:
-    #     #         ax.scatter(point.e, point.n, c='g', marker='x')
-            
-    #     #     ax.plot(E, N, 'b')
-    #     #     ax.axis('equal')
-    #     #     plt.show()
-
-    #     return fullPath
 
     def findFullPath(self, waypoints, connect=False, config=Config):
         """
@@ -333,7 +321,15 @@ class RRT():
                 else:
                     break
 
+            import time
+            t0 = time.clock()
             newPath = self.findPath(way1, way2, chi, connect=connect)  # call the findPath function to find path between these two waypoints
+            times_old.append(time.clock() - t0)
+
+            t0 = time.clock()
+            newPath = find_path(way1, way2, self.obstaclesList, self.bound_poly, chi, connect=connect)
+            times_new.append(time.clock() - t0)
+
             print("Individual Path Found")
             if (len(fullPath) > 0) and (fullPath[-1].n == newPath[0].n) and (fullPath[-1].e == newPath[0].e) and (fullPath[-1].d == newPath[0].d):
                 newPath = newPath[1:]
@@ -346,99 +342,11 @@ class RRT():
         return fullPath
 
     # def findPath(self, waypoint1, waypoint2, start_chi=8888, connect=False):
-    #     """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
-    #     boundaries, and all other parameters set in the init function.
-
-    #     Parameters
-    #     ----------
-    #     waypoint1 : msg_ned
-    #         The starting waypoint
-    #     waypoint2 : msg_ned
-    #         @param waypoint2: The ending waypoint. Super creative names, I know.
-    #     start_chi : float
-    #         The current heading of the path. If 8888, indicates first step in the full path and is ignored
-    #     connect : boolean
-    #         If true, the path will be generated such that an additional waypoint is created after every primary waypoint to 
-    #         force the plane to go through the primary waypoint before beginning a turn
-
-    #     Returns
-    #     -------
-    #     smoothedPath :  msg_ned
-    #         The list of waypoints which outlines a safe path to follow in order to reach the two waypoints passed in.
-    #     """
-    #     # if self.animate: # draws the two waypoints
-    #     #     begEndPoints = self.ax.scatter([waypoint1.n, waypoint2.n], [waypoint1.e, waypoint2.e],
-    #     #                                    [-waypoint1.d, -waypoint2.d], c='r', marker='o')
-    #     # node state vector format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
-    #     startNode = np.array([waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., start_chi])
-    #     tree = np.array([startNode])
-    #     # check for if solution at the beginning
-    #     dist = np.sqrt((waypoint1.n-waypoint2.n)**2 + (waypoint1.e-waypoint2.e)**2 + (waypoint1.d-waypoint2.d)**2)
-    #     chi = np.arctan2((waypoint2.e - waypoint1.e), (waypoint2.n - waypoint1.n))
-    #     if flyablePath(self.obstaclesList, self.bound_poly, waypoint1, waypoint2, startNode[6], chi):
-    #         return waypoint1, waypoint2  # Returns the two waypoints as the succesful path
-
-    #     #START NEW TESTING CODE
-    #     prep_node = np.array([[waypoint1.n],[waypoint1.e],[waypoint1.d]])
-    #     last_node = np.array([[waypoint2.n],[waypoint2.e],[waypoint2.d]])
-
-    #     q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
-
-    #     add_node = last_node + q*self.config.distance
-
-    #     if flyablePath(self.obstaclesList, self.bound_poly, waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), start_chi, chi) and connect:
-    #         return waypoint1, waypoint2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
-
-    #     elif flyablePath(self.obstaclesList, self.bound_poly, waypoint1, waypoint2, start_chi, chi) and not connect:
-    #         return waypoint1, waypoint2
-        
-    #     #END NEW TESTING CODE
-    #     else:
-    #         foundSolution = 0
-    #         while foundSolution < 3: # This will keep expanding the tree the amount of iterations until solution found
-    #             for i in range(0, self.config.iterations):
-    #                 tree, flag = self.extendTree(tree, waypoint1, waypoint2)
-    #                 if flag > 0:
-    #                     print("Found Potential Path")
-    #                 foundSolution += flag
     #     # # Find the shortest path
     #     # path = self.shortestPath(tree, waypoint2)
     #     # # Smooth the path
     #     # smoothedPath = self.smoothPath(path)
     #     # return smoothedPath
-
-    #     # Find complete paths
-    #     connectedPaths = []
-    #     for i in range(0, np.size(tree, 0)):
-    #         if tree[i, 5] == 1:
-    #             connectedNodes = []
-    #             connectedNodes.append(waypoint2)
-    #             connectedNodes.append(msg_ned(tree[i, 0], tree[i, 1], tree[i, 2]))
-    #             parentNode = int(tree[i, 4])
-    #             while parentNode > 0:
-    #                 connectedNodes.append(msg_ned(tree[parentNode,0],tree[parentNode,1],tree[parentNode,2]))
-    #                 parentNode = int(tree[parentNode, 4])
-    #             connectedNodes.append(waypoint1)
-    #             connectedPaths.append(connectedNodes)
-
-    #     # Smooth all paths and save the best
-    #     bestPath = []
-    #     bestCost = np.inf
-    #     for path in connectedPaths:
-    #         smoothedPath, cost = self.smoothPath(path, start_chi)
-
-    #         if connect:
-    #             print("Connect")
-
-    #             last_node = np.array([[smoothedPath[-1].n],[smoothedPath[-1].e],[smoothedPath[-1].d]])
-    #             prep_node = np.array([[smoothedPath[-2].n],[smoothedPath[-2].e],[smoothedPath[-2].d]])
-
-    #             q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
-
-    #             add_node = last_node + q*self.config.distance
-
-    #             if flyablePath(self.obstaclesList, self.bound_poly, smoothedPath[-1], msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
-    #                 smoothedPath.append(msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)))
 
     #         # #Add node between start and first node to force plane to go through the desired node
     #         # start_node = np.array([[smoothedPath[0].n],[smoothedPath[0].e],[smoothedPath[0].d]])
@@ -452,12 +360,6 @@ class RRT():
     #         # insert_node = start_node + spacing * q
 
     #         # smoothedPath.insert(1,msg_ned(insert_node.item(0), insert_node.item(1), insert_node.item(2)))
-
-
-
-    #         if cost <  bestCost:
-    #             bestPath = smoothedPath
-    #             bestCost = cost
         
     #     # if len(bestPath) > 3:
     #     #     node1 = bestPath[0]
@@ -492,7 +394,7 @@ class RRT():
         
     #     return bestPath
 
-    def findPath(self, waypoint1, waypoint2, start_chi=8888, connect=False):
+    def findPath(self, waypoint1, waypoint2, start_chi=None, connect=False):
         """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
         boundaries, and all other parameters set in the init function.
 
@@ -515,6 +417,7 @@ class RRT():
         """
         # node state vector format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
         startNode = np.array([waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., start_chi])
+        # startNode = TreeNode(waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., start_chi)
         tree = np.array([startNode])
         # check for if solution at the beginning
         dist = np.sqrt((waypoint1.n-waypoint2.n)**2 + (waypoint1.e-waypoint2.e)**2 + (waypoint1.d-waypoint2.d)**2)
@@ -559,6 +462,8 @@ class RRT():
                     parentNode = int(tree[parentNode, 4])
                 connectedNodes.append(waypoint1)
                 connectedPaths.append(connectedNodes)
+        
+        # Find the shortest path
 
         # Smooth all paths and save the best
         bestPath = []
@@ -627,113 +532,202 @@ class RRT():
         return path
 
 
-    def drawPath(self, path, color):
-        """ RRT class function that draws the path between a list of waypoints
+def find_path(w1, w2, obstacles, bound_poly, start_chi=None, connect=False, config=Config):
+    """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
+    boundaries, and all other parameters set in the init function.
 
-        Parameters
-        ----------
-        path : msg_ned
-            List of waypoints
-        color : string
-            Desired color in format for matplot (e.g. 'r','y','b',etc.)
-        """
-        for i in range(0, len(path) - 1):
-            way1 = path[i]
-            way2 = path[i + 1]
-            self.ax.plot([way1.n, way2.n], [way1.e, way2.e], [-way1.d, -way2.d], color=color)
+    Parameters
+    ----------
+    w1 : msg_ned
+        The starting waypoint
+    w2 : msg_ned
+        The ending waypoint. Super creative names, I know.
+    start_chi : float
+        The current heading of the path. If 8888, indicates first step in the full path and is ignored
+    connect : boolean
+        If true, the path will be generated such that an additional waypoint is created after every primary waypoint to 
+        force the plane to go through the primary waypoint before beginning a turn
 
-# def find_path(waypoint1, waypoint2, obstacles, bound_poly, start_chi=None, connect=False, config=Config):
-#     """RRT class function that finds a path between two waypoints passed in. This solved path takes into account obstacles,
-#     boundaries, and all other parameters set in the init function.
+    Returns
+    -------
+    smoothedPath :  msg_ned
+        The list of waypoints which outlines a safe path to follow in order to reach the two waypoints passed in.
+    """
+    # node state vector format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
+    start = Node(w1.n, w1.e, w1.d, chi=start_chi)
+    tree = Tree(root=start)
 
-#     Parameters
-#     ----------
-#     waypoint1 : msg_ned
-#         The starting waypoint
-#     waypoint2 : msg_ned
-#         The ending waypoint. Super creative names, I know.
-#     start_chi : float
-#         The current heading of the path. If 8888, indicates first step in the full path and is ignored
-#     connect : boolean
-#         If true, the path will be generated such that an additional waypoint is created after every primary waypoint to 
-#         force the plane to go through the primary waypoint before beginning a turn
+    # check for if solution at the beginning    
+    chi = np.arctan2((w2.e - w1.e), (w2.n - w1.n))
+    if flyablePath(obstacles, bound_poly, w1, w2, start.chi, chi):
+        return w1, w2  # Returns the two waypoints as the succesful path
 
-#     Returns
-#     -------
-#     smoothedPath :  msg_ned
-#         The list of waypoints which outlines a safe path to follow in order to reach the two waypoints passed in.
-#     """
-#     # node state vector format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
-#     startNode = np.array([waypoint1.n, waypoint1.e, waypoint1.d, 0., -1., 0., start_chi])
-#     tree = np.array([startNode])
-#     # check for if solution at the beginning
-#     dist = np.sqrt((waypoint1.n-waypoint2.n)**2 + (waypoint1.e-waypoint2.e)**2 + (waypoint1.d-waypoint2.d)**2)
-#     chi = np.arctan2((waypoint2.e - waypoint1.e), (waypoint2.n - waypoint1.n))
-#     if flyablePath(obstacles, bound_poly, waypoint1, waypoint2, startNode[6], chi):
-#         return waypoint1, waypoint2  # Returns the two waypoints as the succesful path
+    #START NEW TESTING CODE
+    q = (w2.nparray - w1.nparray)/np.linalg.norm(w2.nparray - w1.nparray)
 
-#     #START NEW TESTING CODE
-#     prep_node = np.array([[waypoint1.n],[waypoint1.e],[waypoint1.d]])
-#     last_node = np.array([[waypoint2.n],[waypoint2.e],[waypoint2.d]])
+    add_node = w2.nparray + q*config.distance
+    newmsg = msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
 
-#     q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
+    if flyablePath(obstacles, bound_poly, w1, newmsg, start_chi, chi) and connect:
+        # return w1, w2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
+        log.critical("option 1")
+        return w1, w2, newmsg
 
-#     add_node = last_node + q*config.distance
-
-#     if flyablePath(obstacles, bound_poly, waypoint1, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), start_chi, chi) and connect:
-#         return waypoint1, waypoint2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
-
-#     elif flyablePath(obstacles, bound_poly, waypoint1, waypoint2, start_chi, chi) and not connect:
-#         return waypoint1, waypoint2
+    elif flyablePath(obstacles, bound_poly, w1, w2, start_chi, chi) and not connect:
+        log.critical("option 2")
+        return w1, w2
     
-#     #END NEW TESTING CODE
-#     else:
-#         foundSolution = 0
-#         while foundSolution < 3: # This will keep expanding the tree the amount of iterations until solution found
-#             for i in range(0, config.iterations):
-#                 tree, flag = extend_tree(tree, waypoint1, waypoint2)
-#                 if flag > 0:
-#                     print("Found Potential Path")
-#                 foundSolution += flag
+    #END NEW TESTING CODE
+    else:
+        log.critical("option 3")
+        foundSolution = 0
+        while foundSolution < 3: # This will keep expanding the tree the amount of iterations until solution found
+            for i in range(0, config.iterations):
+                tree, flag = extend_tree(tree, w1, w2, obstacles, bound_poly)
+                if flag:
+                    print("Found Potential Path")
+                foundSolution += 1
 
-#     # Find complete paths
-#     connectedPaths = []
-#     for i in range(0, np.size(tree, 0)):
-#         if tree[i, 5] == 1:
-#             connectedNodes = []
-#             connectedNodes.append(waypoint2)
-#             connectedNodes.append(msg_ned(tree[i, 0], tree[i, 1], tree[i, 2]))
-#             parentNode = int(tree[i, 4])
-#             while parentNode > 0:
-#                 connectedNodes.append(msg_ned(tree[parentNode,0],tree[parentNode,1],tree[parentNode,2]))
-#                 parentNode = int(tree[parentNode, 4])
-#             connectedNodes.append(waypoint1)
-#             connectedPaths.append(connectedNodes)
+    # Find complete paths
+    connectedPaths = []
+    # for i in range(0, len(tree)):
+    for leaf in tree.nodes:
+        if leaf.connects:
+            connectedNodes = []
+            connectedNodes.append(w2)
+            connectedNodes.append(leaf.ned)
+            parent = leaf.parent
+            while parent is not None:
+                connectedNodes.append(parent.ned)
+                parent = parent.parent
+            # connectedNodes.append(w1)
+            connectedPaths.append(connectedNodes)
 
-#     # Smooth all paths and save the best
-#     bestPath = []
-#     bestCost = np.inf
-#     for path in connectedPaths:
-#         smoothedPath, cost = smooth_path(path, start_chi)
+    # Smooth all paths and save the best
+    bestPath = []
+    bestCost = np.inf
+    for path in connectedPaths:
+        smoothedPath, cost = smooth_path2(path, start_chi, obstacles, bound_poly)
 
-#         if connect:
-#             print("Connect")
+        if connect:
+            print("Connect")
 
-#             last_node = np.array([[smoothedPath[-1].n],[smoothedPath[-1].e],[smoothedPath[-1].d]])
-#             prep_node = np.array([[smoothedPath[-2].n],[smoothedPath[-2].e],[smoothedPath[-2].d]])
+            last_node = np.array([[smoothedPath[-1].n],[smoothedPath[-1].e],[smoothedPath[-1].d]])
+            prep_node = np.array([[smoothedPath[-2].n],[smoothedPath[-2].e],[smoothedPath[-2].d]])
 
-#             q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
+            q = (last_node - prep_node)/np.linalg.norm(last_node - prep_node)
 
-#             add_node = last_node + q*config.distance
+            add_node = last_node + q*config.distance
 
-#             if flyablePath(obstacles, bound_poly, smoothedPath[-1], msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
-#                 smoothedPath.append(msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)))
+            if flyablePath(obstacles, bound_poly, smoothedPath[-1], msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)), 0, 0):
+                smoothedPath.append(msg_ned(add_node.item(0), add_node.item(1), add_node.item(2)))
 
-#         if cost <  bestCost:
-#             bestPath = smoothedPath
-#             bestCost = cost
+        if cost <  bestCost:
+            bestPath = smoothedPath
+            bestCost = cost
     
-#     return bestPath
+    return bestPath
+
+
+def extend_tree(tree, startN, endN, obstacles, bound_poly, config=Config):
+    """RRT class function that extends the passed-in tree. It will continue to attempt adding a leaf until it finds a
+    successful one. This is the basic RRT algorithm.
+
+    Parameters
+    ----------
+    tree : float
+        An Nx7 array of N leaves in this format: N, E, D, cost, parentIndex, connectsToGoalFlag, chi
+    startN : msg_ned
+        The starting waypoint.
+    endN : msg_ned
+        The ending waypoint.
+    obstacles : list of metis.messages.msg_ned
+        The list of static obstacles to avoid.
+    bound_poly : Polygon
+        A Polygon object representing the boundary of the mission.
+    config : Config, optional
+        A configuration object for custom parameters.
+
+    Returns
+    -------
+    tree : metis.rrt.Tree
+        A Tree object containing the extended tree.
+    flag : bool
+        Returns True if a path to the end node was found, False if not.
+    """
+    minN, minE, maxN, maxE = bound_poly.bounds
+    
+    # Loop until we have a path that is viable
+    while True:
+        # Generate a random point
+        northP, eastP = random_point(maxN, minN, maxE, minE)
+
+        # *********************************************************************
+        # Find the nearest leaf. Preference given to leaves that are at the 
+        # correct altitude.
+        new_node = Node(northP, eastP, endN.d)
+        closest = tree.closest(new_node)
+
+        # Need to find way to get more smooth descents and ascents?? not zig zaggy
+        chi = np.arctan2((eastP - closest.e), (northP - closest.n))
+
+        # *********************************************************************
+        # Calculate the new node location
+
+        # If the chosen leaf is at the ending waypoint altitude
+        if(closest.d == endN.d):
+            # A new leaf only extends a maximum distance from a previous leaf
+            L = min(np.sqrt((northP-closest.n)**2 + (eastP-closest.e)**2), config.max_distance)
+            tmp = np.array([northP, eastP, endN.d]) - closest.ned.nparray
+            newPoint = closest.ned + L*(tmp / np.linalg.norm(tmp))
+            newNode = Node(newPoint.n, newPoint.e, newPoint.d, closest.cost + L, closest, False, chi)
+        
+        # This case is for when the nearest leaf isn't yet at the correct altitude for the ending waypoint
+        else:
+            hyp = np.sqrt((northP-closest.n)**2 + (eastP-closest.e)**2)
+            lessInclineWhilePlanning = .3
+            if startN.d > endN.d:
+                downP = closest.d - hyp * config.max_incline * lessInclineWhilePlanning
+            else:
+                downP = closest.d + hyp * config.max_incline * lessInclineWhilePlanning
+            q = np.array([northP - closest.n, eastP - closest.e, downP - closest.d])
+            L = np.linalg.norm(q)
+            L = min(L, config.max_distance)
+            tmp = np.array([northP, eastP, downP]) - closest.ned.nparray
+            newPoint = closest.ned + L*(tmp/np.linalg.norm(tmp))
+            if (startN.d > endN.d and newPoint.d < endN.d) or (startN.d < endN.d and newPoint.d > endN.d):  # Check for overshooting the correct altitude
+                newPoint.d = endN.d
+            newNode = Node(newPoint.n, newPoint.e, newPoint.d, closest.cost+L, closest, False, chi)
+
+        # *********************************************************************
+        # Find paths
+        if closest.parent is not None:
+            node_1 = closest.parent.ned
+            node_2 = closest.ned
+            node_3 = newNode.ned
+        else:
+            node_1 = closest.ned
+            node_2 = newNode.ned
+            node_3 = None
+        
+        # Check for collision. If we have a flylable path, break out of the loop!
+        if flyablePath(obstacles, bound_poly, node_1, node_2, closest.chi, chi, node_3, config.min_radius):
+            break
+
+    # Add this new node to the tree of viable paths.
+    tree.add(newNode)
+
+    # Check to see if the new node can connect to the end node.
+    dist = np.linalg.norm((endN - newNode.ned).nparray)
+    chi = np.arctan2((endN.e - newNode.e), (endN.n - newNode.n))
+
+    if flyablePath(obstacles, bound_poly, newNode.ned, endN, newNode.chi, chi):
+        # Return the extended tree with the flag of a successful path to ending node
+        newNode.connects = True
+        return tree, True
+    else:
+        # Return the extended tree, and we still haven't reached the last point.
+        return tree, False
 
 
 def extendTree(tree, startN, endN, obstacles, bound_poly, config=Config):
@@ -899,6 +893,61 @@ def smooth_path(path, prev_chi, obstacles, bound_poly, config=Config):
     reversePath = smoothedPath[::-1]  # Path was saved in reverse order, so it had to be flipped
     return reversePath, cost
 
+def smooth_path2(path, prev_chi, obstacles, bound_poly, config=Config):
+    """ 
+    Takes in an array of waypoints and tries to find a flyable, smooth path.
+
+    Parameters
+    ----------
+    path : msg_ned
+        The list of waypoints.
+    prev_chi : float
+        Initial heading of point or 8888 if start
+
+    Returns
+    -------
+    path : msg_ned
+        An array of waypoints that expresses the smoothed, successful path through all the waypoints in reversed
+        order. -I think it returns it in correct order? JTA 5/22/19
+    """
+    # Improve smoother. Because of chi constraint, it doesn't do well at 
+    # cutting out lots of segments. First try getting all paths before 
+    # trimming them.
+    
+    # Create a list that we'll fill as we create the smoothed path.
+    smoothedPath = [path[0]]
+    for index in range(1, len(path) - 1):
+        chi = np.arctan2(
+            (path[index+1].e - smoothedPath[len(smoothedPath)-1].e), 
+            (path[index+1].n - smoothedPath[len(smoothedPath)-1].n)
+        )
+        # This is to know if we aren't checking second to last node
+        not_last = index + 2 < len(path)
+        node_3 = None
+
+        if not_last:  # Have to check the flyability of the node after in addition to current one
+            chi2 = np.arctan2(
+                (path[index+2].e - path[index+1].e), 
+                (path[index+2].n - path[index+1].n)
+            )
+            node_3 = path[index+2]
+        if not flyablePath(obstacles, bound_poly, smoothedPath[len(smoothedPath)-1], path[index+1], prev_chi, chi, third_node=node_3, R=config.min_radius):
+            smoothedPath.append(path[index])
+            prev_chi = np.arctan2(
+                (smoothedPath[len(smoothedPath)-1].e - smoothedPath[len(smoothedPath)-2].e),
+                (smoothedPath[len(smoothedPath)-1].n - smoothedPath[len(smoothedPath)-2].n)
+            )
+
+    smoothedPath.append(path[-1])
+    cost = 0
+    for i in range(len(smoothedPath)-1): #Could add other things to this cost function if wanted
+        cost += np.sqrt(
+            (smoothedPath[i].n-smoothedPath[i+1].n)**2 + \
+            (smoothedPath[i].e-smoothedPath[i+1].e)**2 + \
+            (smoothedPath[i].d-smoothedPath[i+1].d)**2)
+    reversePath = smoothedPath[::-1]  # Path was saved in reverse order, so it had to be flipped
+    return reversePath, cost
+
 def flyablePath(obstacles, bound_poly, startNode, endNode, prevChi, chi, third_node=None, R=None, config=Config):
     """
     Checks if flying between two points is  possible. It checks for 
@@ -932,7 +981,7 @@ def flyablePath(obstacles, bound_poly, startNode, endNode, prevChi, chi, third_n
         return False
 
     #Check for new leaf now above max relative chi angle
-    if prevChi != 8888: #If not at the root node
+    if prevChi != None: #If not at the root node
         prevChi = wrapToPi(prevChi)
         chi = wrapToPi(chi)
         wrappedPrevChi = wrapAminusBToPi(prevChi, chi)
