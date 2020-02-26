@@ -15,19 +15,14 @@ def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
 	----------
 	obstaclesList : msg_ned
 		List of obstacles
-
 	boundaryPoly : Polygon
 		A Polygon object of the boundaries
-
 	N : np.array
 		Arrays of the north position of points
-
 	E : np.array
 		Arrays of the east position of points
-
 	D : np.array
 		Arrays of the down position of points
-
 	clearance : float
 		The amount of clearance desired from obstacles and boundaries
 
