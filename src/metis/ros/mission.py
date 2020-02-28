@@ -70,6 +70,13 @@ class MissionPlanner(object):
         print(self.mission)
         self.Va = Va
 
+        export = False
+        if export:
+            import os, pickle
+            from os.path import expanduser
+            with open(os.path.join(expanduser("~"), "Documents", "mis.pkl"), 'wb') as f:
+                pickle.dump(self.mission, f)
+
     def update_path_callback(self, req):
         """
         Adds waypoints to the approved path and publishes to the `waypoint_path` topic.
