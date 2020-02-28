@@ -1,12 +1,46 @@
-# import pytest
-# import sys
-# sys.path.append('../src')
+import pytest
+import sys
+sys.path.append('../src')
 
-# from metis.rrt import RRT
-# import numpy as np
-# # import time
-# from metis.messages import msg_ned
+import numpy as np
 
+from metis import rrt
+from metis.messages import msg_ned
+
+def test_stepped_range_linear():
+    pass
+
+def test_random_point():
+    nmax, nmin = 0.0, -15.3
+    emax, emin = 90.66, 0.0
+    n, e = rrt.random_point(nmax, nmin, emax, emin)
+    assert n < nmax and n > nmin
+    assert e < emax and e > emin
+
+    nmax, nmin = 1804.0, -15.3
+    emax, emin = 0.66, -550.0
+    n, e = rrt.random_point(nmax, nmin, emax, emin)
+    assert n < nmax and n > nmin
+    assert e < emax and e > emin
+
+def test_heading():
+    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(2,2,0))) == 45.0
+    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(0,0,0))) == -135.0
+    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(2,0,0))) == -45.0
+    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(2,1,0))) == 0.0
+
+def test_wrap():
+    assert rrt.wrap(np.radians(170), np.radians(-170)) == -3.316125578789226
+    assert rrt.wrap(np.radians(185), np.radians(180)) == 3.2288591161895095
+    assert  rrt.wrap(np.radians(90), np.radians(160)) == 1.5707963267948966
+    assert  rrt.wrap(np.radians(100), np.radians(260)) == 1.7453292519943295
+    assert  rrt.wrap(np.radians(100), np.radians(-100)) == -4.537856055185257
+
+def test_wrap2pi():
+    assert rrt.wrap2pi(np.radians(-180)) == 3.141592653589793
+    assert rrt.wrap2pi(np.radians(180)) == 3.141592653589793
+    assert rrt.wrap2pi(np.radians(-179)) == -3.12413936106985
+    assert rrt.wrap2pi(np.radians(380)) == 0.3490658503988664
 
 # def test_rrt():
 #     show_animation = True
