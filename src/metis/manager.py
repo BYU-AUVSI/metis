@@ -105,7 +105,8 @@ class MissionManager(object):
         plan : metis.core.Plan
             Returns a Plan object representing the final plan.
         """
-        rrt = RRT(self.mission.obstacles, self.mission.boundary_list)
+        # rrt = RRT(self.mission.obstacles, self.mission.boundary_list)
+        rrt = RRT(self.mission)
         rrt.maxRelChi = max_rel_chi
 
         if self.plans:
@@ -116,7 +117,7 @@ class MissionManager(object):
             current_pos = self.default_pos
 
         planned_points.insert(0, current_pos)
-        final_path = rrt.findFullPath(planned_points, connect=connect)
+        final_path = rrt.find_full_path(planned_points, connect=connect)
         plan = Plan(self.mission, waypoints=final_path, callback=self._approve_plan)
         return plan        
 
