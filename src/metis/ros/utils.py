@@ -88,7 +88,7 @@ def get_mission():
         _,
         mission.obstacles,
         mission.boundary_list,
-        mission.boundary_poly,
+        _, # mission.boundary_poly,
         drop_location,
     ) = get_server_data(JudgeMission.MISSION_TYPE_DROP, mission.home)
 
