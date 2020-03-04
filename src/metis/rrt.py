@@ -146,7 +146,7 @@ class Animation2D(Animation):
         ax.cla()
         for obstacle in self.obstacles:
             ax.add_artist(plt.Circle((obstacle.e, obstacle.n), obstacle.r, color='r'))
-        print(self.bound_poly.exterior.xy)
+        # Plot reversed exterior boundaries since we want (N, E) -> (E, N).
         ax.plot(*self.bound_poly.exterior.xy[::-1])
         minN, minE, maxN, maxE = self.bound_poly.bounds
         ax.set_xlim((int(1.1*minE), int(1.1*maxE)))
@@ -312,10 +312,10 @@ class RRT():
         self.obstaclesList = mission.obstacles
         self.boundariesList = mission.boundary_list
 
-        if animate:
-            self.animation = Animation2D(mission)
-            self.animation.update()
-            plt.show()
+        # if animate:
+        #     self.animation = Animation2D(mission)
+        #     self.animation.update()
+        #     plt.show()
 
         # Boundaries now contained in a Polygon object
         self.bound_poly = mission.boundary_poly
@@ -358,17 +358,49 @@ class RRT():
         chi = None
 
         # Plan a path for each adjacent set of waypoints and append to full_path
-        for way1, way2 in zip(waypoints_[:-1], waypoints_[1:]):
+        way1 = waypoints_[0]
+        for way2 in waypoints_[1:]:
             # find_path returns a set of intermediary waypoints from way1 to way2
             full_path += find_path(way1, way2, self.obstaclesList, self.bound_poly, chi, connect=connect)
             self._logger.debug("Individual path found.")
             chi = heading(full_path[-2], full_path[-1])
+            way1 = full_path[-1]
 
         # Since the origin of each leg was the destination of the previous
         # leg, we need to remove the repetitive nodes.
-        full_path = [elem for i, elem in enumerate(full_path) if i == 0 or full_path[i-1] != elem]
+        # full_path = [elem for i, elem in enumerate(full_path) if i == 0 or full_path[i-1] != elem]
+        # return full_path
+        new_path = []
+        for i, elem in enumerate(full_path):
+            if i == 0 or new_path[-1] != elem:
+                if i == 0:
+                    print(elem)
+                else:
+                    print(elem, new_path[-1])
+                print("Different, added")
+                new_path.append(elem)
+            else:
+                print(elem, new_path[-1])
+                print("Same, skipped")
+        return new_path
+        # print("new\n", full_path)
+        # new_path = []
+        # for elem in full_path:
+        #     try:
+        #         prev = new_path[-1]
+        #         # print("Compare\n {} == {} {}\n {} == {} {}\n {} == {} {}\n {} == {} {}\nelem == prev: {}".format(elem.n, prev.n, elem.n==prev.n, elem.e, prev.e, elem.e==prev.e, elem.d, prev.d, elem.d==prev.d, elem.r, prev.r, elem.r==prev.r, elem==prev))
+        #         if elem == prev:
+        #             # print("Skipped")
+        #             pass
+        #         else:
+        #             # print("Added")
+        #             new_path.append(elem)
+        #     except:
+        #         # print("first:", elem)
+        #         new_path.append(elem)
+        #     # print('\n')
 
-        return full_path
+        # return full_path
 
     # def findPath(self, waypoint1, waypoint2, start_chi=8888, connect=False):
 
@@ -484,7 +516,8 @@ def find_path(w1, w2, obstacles, bound_poly, start_chi=None, connect=False, conf
     # check for if solution at the beginning    
     chi = np.arctan2((w2.e - w1.e), (w2.n - w1.n))
     if flyable_path(obstacles, bound_poly, w1, w2, start.chi, chi):
-        return w1, w2  # Returns the two waypoints as the succesful path
+        _logger.critical("option 0")
+        return [w1, w2]  # Returns the two waypoints as the succesful path
 
     #START NEW TESTING CODE
     q = (w2.nparray - w1.nparray)/np.linalg.norm(w2.nparray - w1.nparray)
@@ -495,17 +528,18 @@ def find_path(w1, w2, obstacles, bound_poly, start_chi=None, connect=False, conf
     if flyable_path(obstacles, bound_poly, w1, newmsg, start_chi, chi) and connect:
         # return w1, w2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
         _logger.critical("option 1")
-        return w1, w2, newmsg
+        return [w1, w2, newmsg]
 
     elif flyable_path(obstacles, bound_poly, w1, w2, start_chi, chi) and not connect:
         _logger.critical("option 2")
-        return w1, w2
+        return [w1, w2]
     
     #END NEW TESTING CODE
     else:
         _logger.critical("option 3")
         foundSolution = 0
         while foundSolution < 3: # This will keep expanding the tree the amount of iterations until solution found
+            _logger.critical("Iterating foundSolution")
             for i in range(0, config.iterations):
                 tree, flag = extend_tree(tree, w1, w2, obstacles, bound_poly)
                 if flag:
@@ -517,6 +551,7 @@ def find_path(w1, w2, obstacles, bound_poly, start_chi=None, connect=False, conf
     # for i in range(0, len(tree)):
     for leaf in tree.nodes:
         if leaf.connects:
+            # _logger.critical("This leaf connects")
             connectedNodes = []
             connectedNodes.append(w2)
             connectedNodes.append(leaf.ned)
@@ -567,6 +602,15 @@ def find_path(w1, w2, obstacles, bound_poly, start_chi=None, connect=False, conf
 
     # elif len(bestPath) == 2:
     #     pass
+    debug = True
+    if debug:
+        n = np.array([item.n for item in bestPath])
+        e = np.array([item.e for item in bestPath])
+        plt.plot(e, n, 'rx-')
+        for i in range(len(n)):
+            plt.text(e[i], n[i], str(i))
+        plt.axis('equal')
+        plt.show()
     
     return bestPath
 
@@ -598,12 +642,15 @@ def extend_tree(tree, startN, endN, obstacles, bound_poly, config=Config):
     flag : bool
         Returns True if a path to the end node was found, False if not.
     """
+    _logger = _module_logger.getChild('extend_tree')
+    _logger.debug('Entering extend_tree')
     minN, minE, maxN, maxE = bound_poly.bounds
     
     # Loop until we have a path that is viable
     flyable = False
     while not flyable:
         # Generate a random point
+        _logger.debug('Generating random point')
         northP, eastP = random_point(maxN, minN, maxE, minE)
 
         # *********************************************************************
@@ -670,9 +717,11 @@ def extend_tree(tree, startN, endN, obstacles, bound_poly, config=Config):
     if flyable_path(obstacles, bound_poly, newNode.ned, endN, newNode.chi, chi):
         # Return the extended tree with the flag of a successful path to ending node
         newNode.connects = True
+        _logger.debug('Exiting extend_tree')
         return tree, True
     else:
         # Return the extended tree, and we still haven't reached the last point.
+        _logger.debug('Exiting extend_tree')
         return tree, False
 
 
