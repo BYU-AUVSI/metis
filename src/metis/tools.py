@@ -8,36 +8,32 @@ from metis.messages import msg_ned
 import numpy as np
 
 
-def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
-    """Checks points for collisions with obstacles and boundaries
+def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
+    """
+    Checks points for collisions with obstacles and boundaries.
 
 	Parameters
 	----------
-	obstaclesList : msg_ned
+	obstacles : msg_ned
 		List of obstacles
-
 	boundaryPoly : Polygon
 		A Polygon object of the boundaries
-
 	N : np.array
 		Arrays of the north position of points
-
 	E : np.array
 		Arrays of the east position of points
-
 	D : np.array
 		Arrays of the down position of points
-
 	clearance : float
 		The amount of clearance desired from obstacles and boundaries
 
 	Returns
 	----------
 	boolean
-		Returns true if a safe path, false if not
+		Returns True if waypoints will collide, False if safe.
 	"""
     # First check for collision with obstacles
-    for obstacle in obstaclesList:
+    for obstacle in obstacles:
         # first check if path is above obstacle
         if all(D < -obstacle.d - clearance):
             continue
@@ -45,13 +41,13 @@ def collisionCheck(obstaclesList, boundaryPoly, N, E, D, clearance):
         else:
             distToPoint = np.sqrt((N - obstacle.n) ** 2 + (E - obstacle.e) ** 2)
             if any(distToPoint < obstacle.r + clearance):
-                return False
+                return True
 
     # Check for out of boundaries
-    for i in range(0, len(N)):
+    for i in range(len(N)):
         if not boundaryPoly.contains(Point(N[i], E[i])):
-            return False
-    return True
+            return True
+    return False
 
 
 def makeBoundaryPoly(boundariesList):
@@ -72,3 +68,19 @@ def makeBoundaryPoly(boundariesList):
         pointList.append(Point(point.n, point.e))
     return Polygon([[p.x, p.y] for p in pointList])
 
+
+def bounds2poly(boundaries):
+    """
+    Makes a Polygon object from a list of boundary points.
+
+    Parameters
+    ----------
+    boundaries : list of metis.messages.msg_ned
+        List of boundary points.
+
+    Returns
+    -------
+    boundaries : shapely.geometry.polygon.Polygon
+        Returns the Polygon representing the boundaries.
+    """
+    return Polygon([[bound.n, bound.e] for bound in boundaries])

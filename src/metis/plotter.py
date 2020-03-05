@@ -30,14 +30,18 @@ class MissionPlotter:
         self.state_track_n = []
         self.state_track_e = []
         self.state_track_length = 1000
-        self.state_plt =  None 
+        self.state_plt = None 
+        self.plannedWaypoints = None
+        self.plottedWaypoints = None
+        self.mission = mission
+        self.cid = self.fig.canvas.mpl_connect('button_press_event', self.onclick) # Variable that will allow for event callbacks
         #self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
-        if mission:
-            self.add_region(mission.search_area, "Search Region", color="orange")
-            self.add_region(mission.boundary_list, "Boundary")
-            self.add_obstacles(mission.obstacles, "Obstacles")
-            self.add_waypoints([mission.drop_location], "Drop Target", color="green", size=25, marker="X")
-            self.add_waypoints(mission.waypoints,"Objective Waypoints",color="blue",size=12,marker="o",)
+        if self.mission:
+            self.add_region(self.mission.search_area, "Search Region", color="orange")
+            self.add_region(self.mission.boundary_list, "Boundary")
+            self.add_obstacles(self.mission.obstacles, "Obstacles")
+            self.add_waypoints([self.mission.drop_location], "Drop Target", color="green", size=25, marker="X")
+            self.add_waypoints(self.mission.waypoints,"Objective Waypoints",color="blue",size=12,marker="o",)
 
     # def initRosNode():
     #     # rospy.Subscriber("/fixedwing/state", State, self.plotState)
@@ -86,9 +90,13 @@ class MissionPlotter:
         self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker)
 
     def add_pathway(self, pointList, label, ptColor='red', pathColor='cyan'):
+        self.plannedWaypoints = pointList
         self.add_waypoints(pointList, label, color=ptColor, size=6, marker='x')
         points = self.NEDListToNEnp(pointList)
-        self.ax.plot(points[:,0], points[:,1], c=pathColor);
+        print(points)
+        print(points[0] - points[1])
+        self.plottedWaypoints = points
+        self.ax.plot(points[:,0], points[:,1], c=pathColor)
 
     def plotState(self, msg):
         self.state_counter += 1
@@ -116,6 +124,53 @@ class MissionPlotter:
         plt.show(block=block)
 
 
+    def updatePlot(self):
+        plt.cla()
+        self.add_region(self.mission.search_area, "Search Region", color="orange")
+        self.add_region(self.mission.boundary_list, "Boundary")
+        self.add_obstacles(self.mission.obstacles, "Obstacles")
+        self.add_waypoints([self.mission.drop_location], "Drop Target", color="green", size=25, marker="X")
+        self.add_waypoints(self.mission.waypoints,"Objective Waypoints",color="blue",size=12,marker="o",)
+        # Draw new points and path
+        self.show()
+
+
+    def onclick(self, event):
+        pass
+        # if self.doubleclick:
+        #     if event.button == 1: # Left click
+        #         self.doubleclick = False
+        #     elif event.button == 2: # Middle click
+        #         self.doubleclick = False
+        #         del self.x[self.idxToUpdate]
+        #         del self.y[self.idxToUpdate]
+        #         self.updatePlot()
+        #     elif event.button == 3: # Right click
+        #         self.doubleclick = False
+        #         self.idxToUpdate += 1
+        #         self.x[self.idxToUpdate:self.idxToUpdate] = [event.xdata]
+        #         self.y[self.idxToUpdate:self.idxToUpdate] = [event.ydata]
+        #         self.updatePlot()
+        # elif event.dblclick:
+        #     self.doubleclick = True
+        #     diffx = event.xdata - self.x
+        #     diffy = event.ydata - self.y
+        #     dist = diffx * diffx + diffy * diffy
+        #     self.idxToUpdate = np.argmin(dist)
+        # elif event.button == 3 and self.selected:
+        #     self.selected = False
+        # elif event.button == 3:
+        #     diffx = event.xdata - self.x
+        #     diffy = event.ydata - self.y
+        #     dist = diffx * diffx + diffy * diffy
+        #     self.idxToUpdate = np.argmin(dist)
+        #     self.selected = True
+        # elif event.button == 1 and self.selected:
+        #     self.selected = False
+        #     self.x[self.idxToUpdate] = event.xdata
+        #     self.y[self.idxToUpdate] = event.ydata
+        #     self.updatePlot()
+
 
     def NEDListToNEnp(self, pointList):
         """
@@ -126,7 +181,23 @@ class MissionPlotter:
             nePt = np.array([[nedPoint.e, nedPoint.n]])
             npPoints = np.append(npPoints, nePt, axis=0)
 
+        print("NED List\n\n")
+        print(type(pointList))
+        print(pointList)
+        print("\n\npoints\n\n")
+        print(type(npPoints))
+        print(npPoints)
+
         return npPoints
+
+    def NEnpToNEDList(self, points):
+        """
+        Convert an nx2 numpy array with col 1 = E and col 2 = N to a list of NED points
+        """
+        pointList = [[]]
+        for nePoint in points:
+            pass
+
 
 
 

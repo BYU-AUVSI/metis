@@ -6,6 +6,7 @@
 Useful core classes that don't belong in any specific package.
 """
 
+import logging
 import math
 
 from geographiclib.geodesic import Geodesic
@@ -13,18 +14,24 @@ from geographiclib.geodesic import Geodesic
 from metis.errors import InvalidCallbackError
 from metis.messages import msg_ned
 from metis.plotter import MissionPlotter
+from metis.tools import bounds2poly
 
-class Mission:
+
+_module_logger = logging.getLogger(__name__)
+
+
+class Mission(object):
     """
     A class containing all the data that comprises a mission.
     """
+    _logger = _module_logger.getChild('Mission')
 
     def __init__(
         self,
         home=None,
         obstacles=None,
         boundary_list=None,
-        boundary_poly=None,
+        # boundary_poly=None,
         waypoints=None,
         drop_location=None,
         search_area=None,
@@ -43,15 +50,19 @@ class Mission:
             groundstation's ground elevation.
         obstacles : list of metis.messages.msg_ned, optional
         boundary_list : list of metis.messages.msg_ned, optional
-        boundary_poly : shapely.geometry.polygon.Polygon, optional
+        # boundary_poly : shapely.geometry.polygon.Polygon, optional
         waypoints : list of metis.messages.msg_ned, optional
         drop_location : metis.messages.msg_ned, optional
         search_area : list of metis.messages.msg_ned, optional
         """
+        # private:
+        self._boundary_poly = None
+        self._boundary_list = None
+
+        # public:
         self.home = home
         self.obstacles = obstacles
         self.boundary_list = boundary_list
-        self.boundary_poly = boundary_poly
         self.waypoints = waypoints
         self.drop_location = drop_location
         self.search_area = search_area
@@ -79,6 +90,29 @@ class Mission:
         val += "Drop Location\n"
         val += "{} {} {}\n".format(self.drop_location.n, self.drop_location.e, self.drop_location.d)
         return val
+
+    @property
+    def boundary_poly(self):
+        self._logger.debug("boundary_poly property called")
+        return self._boundary_poly
+
+    @boundary_poly.setter
+    def boundary_poly(self, value):
+        raise ValueError("Attribute is read-only.")
+
+    @property
+    def boundary_list(self):
+        self._logger.debug("boundary_list property called")
+        return self._boundary_list
+
+    @boundary_list.setter
+    def boundary_list(self, boundaries):
+        if boundaries is not None:
+            self._boundary_list = boundaries
+            self._boundary_poly = bounds2poly(boundaries)
+            self._logger.debug("boundary_list property set")
+        else:
+            self._boundary_poly = None
 
 class Plan:
     def __init__(self, mission, clear_previous=False, waypoints=None, callback=None):

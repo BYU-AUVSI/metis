@@ -6,6 +6,9 @@
 Python representations of ROS messages required for the metis package.
 """
 
+import numpy as np
+
+
 class msg_ned(object):
     """
     A North-East-Down (NED) representation of an object or position.
@@ -32,6 +35,44 @@ class msg_ned(object):
         self.d = down
         self.r = radius
 
+    def __repr__(self):
+        return "[{} {} {} {}]".format(self.n, self.e, self.d, self.r)
+
+    def __add__(self, other):
+        """
+        Adds two NED waypoints together and retains the maximum
+        radius, if any.
+        """
+        if type(other) == type(msg_ned):
+            return msg_ned(self.n + other.n, self.e + other.e, self.d + other.d, max(self.r, other.r))
+        elif isinstance(other, np.ndarray) and (other.shape[0] == 3):
+            return msg_ned(self.n + other.item(0), self.e + other.item(1), self.d + other.item(2), self.r)
+        elif isinstance(other, np.ndarray) and (other.shape[0] == 4):
+            return msg_ned(self.n + other.item(0), self.e + other.item(1), self.d + other.item(2), max(self.r, other.item(3)))
+        else:
+            raise TypeError("Addition is not supported for type {}".format(type(other)))
+
+    def __sub__(self, other):
+        """
+        Subtracts two NED waypoints from each other and retains the maximum
+        radius, if any.
+        """
+        return msg_ned(self.n-other.n, self.e-other.e, self.d-other.d, max(self.r, other.r))
+
+    def __mul__(self, other):
+        if type(other) == float or type(other) == int:
+            val = float(other)
+            return msg_ned(val*self.n, val*self.e, val*self.d, val*self.r)
+        else:
+            raise TypeError("Multiplication of type {} with msg_ned is undefined.".format(type(other)))
+
+    def __eq__(self, other):
+        return isinstance(other, msg_ned) and \
+            self.n == other.n and \
+            self.e == other.e and \
+            self.d == other.d and \
+            self.r == other.r
+
     def to_array(self, radius=True):
         """
         Returns the msg_ned object as a list.
@@ -54,8 +95,28 @@ class msg_ned(object):
         else:
             return [float(self.n), float(self.e), float(self.d)]
 
-    def __repr__(self):
-        return "[{} {} {} {}]".format(self.n, self.e, self.d, self.r)
+    def to_nparray(self, radius=False):
+        """
+        A function for easily converting the waypoint to a numpy array (ordered
+        n, e, d[, r]), optionally including object radius.
+
+        Parameters
+        ----------
+        radius : bool
+            Whether to include radius or not. Default false.
+        """
+        if radius:
+            return np.array([float(self.n), float(self.e), float(self.d), float(self.r)])
+        else:
+            return np.array([float(self.n), float(self.e), float(self.d)])
+    
+    @property
+    def nparray(self):
+        """
+        A property for easily accessing the waypoint as a numpy array (ordered
+        n, e, d) without including object radius.
+        """
+        return self.to_nparray()
 
 class NED_pt(object):
     def __init__(self):

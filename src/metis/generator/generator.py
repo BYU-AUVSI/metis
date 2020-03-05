@@ -1,6 +1,6 @@
 from metis import Mission, MissionPlotter
 from metis.messages import msg_ned
-from metis.tools import makeBoundaryPoly, collisionCheck
+from metis.tools import makeBoundaryPoly, will_collide
 from metis.plotter import MissionPlotter
 
 import numpy as np
@@ -44,7 +44,7 @@ class MissionGenerator(object):
         wpt = []
         for i in range(num):
             north, east, down = self._generate_ned()
-            while not collisionCheck(self.mission.obstacles, self.mission.boundary_poly, north, east, down, 5.):
+            while will_collide(self.mission.obstacles, self.mission.boundary_poly, north, east, down, 5.):
                 north, east, down = self._generate_ned()
             msg = msg_ned(north[0], east[0], down[0])
             wpt.append(msg)
@@ -52,7 +52,7 @@ class MissionGenerator(object):
 
     def generate_payload(self):
         north, east, down = self._generate_ned()
-        while not collisionCheck(self.mission.obstacles, self.mission.boundary_poly, north, east, down, 5.):
+        while will_collide(self.mission.obstacles, self.mission.boundary_poly, north, east, down, 5.):
             north, east, down = self._generate_ned()
         return msg_ned(north[0], east[0], down[0])
 

@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from metis.tools import collisionCheck#, makeBoundaryPoly, convert
+from metis.tools import will_collide#, makeBoundaryPoly, convert
 from metis.messages import msg_ned
 from metis.planners import Planner
 
@@ -282,7 +282,7 @@ class PayloadPlanner(Planner):
         E = self.waypoints_array[:,1]
         D = self.waypoints_array[:,2]
         clearance = 1.0
-        if collisionCheck(self.obstacles, self.boundary_poly, N, E, D, clearance):
+        if will_collide(self.obstacles, self.boundary_poly, N, E, D, clearance):
             return True
         else:
             return False

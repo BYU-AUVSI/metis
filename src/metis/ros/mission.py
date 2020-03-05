@@ -50,8 +50,6 @@ class MissionPlanner(object):
             The manager class used to perform all planning functions and 
             autopilot state management.
         """
-        rospy.logwarn("Is your home location set correctly (see ref_params in .launch file)?")
-
         self.mission = utils.get_mission()
         self.manager = MissionManager(self.mission)
         self.manager.target_height = rospy.get_param("target_h")
@@ -64,11 +62,20 @@ class MissionPlanner(object):
         self._services.append(rospy.Service("update_search_params", UpdateSearchParams, self.update_search_params))
 
         # self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        self.wp_pub = rospy.Publisher("/waypoint_path", Waypoint, queue_size=10)
+        # self.wp_pub = rospy.Publisher("/waypoint_path", Waypoint, queue_size=10)
+        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10)
 
         self.plan = None
         print(self.mission)
+        rospy.logwarn("Is your home location set correctly (see ref_params in .launch file)?")
         self.Va = Va
+
+        export = False
+        if export:
+            import os, pickle
+            from os.path import expanduser
+            with open(os.path.join(expanduser("~"), "Documents", "mis.pkl"), 'wb') as f:
+                pickle.dump(self.mission, f)
 
     def update_path_callback(self, req):
         """
