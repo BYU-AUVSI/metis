@@ -46,7 +46,7 @@ class PayloadPlanner(Planner):
         self.NED_release_location = np.array([0.0,0.0,0.0]) # location where the command to relase should be given [N, E, D]
         self.waypoints = np.zeros((1,3))            # flight waypoints
         self.waypoints_array = np.zeros((1,3))      # numpy list of flight waypoints
-        self.waypoint_spread = 25.0                 # distance between supporting waypoints in meters
+        self.waypoint_spread = 25.0#25.0                 # distance between supporting waypoints in meters
         self.supporting_points = 2                  # number of supporting waypoints on either side of drop waypoint
         self.chi_offset = 0.0                       # offset for commanded chi calculation if waypoint is inside an obstacle
         self.ii = 0
