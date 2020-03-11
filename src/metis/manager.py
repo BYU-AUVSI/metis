@@ -169,6 +169,8 @@ class MissionManager(object):
         if altitude <= 0.0:
             warnings.warn("Current altitude is 0 meters or less. Are you sure this is accurate?", RuntimeWarning)
         planned_points = self.planners["landing"].plan(waypoints, altitude)
+        # TODO: Planner needs to plan points from current position to start of
+        # approach, and not do an RRT on final.
         plan = self._apply_rrt(planned_points, max_rel_chi=10*np.pi/16)
         return plan
 
