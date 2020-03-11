@@ -142,6 +142,7 @@ class Plan:
         mp = MissionPlotter(self.mission)
         mp.add_pathway(self.waypoints, "Planned pathway")
         mp.show(block=block)
+        self.waypoints = mp.getNEDlist()
 
     def accept(self):
         if self.callback:

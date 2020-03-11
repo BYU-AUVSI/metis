@@ -5,6 +5,7 @@
 import numpy as np
 # import rospy
 from matplotlib import pyplot as plt
+from metis.messages import msg_ned
 # from uav_msgs.msg import JudgeMission, State #,NED_list, NED_pt
 
 # from metis import tools
@@ -31,8 +32,11 @@ class MissionPlotter:
         self.state_track_e = []
         self.state_track_length = 1000
         self.state_plt = None 
-        self.plannedWaypoints = None
-        self.plottedWaypoints = None
+        self.nedWaypoints = None
+        self.arrayWaypoints = None
+        self.idxToUpdate = None
+        self.doubleclick = False
+        self.selected = False
         self.mission = mission
         self.cid = self.fig.canvas.mpl_connect('button_press_event', self.onclick) # Variable that will allow for event callbacks
         #self.ax.scatter(self.state_track_n, self.state_track_e, label="Plane State", c="red", s=15)
@@ -87,16 +91,14 @@ class MissionPlotter:
         Add waypoints
         """
         points = self.NEDListToNEnp(pointList)
-        self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker)
+        self.wapts = self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker)
 
     def add_pathway(self, pointList, label, ptColor='red', pathColor='cyan'):
-        self.plannedWaypoints = pointList
+        self.nedWaypoints = pointList
         self.add_waypoints(pointList, label, color=ptColor, size=6, marker='x')
         points = self.NEDListToNEnp(pointList)
-        print(points)
-        print(points[0] - points[1])
-        self.plottedWaypoints = points
-        self.ax.plot(points[:,0], points[:,1], c=pathColor)
+        self.arrayWaypoints = points
+        self.pths = self.ax.plot(points[:,0], points[:,1], c=pathColor)
 
     def plotState(self, msg):
         self.state_counter += 1
@@ -123,53 +125,58 @@ class MissionPlotter:
         plt.legend()
         plt.show(block=block)
 
-
     def updatePlot(self):
-        plt.cla()
-        self.add_region(self.mission.search_area, "Search Region", color="orange")
-        self.add_region(self.mission.boundary_list, "Boundary")
-        self.add_obstacles(self.mission.obstacles, "Obstacles")
-        self.add_waypoints([self.mission.drop_location], "Drop Target", color="green", size=25, marker="X")
-        self.add_waypoints(self.mission.waypoints,"Objective Waypoints",color="blue",size=12,marker="o",)
-        # Draw new points and path
+        self.selection.remove() # Remove circle around selected point
+        del self.ax.lines[0] # Remove lines from plot
+        self.ax.collections.remove(self.wapts) # Remove scatterplot points from plot
+        self.add_pathway(self.nedWaypoints, "Planned pathway") # Add new lines and scatterplot to plot with updated waypoints
+        self.fig.show() # Show the plot
+    
+    def showSelected(self):
+        circ = plt.Circle(self.arrayWaypoints[self.idxToUpdate], 15, fill=False, color="orange")
+        self.selection = self.ax.add_artist(circ)
+        self.fig.show()
+    
+    def removeSelected(self):
+        self.selection.remove()
         self.show()
 
-
     def onclick(self, event):
-        pass
-        # if self.doubleclick:
-        #     if event.button == 1: # Left click
-        #         self.doubleclick = False
-        #     elif event.button == 2: # Middle click
-        #         self.doubleclick = False
-        #         del self.x[self.idxToUpdate]
-        #         del self.y[self.idxToUpdate]
-        #         self.updatePlot()
-        #     elif event.button == 3: # Right click
-        #         self.doubleclick = False
-        #         self.idxToUpdate += 1
-        #         self.x[self.idxToUpdate:self.idxToUpdate] = [event.xdata]
-        #         self.y[self.idxToUpdate:self.idxToUpdate] = [event.ydata]
-        #         self.updatePlot()
-        # elif event.dblclick:
-        #     self.doubleclick = True
-        #     diffx = event.xdata - self.x
-        #     diffy = event.ydata - self.y
-        #     dist = diffx * diffx + diffy * diffy
-        #     self.idxToUpdate = np.argmin(dist)
-        # elif event.button == 3 and self.selected:
-        #     self.selected = False
-        # elif event.button == 3:
-        #     diffx = event.xdata - self.x
-        #     diffy = event.ydata - self.y
-        #     dist = diffx * diffx + diffy * diffy
-        #     self.idxToUpdate = np.argmin(dist)
-        #     self.selected = True
-        # elif event.button == 1 and self.selected:
-        #     self.selected = False
-        #     self.x[self.idxToUpdate] = event.xdata
-        #     self.y[self.idxToUpdate] = event.ydata
-        #     self.updatePlot()
+        if self.doubleclick:
+            if event.button == 1: # Left click
+                self.doubleclick = False
+                self.removeSelected()
+            elif event.button == 2: # Middle click
+                self.doubleclick = False
+                self.updateNEDList(event, remove=True)
+                self.updatePlot()
+            elif event.button == 3: # Right click
+                self.doubleclick = False
+                self.idxToUpdate += 1
+                self.updateNEDList(event, add=True)
+                self.updatePlot()
+        elif event.dblclick:
+            self.doubleclick = True
+            diffx = event.xdata - self.arrayWaypoints[:,0]
+            diffy = event.ydata - self.arrayWaypoints[:,1]
+            dist = diffx * diffx + diffy * diffy
+            self.idxToUpdate = np.argmin(dist)
+            self.showSelected()
+        elif event.button == 3 and self.selected:
+            self.selected = False
+            self.removeSelected()
+        elif event.button == 3:
+            self.selected = True
+            diffx = event.xdata - self.arrayWaypoints[:,0]
+            diffy = event.ydata - self.arrayWaypoints[:,1]
+            dist = diffx * diffx + diffy * diffy
+            self.idxToUpdate = np.argmin(dist)
+            self.showSelected()
+        elif event.button == 1 and self.selected:
+            self.selected = False
+            self.arrayWaypoints[self.idxToUpdate] = [event.xdata, event.ydata]
+            self.updateNEDList(event, update=True)
+            self.updatePlot()
 
 
     def NEDListToNEnp(self, pointList):
@@ -181,24 +188,42 @@ class MissionPlotter:
             nePt = np.array([[nedPoint.e, nedPoint.n]])
             npPoints = np.append(npPoints, nePt, axis=0)
 
-        print("NED List\n\n")
-        print(type(pointList))
-        print(pointList)
-        print("\n\npoints\n\n")
-        print(type(npPoints))
-        print(npPoints)
-
         return npPoints
 
-    def NEnpToNEDList(self, points):
+    def updateNEDList(self, eventdata, update=False, remove=False, add=False):
         """
         Convert an nx2 numpy array with col 1 = E and col 2 = N to a list of NED points
         """
-        pointList = [[]]
-        for nePoint in points:
+        if update:
+            self.nedWaypoints[self.idxToUpdate].e = eventdata.xdata
+            self.nedWaypoints[self.idxToUpdate].n = eventdata.ydata
+        elif add:
+            e = eventdata.xdata
+            n = eventdata.ydata
+            d = -0.0
+            r = 0
+            if self.idxToUpdate >= len(self.nedWaypoints):
+                print(self.nedWaypoints)
+                d = self.nedWaypoints[self.idxToUpdate-1].d
+                self.nedWaypoints.append(msg_ned(n, e, d, r))
+                print(self.nedWaypoints)
+            else:
+                a = self.nedWaypoints[self.idxToUpdate-1].to_nparray()
+                b = self.nedWaypoints[self.idxToUpdate].to_nparray()
+                self.nedWaypoints.insert(self.idxToUpdate,msg_ned(n, e, d, r))
+                cur = self.nedWaypoints[self.idxToUpdate].to_nparray()
+                dista = np.linalg.norm(cur[0:1]-a[0:1])
+                distb = np.linalg.norm(cur[0:1]-b[0:1])
+                distpercentage = dista / (dista+distb)
+                d = a[2] - ((a[2]-b[2]) * distpercentage)
+                self.nedWaypoints[self.idxToUpdate].d = d
+        elif remove:
+            del self.nedWaypoints[self.idxToUpdate]
+        else:
             pass
-
-
+        
+    def getNEDlist(self):
+        return self.nedWaypoints
 
 
 
