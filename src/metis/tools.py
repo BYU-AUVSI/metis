@@ -84,3 +84,20 @@ def bounds2poly(boundaries):
         Returns the Polygon representing the boundaries.
     """
     return Polygon([[bound.n, bound.e] for bound in boundaries])
+
+
+def ft2m(feet):
+    """
+    Convenience function for converting from feet to meters.
+
+    Parameters
+    ----------
+    feet : float
+        Length in feet.
+
+    Returns
+    -------
+    float
+        Length in meters.
+    """
+    return float(feet / 3.2808)
