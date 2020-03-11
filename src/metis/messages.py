@@ -68,10 +68,13 @@ class msg_ned(object):
 
     def __eq__(self, other):
         return isinstance(other, msg_ned) and \
-            self.n == other.n and \
-            self.e == other.e and \
-            self.d == other.d and \
-            self.r == other.r
+            float(self.n) == float(other.n) and \
+            float(self.e) == float(other.e) and \
+            float(self.d) == float(other.d) and \
+            float(self.r) == float(other.r)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def to_array(self, radius=True):
         """
