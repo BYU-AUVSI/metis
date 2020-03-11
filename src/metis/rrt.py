@@ -2,6 +2,12 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
+"""
+Maybe we can have an expanding circle that figures out the best direction
+to approach from? Then, as it expands, it assigns weights or eliminates bad
+headings that shouldn't be used as an approach.
+"""
+
 from __future__ import print_function
 
 import copy
@@ -368,39 +374,8 @@ class RRT():
 
         # Since the origin of each leg was the destination of the previous
         # leg, we need to remove the repetitive nodes.
-        # full_path = [elem for i, elem in enumerate(full_path) if i == 0 or full_path[i-1] != elem]
-        # return full_path
-        new_path = []
-        for i, elem in enumerate(full_path):
-            if i == 0 or new_path[-1] != elem:
-                if i == 0:
-                    print(elem)
-                else:
-                    print(elem, new_path[-1])
-                print("Different, added")
-                new_path.append(elem)
-            else:
-                print(elem, new_path[-1])
-                print("Same, skipped")
-        return new_path
-        # print("new\n", full_path)
-        # new_path = []
-        # for elem in full_path:
-        #     try:
-        #         prev = new_path[-1]
-        #         # print("Compare\n {} == {} {}\n {} == {} {}\n {} == {} {}\n {} == {} {}\nelem == prev: {}".format(elem.n, prev.n, elem.n==prev.n, elem.e, prev.e, elem.e==prev.e, elem.d, prev.d, elem.d==prev.d, elem.r, prev.r, elem.r==prev.r, elem==prev))
-        #         if elem == prev:
-        #             # print("Skipped")
-        #             pass
-        #         else:
-        #             # print("Added")
-        #             new_path.append(elem)
-        #     except:
-        #         # print("first:", elem)
-        #         new_path.append(elem)
-        #     # print('\n')
-
-        # return full_path
+        full_path = [elem for i, elem in enumerate(full_path) if i == 0 or full_path[i-1] != elem]
+        return full_path
 
     # def findPath(self, waypoint1, waypoint2, start_chi=8888, connect=False):
 
@@ -602,7 +577,7 @@ def find_path(w1, w2, obstacles, bound_poly, start_chi=None, connect=False, conf
 
     # elif len(bestPath) == 2:
     #     pass
-    debug = True
+    debug = False
     if debug:
         n = np.array([item.n for item in bestPath])
         e = np.array([item.e for item in bestPath])
@@ -815,7 +790,7 @@ def flyable_path(obstacles, bound_poly, startNode, endNode, prevChi, chi, third_
         prevChi = wrap2pi(prevChi)
         chi = wrap2pi(chi)
         wrappedPrevChi = wrapAminusBToPi(prevChi, chi)
-        if abs(wrappedPrevChi) > config.max_rel_chi: # changed > to < - don't we want to avoid tight turns?
+        if abs(wrappedPrevChi) > config.max_rel_chi: # FIXME: change > to < - don't we want to avoid tight turns?
             _logger.debug("Chi difference too large, {} > {}".format(abs(wrappedPrevChi) , config.max_rel_chi))
             _logger.debug("prevChi = {}, chi = {}".format(prevChi, chi))
             return False
@@ -1051,7 +1026,7 @@ def random_point(nmax, nmin, emax, emin):
 
 def heading(p0, p1):
     """
-    Computes the heading from one waypoint to another.
+    Computes the heading from the first waypoint to the second.
 
     Parameters
     ----------
@@ -1063,7 +1038,7 @@ def heading(p0, p1):
     Returns
     -------
     chi : float
-        The heading from the origin to the destinationw waypoints.
+        The heading from the origin to the destination waypoints.
     """
     return np.arctan2((p1.e - p0.e), (p1.n - p0.n))
 
@@ -1148,6 +1123,7 @@ def wrap2pi(rad):
 
 
 def wrapAminusBToPi(A, B):
+    # Is this just a difference in headings?
     diff_wrap = wrap2pi(A - B)
     return diff_wrap
 
