@@ -65,8 +65,8 @@ class MissionPlanner(object):
         self._services.append(rospy.Service("review_plan", UploadPath, self.review_plan))
 
         # self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        # self.wp_pub = rospy.Publisher("/waypoint_path", Waypoint, queue_size=10)
-        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10)
+        # self.wp_pub = rospy.Publisher("/waypoint_path", Waypoint, queue_size=10) # This is for real life
+        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10) # This is for simulation
 
         self.plan = None
         print(self.mission)
@@ -76,8 +76,8 @@ class MissionPlanner(object):
         export = False
         if export:
             import os, pickle
-            from os.path import expanduser
-            with open(os.path.join(expanduser("~"), "Documents", "mis.pkl"), 'wb') as f:
+            path = os.path.abspath(os.path.join(os.path.abspath(__file__), '..', '..','..','..','examples', 'tests'))
+            with open(os.path.join(path, "mis.pkl"), 'wb') as f:
                 pickle.dump(self.mission, f)
 
     def review_plan(self, req):
