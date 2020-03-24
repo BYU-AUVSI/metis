@@ -29,6 +29,10 @@ To run Metis as a standalone package, just pull the latest code from the reposit
 git clone https://github.com/BYU-AUVSI/metis.git
 ```
 
+# TODO
+The planner can always plan from the current location if ros is updating it in the Mission object
+(or MissionManager, forgot which one).
+
 # Testing
 
 Metis uses the [pytest](https://docs.pytest.org/en/latest/) testing framework. Since Metis can be

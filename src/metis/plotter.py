@@ -92,6 +92,8 @@ class MissionPlotter:
         """
         points = self.NEDListToNEnp(pointList)
         self.wapts = self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker)
+        for i, point in enumerate(pointList):
+            self.ax.text(point.e, point.n, str(i))
 
     def add_pathway(self, pointList, label, ptColor='red', pathColor='cyan'):
         self.nedWaypoints = pointList
