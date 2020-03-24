@@ -4,6 +4,8 @@
 
 import numpy as np
 
+from shapely.geometry import Polygon, LineString, Point
+
 from metis.messages import msg_ned
 from metis.planners import Planner
 from metis.rrt import heading
@@ -50,22 +52,53 @@ class LandingPlanner(Planner):
 
         # return [approach_wpt, landing_wpt]
 
+        debug = True
+
         touchdown_point = landing_waypoint_list[0]
         touchdown_point.d = 0
         heading_point = landing_waypoint_list[1]
         chi = heading(touchdown_point, heading_point)
 
-        import matplotlib.pyplot as plt
-        n = np.array([item.n for item in landing_waypoint_list])
-        e = np.array([item.e for item in landing_waypoint_list])
-        plt.plot(e, n, 'rx-')
-        for i in range(len(n)):
-            plt.text(e[i], n[i], str(i))
-        plt.axis('equal')
-        plt.show()
+        # if debug:
+        #     import matplotlib.pyplot as plt
+        #     n = np.array([item.n for item in landing_waypoint_list])
+        #     e = np.array([item.e for item in landing_waypoint_list])
+        #     plt.plot(e, n, 'rx-')
+        #     for i in range(len(n)):
+        #         plt.text(e[i], n[i], str(i))
+        #     plt.axis('equal')
+        #     plt.show()
 
+        # obstacles is a list of msg_ned
+        obstacles = self.mission.obstacles
+        shapes = []
+        resolution = 360
+        for o in obstacles:
+            pts = [(o.r*np.cos(x) + o.e, o.r*np.sin(x) + o.n) for x in np.linspace(0, np.pi*2, resolution)]
+            shapes.append(Polygon(pts))
+
+        if debug:
+            import matplotlib.pyplot as plt
+            n = np.array([item.n for item in landing_waypoint_list])
+            e = np.array([item.e for item in landing_waypoint_list])
+            plt.plot(e, n, 'rx-')
+            for i in range(len(n)):
+                plt.text(e[i], n[i], str(i))
+            for o in shapes:
+                plt.plot(*o.exterior.xy)
+            plt.axis('equal')
+            plt.show()
+
+        td_pnt_shapely = Point(touchdown_point.e, touchdown_point.n, touchdown_point.d)
         entry_altitude = ft2m(110)
         entry_distance = entry_altitude / np.tan(self.descent_angle)
+        entry_pnt_shapely = Point(touchdown_point.e - entry_distance * np.sin(chi), touchdown_point.n - entry_distance * np.cos(chi), -entry_altitude)
+
+        print(td_pnt_shapely)
+        print(entry_pnt_shapely)
+        line = LineString([td_pnt_shapely, entry_pnt_shapely])
+
+        
         delta_n = entry_distance * np.cos(chi)
         delta_e = entry_distance * np.sin(chi)
 
