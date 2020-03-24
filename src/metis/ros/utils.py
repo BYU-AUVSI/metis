@@ -152,22 +152,6 @@ def get_server_data(mission_type, ref_pos):
     return mission_type, obstacles, boundary_list, boundary_poly, waypoints
 
 
-def ft2m(feet):
-    """
-    Convenience function for converting from feet to meters.
-
-    Parameters
-    ----------
-    feet : float
-        Length in feet.
-
-    Returns
-    -------
-    float
-        Length in meters.
-    """
-    return float(feet / 3.2808)
-
 def _convert_obstacles(msg, ref_pos):
     """
     Converts obstacles from a rospy message to a list of NED objects.
@@ -226,7 +210,7 @@ def _convert_waypoints(msg, ref_pos):
     for i in msg.waypoints:
         wpt = GPSWaypoint(i.point.latitude, i.point.longitude, i.point.altitude)
         ned = wpt.ned_from(ref_pos)
-        ned.d -= 22.0 # TODO: For some reason, ground level is -22.0
+        # ned.d -= 22.0 # TODO: For some reason, ground level is -22.0
         waypoint_list.append(ned)
 
     return waypoint_list

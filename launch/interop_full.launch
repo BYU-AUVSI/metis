@@ -4,16 +4,21 @@
   <param name="ref_lon" value="-76.805290"/> -->
 
   <!-- Naval Air Base -->
-  <param name="ref_lat" value="38.146293"/>
+  <!-- <param name="ref_lat" value="38.146293"/>
   <param name="ref_lon" value="-76.429509"/>
-  <param name="ref_h" value="0"/>
+  <param name="ref_h" value="0"/> -->
 
   <!-- Springville -->
   <!-- <param name="ref_lat" value="40.174571"/>
   <param name="ref_lon" value="-111.651641"/>
   <param name="ref_h" value="1402.08"/> -->
 
-  <param name="target_h" value="40" />
+  <!-- Elberta -->
+  <param name="ref_lat" value="39.982930"/>
+  <param name="ref_lon" value="-111.989435"/>
+  <param name="ref_h" value="1502.00"/>
+
+  <param name="target_h" value="60" />
   <param name="SEARCH" value="2"/>
   <param name="PAYLOAD" value="1"/>
   <param name="LOITER" value="7"/>

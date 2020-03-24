@@ -9,6 +9,7 @@ from uav_msgs.msg import JudgeMission, State
 from rosplane_msgs.msg import Waypoint
 from uav_msgs.srv import (
     PlanMissionPoints,
+    PlanLandingPoints,
     UploadPath,
     NewWaypoints,
     UpdateSearchParams,
@@ -59,11 +60,13 @@ class MissionPlanner(object):
         self._services.append(rospy.Service("approved_path", UploadPath, self.update_path_callback))
         self._services.append(rospy.Service("clear_wpts", UploadPath, self.clear_waypoints))
         self._services.append(rospy.Service("plan_path", PlanMissionPoints, self.update_task_callback))
+        self._services.append(rospy.Service("plan_landing", PlanLandingPoints, self.landing_task_callback))
         self._services.append(rospy.Service("update_search_params", UpdateSearchParams, self.update_search_params))
+        self._services.append(rospy.Service("review_plan", UploadPath, self.review_plan))
 
         # self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        # self.wp_pub = rospy.Publisher("/waypoint_path", Waypoint, queue_size=10)
-        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10)
+        # self.wp_pub = rospy.Publisher("/waypoint_path", Waypoint, queue_size=10) # This is for real life
+        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10) # This is for simulation
 
         self.plan = None
         print(self.mission)
@@ -73,9 +76,14 @@ class MissionPlanner(object):
         export = False
         if export:
             import os, pickle
-            from os.path import expanduser
-            with open(os.path.join(expanduser("~"), "Documents", "mis.pkl"), 'wb') as f:
+            path = os.path.abspath(os.path.join(os.path.abspath(__file__), '..', '..','..','..','examples', 'tests'))
+            with open(os.path.join(path, "mis.pkl"), 'wb') as f:
                 pickle.dump(self.mission, f)
+
+    def review_plan(self, req):
+        if self.plan:
+            self.plan.plot()
+        return True
 
     def update_path_callback(self, req):
         """
@@ -180,20 +188,21 @@ class MissionPlanner(object):
             plan = self.manager.plan("offaxis")
 
         elif TASK == JudgeMission.MISSION_TYPE_LAND:
-            rospy.loginfo("LANDING PATH BEING PLANNED")
-            landing_msg = req.landing_waypoints
-            if len(landing_msg.waypoint_list) == 2:
-                try:
-                    pos_msg = rospy.wait_for_message("/state", State, timeout=1)
-                    curr_altitude = pos_msg.position[2]
-                except rospy.ROSException as e:
-                    curr_altitude = 0.0
-                    rospy.logerr("LANDING - No state message received. Setting current altitude to {}".format(curr_altitude))
+            # rospy.loginfo("LANDING PATH BEING PLANNED")
+            # landing_msg = req.landing_waypoints
+            # if len(landing_msg.waypoint_list) == 2:
+            #     try:
+            #         pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+            #         curr_altitude = pos_msg.position[2]
+            #     except rospy.ROSException as e:
+            #         curr_altitude = 0.0
+            #         rospy.logerr("LANDING - No state message received. Setting current altitude to {}".format(curr_altitude))
 
-                landing_wypts = utils.msg2wypts(landing_msg)
-                plan = self.manager.plan("landing", landing_wypts, curr_altitude)
-            else:
-                raise RuntimeError("Error in provided landing waypoints! {} waypoints specified.".format(len(landing_msg.waypoint_list)))
+            #     landing_wypts = utils.msg2wypts(landing_msg)
+            #     plan = self.manager.plan("landing", landing_wypts, curr_altitude)
+            # else:
+            #     raise RuntimeError("Error in provided landing waypoints! {} waypoints specified.".format(len(landing_msg.waypoint_list)))
+            rospy.logerr('Landing planner no longer in /plan_path, call /plan_landing instead.')
 
         # I believe the emergent object is just within the normal search boundaries
         elif TASK == JudgeMission.MISSION_TYPE_EMERGENT:
@@ -203,6 +212,31 @@ class MissionPlanner(object):
             rospy.logfatal("TASK ASSIGNED BY GUI DOES NOT HAVE ASSOCIATED PLANNER")
 
         wypts_msg = utils.wypts2msg(plan.waypoints, TASK)
+        plan.plot()
+
+        self.plan = plan
+
+        print(wypts_msg)
+        return wypts_msg
+
+    def landing_task_callback(self, req):
+        rospy.loginfo("LANDING PATH BEING PLANNED")
+        landing_msg = req.landing_waypoints
+        if len(landing_msg.waypoint_list) == 2:
+            try:
+                pos_msg = rospy.wait_for_message("/state", State, timeout=1)
+                curr_altitude = pos_msg.position[2]
+            except rospy.ROSException as e:
+                curr_altitude = 0.0
+                rospy.logerr("LANDING - No state message received. Setting current altitude to {}".format(curr_altitude))
+
+            landing_wypts = utils.msg2wypts(landing_msg)
+            # plan = self.manager.plan("landing", landing_wypts, curr_altitude)
+            plan = self.manager.plan_landing(landing_wypts, curr_altitude)
+        else:
+            raise RuntimeError("Error in provided landing waypoints! {} waypoints specified (expected 2).".format(len(landing_msg.waypoint_list)))
+
+        wypts_msg = utils.wypts2msg(plan.waypoints, JudgeMission.MISSION_TYPE_LAND)
         plan.plot()
 
         self.plan = plan

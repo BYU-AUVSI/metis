@@ -19,7 +19,7 @@ from metis.planners import (
     PayloadPlanner,
     SearchPlanner,
 )
-from metis.rrt import RRT
+from metis.rrt import RRT, Config
 
 log = logging.getLogger('METIS')
 
@@ -86,7 +86,7 @@ class MissionManager(object):
         log.info("Plan approved.")
         self.plans.append(plan)
 
-    def _apply_rrt(self, planned_points, max_rel_chi=(15*np.pi/16), connect=False):
+    def _apply_rrt(self, planned_points, config=Config, connect=False):
         """
         Private function that applies the RRT algorithm to generated paths.
 
@@ -106,8 +106,7 @@ class MissionManager(object):
             Returns a Plan object representing the final plan.
         """
         # rrt = RRT(self.mission.obstacles, self.mission.boundary_list)
-        rrt = RRT(self.mission)
-        rrt.maxRelChi = max_rel_chi
+        rrt = RRT(self.mission, config=config)
 
         if self.plans:
             log.info("Planning from last waypoint of previous path")
@@ -169,7 +168,11 @@ class MissionManager(object):
         if altitude <= 0.0:
             warnings.warn("Current altitude is 0 meters or less. Are you sure this is accurate?", RuntimeWarning)
         planned_points = self.planners["landing"].plan(waypoints, altitude)
-        plan = self._apply_rrt(planned_points, max_rel_chi=10*np.pi/16)
+        # TODO: Planner needs to plan points from current position to start of
+        # approach, and not do an RRT on final.
+        # max_rel_chi=10*np.pi/16
+        config = Config(max_rel_chi=np.radians(60))
+        plan = self._apply_rrt(planned_points, config=config)
         return plan
 
     def plan_loiter(self, current_pos=None):
@@ -191,6 +194,7 @@ class MissionManager(object):
 
     def plan_objective(self):
         planned_points = self.planners["objective"].plan()
+        config = Config(max_rel_chi=np.radians(60))
         plan = self._apply_rrt(planned_points, connect=True)
         return plan
 
@@ -210,7 +214,8 @@ class MissionManager(object):
         """
         planned_points, drop_location = self.planners["payload"].plan(wind)
         # Be more picky about tight turns while performing the payload drop
-        plan = self._apply_rrt(planned_points, max_rel_chi=10*np.pi/16)
+        # max_rel_chi=10*np.pi/16
+        plan = self._apply_rrt(planned_points)
         plan.params["drop_location"] = drop_location
         return plan
 

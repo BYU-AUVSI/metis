@@ -7,7 +7,7 @@ from shapely.geometry import Point
 import matplotlib.pyplot as plt
 
 from metis.messages import msg_ned
-from metis.tools import makeBoundaryPoly
+from metis.tools import makeBoundaryPoly, bounds2poly
 from metis.planners import Planner
 
 class SearchPlanner(Planner):
@@ -26,7 +26,7 @@ class SearchPlanner(Planner):
         mission : metis.core.Mission
             A mission description object.
         waypoint_distance : float
-            The distance each point in the lawn mower path should be from its neighbors
+            The distance each point in the lawn mower path should be from its neighbors, in meters
         height : float
             
         """
@@ -68,42 +68,75 @@ class SearchPlanner(Planner):
 
         """
         search_boundaries = self.mission.search_area
-        self.search_boundaries = makeBoundaryPoly(search_boundaries)
+        self.search_boundaries = bounds2poly(search_boundaries)
 
         # Find the box that fits the search area
-        num_points = len(search_boundaries)
-        n_pos = np.zeros(num_points)
-        e_pos = np.zeros(num_points)
-        for i in np.arange(num_points):
-            n_pos[i] = search_boundaries[i].n
-            e_pos[i] = search_boundaries[i].e
+        # num_points = len(search_boundaries)
+        # n_pos = np.zeros(num_points)
+        # e_pos = np.zeros(num_points)
+        # for i in np.arange(num_points):
+        #     n_pos[i] = search_boundaries[i].n
+        #     e_pos[i] = search_boundaries[i].e
         
-        w_bound = np.min(e_pos) - self.waypoint_distance
-        e_bound = np.max(e_pos) + self.waypoint_distance
-        n_bound = np.max(n_pos) + self.waypoint_distance
-        s_bound = np.min(n_pos) - self.waypoint_distance
+        min_n, min_e, max_n, max_e = self.search_boundaries.bounds
+        w_bound = min_e - self.waypoint_distance
+        e_bound = max_e + self.waypoint_distance
+        n_bound = max_n + self.waypoint_distance
+        s_bound = min_n - self.waypoint_distance
 
         search_box = [msg_ned(n_bound, e_bound), msg_ned(s_bound, e_bound), msg_ned(s_bound, w_bound), msg_ned(n_bound, w_bound)]
-        search_box_p = makeBoundaryPoly(search_box)
+        search_box_p = bounds2poly(search_box)
 
-        # Initialize variables for creating the search path
-        all_points = []
-        cur_pos = msg_ned(n_bound, w_bound, current_pos.d, -33.0)
-        direction = 1 # Positive advances the path to the right, negative moves the path to the left. Changes each time it needs to turn around to stay in the search area
+        long_axis = 'NS' if (max_n - min_n) > (max_e - min_e) else 'EW'
 
-        # Create the lawn mower path
-        all_points.append(msg_ned(cur_pos.n, cur_pos.e, current_pos.d)) #Start path at the North-East corner of the bounding box
-        while cur_pos.n >= s_bound: #Stop adding points once we are below the bounding box
-            while cur_pos.e >= w_bound and cur_pos.e <= e_bound: #Add points on an East-West or West-East line until we leave the bounding box
-                cur_pos.e = cur_pos.e + direction*self.waypoint_distance 
-                all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
-            direction = -direction #When we leave the bounding box, turn around
-            cur_pos.n = cur_pos.n - self.waypoint_distance #Advance path one step in a South direction
-            all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
-            while cur_pos.e <= w_bound or cur_pos.e >= e_bound: #Bring the path back inside the bounding box area
-                cur_pos.e = cur_pos.e + direction*self.waypoint_distance
-                all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
-        
+        x = np.arange(min_e, max_e + self.waypoint_distance, self.waypoint_distance)[::-1]
+        # x = np.append(x, x[-1] + self.waypoint_distance)
+        y = np.arange(min_n - self.waypoint_distance, max_n, self.waypoint_distance)[::-1]
+        # y = np.append(y, y[-1] + self.waypoint_distance)
+        # xx, yy = np.meshgrid(x, y, sparse=True)
+        # print(xx, yy)
+        # z = np.sin(xx**2 + yy**2) / (xx**2 + yy**2)
+        # h = plt.contourf(x,y,z)
+        # plt.show()
+
+        if long_axis == 'NS':
+            print('NS')
+            all_points = self.zamboni(y, x)
+        else:
+            print('EW')
+            all_points = self.zamboni(x, y)
+
+        all_points = [msg_ned(point[0], point[1], -self.height) for point in all_points]
+
+        # if visualize:
+        #     fig, ax = plt.subplots()
+        #     for point in all_points:
+        #         ax.scatter(point.e, point.n, c='k')
+        #     for point in self.flight_boundaries:
+        #         ax.scatter(point.e, point.n, c='r')
+        #     for point in search_boundaries:
+        #         ax.scatter(point.e, point.n, c='g')
+        #     plt.show()
+
+        # # Initialize variables for creating the search path
+        # all_points = []
+        # cur_pos = msg_ned(n_bound, w_bound, current_pos.d, -33.0)
+        # direction = 1 # Positive advances the path to the right, negative moves the path to the left. Changes each time it needs to turn around to stay in the search area
+
+        # # Create the lawn mower path
+        # all_points.append(msg_ned(cur_pos.n, cur_pos.e, current_pos.d)) #Start path at the North-East corner of the bounding box
+        # while cur_pos.n >= s_bound: #Stop adding points once we are below the bounding box
+        #     while cur_pos.e >= w_bound and cur_pos.e <= e_bound: #Add points on an East-West or West-East line until we leave the bounding box
+        #         cur_pos.e = cur_pos.e + direction*self.waypoint_distance 
+        #         all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
+        #     direction = -direction #When we leave the bounding box, turn around
+        #     cur_pos.n = cur_pos.n - self.waypoint_distance #Advance path one step in a South direction
+        #     all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
+        #     while cur_pos.e <= w_bound or cur_pos.e >= e_bound: #Bring the path back inside the bounding box area
+        #         cur_pos.e = cur_pos.e + direction*self.waypoint_distance
+        #         all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
+
+
         # Eliminate points that are too close to the flight boundary or too far from the search area
         final_waypoints = []
         for waypoint in all_points:
@@ -124,3 +157,67 @@ class SearchPlanner(Planner):
             plt.show()
         
         return final_waypoints
+
+
+    def zamboni(self, long_axis, short_axis):
+        """
+        Suppose we have a search as follows:
+
+        \ A B C D E F G H I J K L M N O P
+        1 . . . . . . . . . . . . . .
+        2 . . . . . . . . . . . . . . .
+        3 . . . . . .     . . . . . . . .
+        4   . . . . . . . . . . . . . . .
+        5     . . . . . . . . . . . . .
+
+        The long axis is the alphabetical axis, and the short axis is the numerical
+        axis.
+
+        Paths are planned beginning at the north east corner.
+
+        Parameters
+        ----------
+        long_axis : np.ndarry, dtype=float
+            An array containing the coordinates along the longer axis.
+        short_axis : np.ndarry, dtype=float
+            An array containing the coordinates along the shorter axis.
+        """
+        turns = np.shape(short_axis)[0] - 1
+
+        waypoints = []
+        direction = 1
+        for i in reorder(short_axis):
+            for j in long_axis[::direction]:
+                # print(i, j)
+                waypoints.append((i, j))
+            direction = -direction
+
+        # fig, ax = plt.subplots()
+        # counter = 1
+        # for waypoint in waypoints:
+        #     plt.plot(waypoint[1], waypoint[0], 'rx')
+        #     ax.text(waypoint[1], waypoint[0], str(counter))
+        #     counter += 1
+        # x, y = self.search_boundaries.exterior.xy
+        # plt.plot(y, x)
+        # plt.show()
+
+        return waypoints
+
+def reorder(short_axis):
+    start, mid = 0, int(np.ceil(len(short_axis)/2.))
+    reordered = np.array([])
+
+    passes = 0
+    middle = False
+    while passes < len(short_axis):
+        if not middle:
+            reordered = np.append(reordered, short_axis[start])
+            start += 1
+        else:
+            reordered = np.append(reordered, short_axis[mid])
+            mid += 1
+        middle = not middle
+        passes += 1
+
+    return reordered

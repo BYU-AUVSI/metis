@@ -2,6 +2,9 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
+from __future__ import print_function
+import logging
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -9,8 +12,10 @@ from metis.tools import will_collide#, makeBoundaryPoly, convert
 from metis.messages import msg_ned
 from metis.planners import Planner
 
+_module_logger = logging.getLogger('METIS')
 
 class PayloadPlanner(Planner):
+    log = _module_logger.getChild('PayloadPlanner')
     """
     inputs: drop gps location, wind, obstacles
     outputs: X number of waypoints with a single drop waypoint
@@ -25,14 +30,14 @@ class PayloadPlanner(Planner):
         dropLocation : NED class
             The goal drop location
         obstacles : list of NED classes
-            static obastacles
+            static obstacles
         boundaries : polygon
             polygon defined by boundaries
         wind : list
             current estimate for the wind vector in [north, east, down]
         """
         super(PayloadPlanner, self).__init__(mission)
-        self.dropLocation = mission.drop_location   # location of where on the ground we want to hit [N, E, D]
+        self.dropLocation = mission.drop_location   # location of where on the ground we want to hit (msg_ned)
         self.wind = wind                            # current wind vector [Wn,We,Wd]
         self.drop_altitude = 34.0                   # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 2.5                       # seconds between command to open and baydoor opening
@@ -85,8 +90,19 @@ class PayloadPlanner(Planner):
             self.waypoints = self.calcSupportingPoints()
             self.chi_offset += np.radians(15.)
             #print("planned for angle of ",self.chi_offset)
+
         drop_output = [self.NED_release_location.item(0),self.NED_release_location.item(1),self.NED_release_location.item(2)]
         #print("drop output =",drop_output)
+
+        # debug = True
+        # if debug:
+        #     plt.figure()
+        #     for point in self.waypoints:
+        #         plt.plot(point.e, point.n, 'rx')
+        #     plt.show()
+        # self.plot()
+
+
         return self.waypoints, drop_output
 
     def calcClosedParachuteDrop(self):
@@ -161,6 +177,7 @@ class PayloadPlanner(Planner):
         psi_wind = np.arctan2(wind_east,wind_north)
         course_command = np.arctan2(-wind_east,-wind_north)
         self.course_command = course_command + offset
+        self.log.debug("Course command: {}".format(self.course_command))
 
     def calcSupportingPoints(self):
         """
@@ -199,7 +216,7 @@ class PayloadPlanner(Planner):
         ax = fig.add_subplot(111, projection='3d')
 
         # target location
-        ax.scatter(self.dropLocation.item(0),self.dropLocation.item(1),self.dropLocation.item(2),c='r', marker='o')
+        ax.scatter(self.dropLocation.n,self.dropLocation.e,self.dropLocation.d,c='r', marker='o')
         ax.quiver(0.,0.,0.,self.wind.item(0),self.wind.item(1),self.wind.item(2),length=20.0,normalize=True)
 
         # closed baydoor movement
@@ -223,7 +240,7 @@ class PayloadPlanner(Planner):
         self.NED_parachute_open[0] = self.NED_release_location.item(0) + self.displacement0_1.item(0)
         self.NED_parachute_open[1] = self.NED_release_location.item(1) + self.displacement0_1.item(1)
         #ax.scatter(self.NED_parachute_open.item(0),self.NED_parachute_open.item(1),self.NED_parachute_open.item(2),c='b',marker='+')
-        ax.plot([self.NED_parachute_open.item(0),self.dropLocation.item(0)],[self.NED_parachute_open.item(1),self.dropLocation.item(1)],[self.NED_parachute_open.item(2),self.dropLocation.item(2)],c='r',linewidth=5.0)
+        ax.plot([self.NED_parachute_open.item(0),self.dropLocation.n],[self.NED_parachute_open.item(1),self.dropLocation.e],[self.NED_parachute_open.item(2),self.dropLocation.d],c='r',linewidth=5.0)
 
         # release Location
         for ii in range(len(self.waypoints)):
@@ -247,7 +264,7 @@ class PayloadPlanner(Planner):
         first = True
         boundaries = []
         last = []
-        for bounds in self.boundariesList:
+        for bounds in self.mission.boundary_list:
             if first:
                 boundaries = np.array([[bounds.n, bounds.e, 0.]])
                 last = np.array([[bounds.n, bounds.e, 0.]])
@@ -283,6 +300,6 @@ class PayloadPlanner(Planner):
         D = self.waypoints_array[:,2]
         clearance = 1.0
         if will_collide(self.obstacles, self.boundary_poly, N, E, D, clearance):
-            return True
-        else:
             return False
+        else:
+            return True
