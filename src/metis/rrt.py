@@ -158,6 +158,7 @@ class Animation2D(Animation):
         ax.set_xlim((int(1.1*minE), int(1.1*maxE)))
         ax.set_ylim((int(1.1*minN), int(1.1*maxN)))
         ax.set_aspect('equal')  
+        plt.draw()
 
 # class Animation3D(Animation):
 #     def __init__(self, obstacles, boundaries):
@@ -790,6 +791,7 @@ def flyable_path(obstacles, bound_poly, startNode, endNode, prevChi, chi, third_
         prevChi = wrap2pi(prevChi)
         chi = wrap2pi(chi)
         wrappedPrevChi = wrapAminusBToPi(prevChi, chi)
+        # If the difference in headings is more than some amount:
         if abs(wrappedPrevChi) > config.max_rel_chi: # FIXME: change > to < - don't we want to avoid tight turns?
             _logger.debug("Chi difference too large, {} > {}".format(abs(wrappedPrevChi) , config.max_rel_chi))
             _logger.debug("prevChi = {}, chi = {}".format(prevChi, chi))
