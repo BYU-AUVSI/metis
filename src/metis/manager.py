@@ -229,7 +229,7 @@ class MissionManager(object):
             `loiter`
             `objective`
             `offaxis`
-            `payload`>>>
+            `payload`
             `search`
 
         >>> mm = MissionManager(mission)
