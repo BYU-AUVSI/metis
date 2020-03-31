@@ -6,9 +6,8 @@
 Metis
 """
 
-import logging
-
 from copy import copy
+import logging
 from logging import Formatter
 
 MAPPING = {
@@ -39,7 +38,6 @@ class ColoredFormatter(Formatter):
 from metis.core import *
 
 # Set up logger
-# logger = logging.getLogger('METIS')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()

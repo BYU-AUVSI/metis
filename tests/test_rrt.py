@@ -32,9 +32,9 @@ def test_heading():
 def test_wrap():
     assert rrt.wrap(np.radians(170), np.radians(-170)) == -3.316125578789226
     assert rrt.wrap(np.radians(185), np.radians(180)) == 3.2288591161895095
-    assert  rrt.wrap(np.radians(90), np.radians(160)) == 1.5707963267948966
-    assert  rrt.wrap(np.radians(100), np.radians(260)) == 1.7453292519943295
-    assert  rrt.wrap(np.radians(100), np.radians(-100)) == -4.537856055185257
+    assert rrt.wrap(np.radians(90), np.radians(160)) == 1.5707963267948966
+    assert rrt.wrap(np.radians(100), np.radians(260)) == 1.7453292519943295
+    assert rrt.wrap(np.radians(100), np.radians(-100)) == -4.537856055185257
 
 def test_wrap2pi():
     assert rrt.wrap2pi(np.radians(-180)) == 3.141592653589793

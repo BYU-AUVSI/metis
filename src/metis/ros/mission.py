@@ -4,9 +4,12 @@
 
 from __future__ import print_function
 import logging
+
+import numpy as np
+
 import rospy
-from uav_msgs.msg import JudgeMission, State
 from rosplane_msgs.msg import Waypoint
+from uav_msgs.msg import JudgeMission, State
 from uav_msgs.srv import (
     PlanMissionPoints,
     PlanLandingPoints,
@@ -14,8 +17,6 @@ from uav_msgs.srv import (
     NewWaypoints,
     UpdateSearchParams,
 )
-
-import numpy as np
 
 import metis.ros.utils as utils
 from metis import Mission

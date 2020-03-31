@@ -10,7 +10,7 @@ component can operate independently of the either the rest of the program or ROS
 This means that functions are written from the standpoint of, "give me all the parameters
 and values I need to be able to return the result," instead of, "tell me what you need,
 and I'll go find everything I need to calculate it." The latter approach is not robust;
-it leads to global variables, unclear paths of execution through the code, and leads 
+it leads to global variables, unclear paths of execution through the code, and takes 
 maintainers on a long hunt for methods that call other services that may disappear when
 a dependency's API changes.
 
@@ -19,49 +19,106 @@ are separated. Following the previously mentioned design philosophy, functions s
 directly call ROS services; rather, they should take whatever data they need as parameters,
 allowing the callers to provide all necessary data.
 
-All ROS interactions are defined in the `metis.ros` submodule. 
+All ROS interactions are defined in the `metis.ros` submodule. Metis routines can be run 
+without importing it. 
 
 # Installation
 
-To run Metis as a standalone package, just pull the latest code from the repository.
+Metis has dependencies when used with ROS. While Metis is designed such that it can
+be used alone, the installation process expects that you'll be using ROS and the BYU aerial
+system. It therefore includes dependencies on other BYU packages.
+
+ROS must be installed, which provides the `rospy` package.
+
+Other BYU dependencies which should be installed first:
+
+* [ROSplane](https://github.com/byu-auvsi/rosplane)
+* [uav_msgs](https://github.com/BYU-AUVSI/uav_msgs)
+* [interop_pkg](https://github.com/BYU-AUVSI/interop_pkg)
+
+To install Metis, just pull the latest code from the repository into your ROS workspace.
 
 ```
+# Change directory into your ROS workspace's source folder
 git clone https://github.com/BYU-AUVSI/metis.git
-```
+cd metis
+pip install -r requirements.txt
 
-# TODO
-The planner can always plan from the current location if ros is updating it in the Mission object
-(or MissionManager, forgot which one).
+# Change directory back into your ROS workspace
+catkin_make
+```
 
 # Testing
 
 Metis uses the [pytest](https://docs.pytest.org/en/latest/) testing framework. Since Metis can be
 run without ROS, this allows tests to be written that actually test core functionality instead
-of dependency on ROS. Test can be run in the terminal when the pytest framework is installed by
+of dependencies on ROS. Test can be run in the terminal when the pytest framework is installed by
 navigating to the toplevel directory of this codebase and running the following command:
 
 ```
 pytest
 ```
 
+Tests don't demonstrate the package's ability to plan paths; rather, it ensures the integrity
+of the data structures and corresponding methods used in path planning routines. For example,
+it ensures that the separation of two waypoints from each other is calculated accurately.
+
 # ROS API
 
-## Available ROS Services
+Metis provides and requires various ROS services in order to function on the BYU system.
 
-`/clear_wpts`  
-`/plan_path`  
-`/update_search_params`  
+## ROS Params Requested by Metis
 
-## Available ROS Topics
+These are currently provided in the .launch file that starts Metis. This may be moved to
+some other globally accessible location, since several other packages also require this
+information and trying to remember to change it in three places is a recipe for disaster.
 
-`/current_task`
+* `ref_lat` Reference latitude (in decimal degrees) for home location.
+* `ref_lon` Reference longitude (in decimal degrees) for home location.
+* `ref_h` Reference altitude (in meters) above sea level for home location.
 
-## Required ROS Services
+## ROS Services Required by Metis
 
-`/waypoint_path`  
-`/get_mission_with_id`  
+Metis calls these services when used in conjunction with the full BYU system in order to
+calculate its paths and objectives.
+
+* `/get_mission_with_id` (This service should be provided by `interop_pkg`)
+
+## ROS Services Provided by Metis
+
+These are services provided by Metis that can be called using `rosservice call`.
+
+* `/clear_wpts`
+* `/plan_path`  
+* `/plan_landing`
+* `/update_search_params`  
+* `/approved_path`
+* `/review_path`
+
+### Planner Commands
+
+* `rosservice call /plan_path 0`: Waypoint Mission
+* `rosservice call /plan_path 1`: Payload Mission
+* `rosservice call /plan_path 2`: Search Mission
+* `rosservice call /plan_path 6`: Offaxis Detection
+* `rosservice call /plan_path 7`: Loiter Mission
+
+Once the waypoints are planned, a plot appears showing the planned path.
+This plot can be manipulated with the mouse to add or remove waypoints.
+Once the plot has been closed, it can be reopened with the `/review_path` command.
+
+Use the `/approved_path` command to pass the finalized waypoints to the plane.
+
+## ROS Topics Published To by Metis
+
+<!-- * `/current_task` -->
+* `/waypoint_path`
 
 # Running in Simulation
+
+Run `auvsi_sil.launch`. Metis and interop_pkg still need to be included in that launch file.
+
+OUTDATED
 
 To run Metis in simulation, you need at least the following repositories:
 
@@ -89,25 +146,14 @@ The various missions can be called with the `/plan_path` rosservice call. The ar
 
 The plan_mission service call will return a list of the major waypoints that the aircraft needs to fly through. These may be the drop location and points leading to the drop location, points that create a lawnmower path over the search area, points that allow detection of objects outside the mission area, or objective waypoints given by the interop server.
 
-## Planner Commands
-
-`rosservice call /plan_path 0`: Waypoint Mission
-
-`rosservice call /plan_path 1`: Payload Mission
-
-`rosservice call /plan_path 2`: Search Mission
-
-`rosservice call /plan_path 6`: Offaxis Detection
-
-`rosservice call /plan_path 7`: Loiter Mission
-
-Note that the Loiter mission currently (as of 5/17/19) only passes the objective waypoints through. The desired behavior of that mission is still being determined.
-
-Once the waypoints are planned, use the ```approved_path``` command to pass the waypoints to the plane.
 
 ---
 
 ### Planner Notes
+
+# TODO
+The planner can always plan from the current location if ROS is updating it in the Mission object
+(or MissionManager, forgot which one).
 
 ## Payload Planner
 

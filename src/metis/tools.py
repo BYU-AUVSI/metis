@@ -2,10 +2,11 @@
 # Copyright 2018-2019 John Akagi and Jacob Willis
 # Copyright 2019-2020 Sequoia Ploeg
 
+import numpy as np
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
+
 from metis.messages import msg_ned
-import numpy as np
 
 
 def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
