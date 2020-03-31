@@ -21,7 +21,7 @@ from metis.planners import (
 )
 from metis.rrt import RRT, Config
 
-log = logging.getLogger('METIS')
+_module_logger = logging.getLogger(__name__)
 
 class MissionManager(object):
     """
@@ -40,6 +40,7 @@ class MissionManager(object):
     current_pos : metis.messages.msg_ned
         The current position of the aircraft.
     """
+    _logger = _module_logger.getChild('RRT')
 
     def __init__(self, mission, target_height=35.):
         """
@@ -83,7 +84,7 @@ class MissionManager(object):
             self.default_pos.d = float(-height)
 
     def _approve_plan(self, plan):
-        log.info("Plan approved.")
+        self._logger.info("Plan approved.")
         self.plans.append(plan)
 
     def _apply_rrt(self, planned_points, config=Config, connect=False):
@@ -106,13 +107,14 @@ class MissionManager(object):
             Returns a Plan object representing the final plan.
         """
         # rrt = RRT(self.mission.obstacles, self.mission.boundary_list)
+        self._logger.critical("RRT MAX REL CHI: " + str(config.max_rel_chi))
         rrt = RRT(self.mission, config=config)
 
         if self.plans:
-            log.info("Planning from last waypoint of previous path")
+            self._logger.info("Planning from last waypoint of previous path")
             current_pos = self.plans[-1].last_waypoint
         else:
-            log.info("Planning from origin")
+            self._logger.info("Planning from origin")
             current_pos = self.default_pos
 
         planned_points.insert(0, current_pos)
@@ -212,10 +214,12 @@ class MissionManager(object):
         wind : numpy.array
             An array of length 3 containing the wind as NED.
         """
+        self._logger.info('plan_payload called')
         planned_points, drop_location = self.planners["payload"].plan(wind)
         # Be more picky about tight turns while performing the payload drop
         # max_rel_chi=10*np.pi/16
-        plan = self._apply_rrt(planned_points)
+        config = Config(max_rel_chi=np.radians(90))
+        plan = self._apply_rrt(planned_points, config=config)
         plan.params["drop_location"] = drop_location
         return plan
 
