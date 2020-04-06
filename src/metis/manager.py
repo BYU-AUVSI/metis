@@ -8,8 +8,7 @@ import warnings
 
 import numpy as np
 
-from metis import Plan
-from metis.errors import InvalidAltitudeError, WaypointError
+from metis import Plan, Waypoint, BoundaryPoint, CircularObstacle
 from metis.messages import msg_ned
 from metis.planners import (
     LoiterPlanner,
@@ -79,7 +78,7 @@ class MissionManager(object):
         pre-planned waypoints, in meters.
         """
         if height < 0:
-            raise InvalidAltitudeError("Target height is less than 0!")
+            raise ValueError("Target height is less than 0!")
         else:
             self.default_pos.d = float(-height)
 
@@ -166,7 +165,7 @@ class MissionManager(object):
             the approach from (default 0).
         """
         if not waypoints:
-            raise WaypointError("No waypoints provided to the landing planner.")
+            raise ValueError("No waypoints provided to the landing planner.")
         if altitude <= 0.0:
             warnings.warn("Current altitude is 0 meters or less. Are you sure this is accurate?", RuntimeWarning)
         planned_points = self.planners["landing"].plan(waypoints, altitude)

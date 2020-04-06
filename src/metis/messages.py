@@ -121,13 +121,13 @@ class msg_ned(object):
         """
         return self.to_nparray()
 
-class NED_pt(object):
-    def __init__(self):
-        self.N = None
-        self.E = None
-        self.D = None
-        self.task = 0
+# class NED_pt(object):
+#     def __init__(self):
+#         self.N = None
+#         self.E = None
+#         self.D = None
+#         self.task = 0
 
-class NED_list(object):
-    def __init__(self):
-        self.waypoint_list = []
+# class NED_list(object):
+#     def __init__(self):
+#         self.waypoint_list = []
