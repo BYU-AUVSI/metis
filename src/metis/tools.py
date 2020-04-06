@@ -51,6 +51,9 @@ def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
     return False
 
 
+def down_at_ne(n, e):
+    pass
+
 def makeBoundaryPoly(boundariesList):
     """Makes a list of boundary points into a Polygon object.
 
