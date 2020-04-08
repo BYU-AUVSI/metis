@@ -10,6 +10,9 @@ from copy import copy
 import logging
 from logging import Formatter
 
+import matplotlib
+matplotlib.use('TkAgg')
+
 MAPPING = {
     'DEBUG'   : 37, # white
     'INFO'    : 36, # cyan
