@@ -3,6 +3,18 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 """
+-----------------------
+WARNING WARNING WARNING
+-----------------------
+THIS FILE IS DEPRECATED.
+
+For the new files implementing the rrt algorithm, see rrt_*,
+where * is base/dubins/fillet/straight.
+
+
+
+Notes
+-----
 Maybe we can have an expanding circle that figures out the best direction
 to approach from? Then, as it expands, it assigns weights or eliminates bad
 headings that shouldn't be used as an approach.

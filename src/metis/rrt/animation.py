@@ -46,16 +46,18 @@ class Animation2D(Animation):
         # nodes is a dictionary from Node to matplotlib Line objects.
         self.nodes = {}
         ax = self.ax
-        # ax.cla()
         for obstacle in self.obstacles:
             ax.add_artist(plt.Circle((obstacle.e, obstacle.n), obstacle.r, color='r'))
-        # Plot reversed exterior boundaries since we want (N, E) -> (E, N).
-        ax.plot(*self.bound_poly.exterior.xy[::-1])
-        minN, minE, maxN, maxE = self.bound_poly.bounds
+        ax.plot(*self.bound_poly.exterior.xy)
+        minE, minN, maxE, maxN = self.bound_poly.bounds
         ax.set_xlim((int(1.1*minE), int(1.1*maxE)))
         ax.set_ylim((int(1.1*minN), int(1.1*maxN)))
         ax.set_aspect('equal')  
         plt.pause(0.000001)
+
+    @staticmethod
+    def ne2xy(ne):
+        pass
 
     def add_path(self, waypoints, valid=True):
         """
@@ -71,16 +73,19 @@ class Animation2D(Animation):
         """
         pass
 
-    def add_node(self, node):
+    def add_node(self, start, end):
         """
         Adds gray paths between the list of nodes received.
 
         Parameters
         ----------
-        nodes : list of metis.messages.msg_ned
+        nodes : list of metis.rrt.rrt_base.Node
             The nodes to be connected by a potential random path.
         """
-        pass
+        self.ax.plot(start.e, start.n, 'rx')
+        self.ax.plot(end.e, end.n, 'rx')
+        self.ax.plot([start.e, end.e], [start.n, end.n])
+        plt.pause(0.000001)
 
     def remove_node(self, node):
         pass

@@ -5,6 +5,10 @@
 import logging
 
 import numpy as np
+from shapely.geometry import Point
+
+from metis.location import Waypoint
+from .animation import Animation2D
 
 
 _module_logger = logging.getLogger(__name__)
@@ -14,8 +18,8 @@ class Config(object):
     max_distance = 50.0
     min_radius = 20.0
     max_incline = 0.5
-    # max_rel_chi = 15*np.pi/16
-    max_rel_chi = np.radians(60)
+    max_rel_chi = 15*np.pi/16
+    # max_rel_chi = np.radians(60)
     iterations = 50
     resolution = 0.5
     scale_height = 1.5
@@ -68,11 +72,16 @@ class Tree(object):
 
         Parameters
         ----------
-        root : Node
+        root : metis.core.NEDPoint
             The root Node of the tree.
         """
         super(Tree, self).__init__()
-        self.nodes = [root] if root else []
+        if root:
+            if type(root) is not Node:
+                raise TypeError('Tree can only hold Node types')
+            self.nodes = [root]
+        else:
+            self.nodes = []
 
     def __getitem__(self, index):
         return self.nodes[index]
@@ -94,21 +103,90 @@ class Tree(object):
 
         Parameters
         ----------
-        node : Node
+        node : metis.core.NEDPoint
             A random node we're trying to find the nearest neighbor of.
         
         Returns
         -------
-        Node
+        metis.core.NEDPoint
             The node already stored in the tree that is closest to the passed 
-            in Node.
+            in node.
         """
         dists = [child.distance(node) for child in self.nodes]
         min_idx = np.argmin(dists)
         return self.nodes[min_idx]
 
     def add(self, node):
+        if type(node) is not Node:
+            raise TypeError('Tree can only hold Node types')
         self.nodes.append(node)
+
+
+class Node(object):
+    _logger = _module_logger.getChild('Node')
+
+    def __init__(self, waypoint, cost=0., parent=None, connects=False, chi=0.):
+        """
+        Parameters
+        ----------
+        waypoint : metis.location.Waypoint
+            Waypoint of node.
+        cost : float, optional
+            Cost of the node (default 0.0).
+        parent : reference to metis.rrt.Node, optional
+            A reference to the parent node of the object (default None).
+        connects : bool, optional
+            Whether or not this node connects to the goal; true if it connects,
+            false otherwise (default False).
+        chi : float, optional
+            Heading in radians (default 0).
+        """
+        super(Node, self).__init__()
+        self.waypoint = waypoint
+        self.cost = cost
+        self.parent = parent
+        self.connects = connects
+        self.chi = chi
+
+    def __eq__(self, other):
+        """
+        Equality overridden such that as long as the nodes are in exactly the
+        same geographic location, they are considered to be the same node.
+        """
+        return self.waypoint.ned == other.waypoint.ned
+
+    @property
+    def n(self):
+        return self.waypoint.n
+    
+    @n.setter
+    def n(self, value):
+        self.waypoint.n = value
+
+    @property
+    def e(self):
+        return self.waypoint.e
+    
+    @e.setter
+    def e(self, value):
+        self.waypoint.e = value
+
+    @property
+    def d(self):
+        return self.waypoint.d
+    
+    @d.setter
+    def d(self, value):
+        self.waypoint.d = value
+
+    @property
+    def ned(self):
+        return self.waypoint.ned
+
+    def distance(self, other):
+        if not isinstance(other, self.__class__):
+            raise TypeError('expected type {}, but received {}'.format(type(self), type(other)))
+        return self.waypoint.distance(other.waypoint)
 
 
 class RRT(object):
@@ -120,7 +198,7 @@ class RRT(object):
     _logger = _module_logger.getChild('RRT')
 
     # TODO: Just take a mission object instead of obstacles and boundaries?
-    def __init__(self, mission, animate=True, config=Config()):
+    def __init__(self, mission, animate=False, config=Config()):
         """The constructor for the RRT class.
 
         Parameters
@@ -135,41 +213,407 @@ class RRT(object):
         self._logger.info(mission)
         # np.random.seed(1111) # For Debugging
         self.config = config
-        # self.mission = mission
-
-        # Save obstacles and boundaries
-        self.obstaclesList = mission.obstacles
-        self.boundariesList = mission.boundary_list
+        self.mission = mission
 
         self.animation = Animation2D(mission) if animate else None
 
-        # Boundaries now contained in a Polygon object
-        self.bound_poly = mission.boundary_poly
+    def filter_invalid_waypoints(self, waypoints):
+        """
+        Removes all waypoints that are in obstacles or otherwise infeasable,
+        excluding the start and end points.
 
-    def find_full_path(self, waypoints, connect=False):
+        Parameters
+        ----------
+        waypoints : list of metis.location.Waypoint
+            A list of waypoints to be filtered. The first and last waypoint in
+            the list are always left.
+        
+        Returns
+        -------
+        waypoints : list of metis.location.Waypoint
+            The valid waypoints that are outside of obstacles and within 
+            bounds.
+        """
+        for waypoint in waypoints[1:-1]:
+            if collision(waypoint.ned, self.mission.boundary_poly, self.mission.obstacles, self.config.clearance):
+                self._logger.warning("Waypoint is out of bounds or on an obstacle: ignoring.")
+                waypoints.remove(waypoint)
+        return waypoints
+
+    def filter_duplicate_waypoints(self, waypoints):
+        """
+        Removes adjacent waypoints in a list if they are duplicates.
+
+        Typically used after `find_full_path`. Since the origin of each leg 
+        was the destination of the previous leg, we need to remove the 
+        repeated nodes.
+
+        Parameters
+        ----------
+        waypoints : list of metis.location.Waypoint
+            A list of waypoints to be filtered.
+        
+        Returns
+        -------
+        waypoints : list of metis.location.Waypoint
+            The list of waypoints with no adjacent duplicates.
+        """
+        return [elem for i, elem in enumerate(waypoints) if i == 0 or waypoints[i-1] != elem]
+
+    def find_full_path(self, waypoints):
+        """
+        Finds a path to all of the waypoints passed in. This path accounts for
+        obstacles, boundaries, and all other parameters set in __init__.
+
+        Parameters
+        ----------
+        waypoints : list of metis.core.Waypoint
+            A list of waypoints to be passed through.
+
+        Returns
+        -------
+        full_path : list of metis.core.Waypoint
+            The full list of waypoints which outlines a safe path to follow in 
+            order to reach all of the waypoints passed in.
+        """
         raise NotImplementedError
 
-    def find_path(self, wpp_start, wpp_end, map_):
+    def find_path(self, start, end):
+        """
+        mission is already accessible via self
+        """
         raise NotImplementedError
 
-    def pointsAlongPath(self, start_node, end_node, Del):
+    def points_along_path(self, start, end):
         raise NotImplementedError
 
-    def extendTree(self, tree, end_node, segmentLength, map_, pd):
+    def points_along_straight(self, start, end):
+        """
+        Creates a stepped range of values from the starting node to the ending node
+        with difference in step size guaranteed to be less than `self.config.resolution`.
+
+        Parameters
+        ----------
+        start : metis.rrt.rrt_base.Node
+            The starting node to create a range from.
+        end : metis.rrt.rrt_base.Node
+            The ending node to create a range to.
+        
+        Returns
+        -------
+        ned : np.ndarray
+            An m x 3 numpy array, where each row is an array of north, east, 
+            down points.
+        """
+        step_size = self.config.resolution
+        q0 = end.waypoint.ned - start.waypoint.ned
+        points = int(np.ceil(np.linalg.norm(q0)/step_size)) + 1
+        n = np.linspace(start.n, end.n, num=points)
+        e = np.linspace(start.e, end.e, num=points)
+        d = np.linspace(start.d, end.d, num=points)
+        ned = np.stack([n, e, d], axis=1)
+        return ned
+
+    def pointsAlongArc(self, p_s, p_e, center, radius, lam):
+        '''
+        Parameters
+        ----------
+        p_s : ned
+            Starting position around circle.
+        p_e : ned
+            Ending position around circle.
+        center : ned
+            Center of circle.
+        radius : float
+            Radius of circle.
+        lam : -1 or 1
+            Direction going around circle (1 = clockwise, -1 = counterclockwise).
+        '''
+        res = 360
+        theta1 = np.arctan2(p_s.item(0) - center.item(0), p_s.item(1) - center.item(1))
+        theta2 = np.arctan2(p_e.item(0) - center.item(0), p_e.item(1) - center.item(1))
+        theta1, theta2 = directional_wrap(theta1, theta2, lam)
+        t = np.linspace(theta1, theta2, res)
+        x = radius*np.cos(t) + center.item(1)
+        y = radius*np.sin(t) + center.item(0)
+
+        # plt.plot(x,y)
+        # plt.axis('equal')
+        # plt.show()
+        
+        points = list(zip(x, y))
+        line = LineString(points)
+        return line
+
+        def directional_wrap(self, theta1, theta2, lam):
+            '''Wrap theta1 relative to theta2, given the direction of rotation lambda.
+            (1 = clockwise, -1 = counterclockwise).
+            '''
+            if lam == -1: # Counterclockwise
+                if theta2 < theta1:
+                    theta2 += 2*np.pi
+            if lam == 1: # Clockwise
+                if theta1 < theta2:
+                    theta2 -= 2*np.pi
+            return theta1, theta2
+
+    def extend_tree(self, tree, goal, seg_length):
+        """
+        mission is already accessible via self
+        """
         raise NotImplementedError
 
-    def findMinimumPath(self, tree, end_node):
+    @staticmethod
+    def find_minimum_path(tree, end):
+        viable = []
+        for node in tree:
+            if node.connects:
+                viable.append(node)
+        costs = [node.cost for node in viable]
+        idx = np.argmin(costs)
+        path = [viable[idx]]
+        while path[-1].parent is not None:
+            path.append(path[-1].parent)
+        return path[::-1]
+
+    def smooth_path(self, path):
+        """
+        mission is already accessible via self
+        """
         raise NotImplementedError
 
-    def smoothPath(self, path, map_):
-        raise NotImplementedError
+    @staticmethod
+    def normalize2waypoints(nodes):
+        normalized = []
+        for node in nodes:
+            if type(node) is Waypoint:
+                normalized.append(node)
+            elif type(node) is Node:
+                normalized.append(node.waypoint)
+            else:
+                raise ValueError('node is not a Node or Waypoint')
+        return normalized
     
-def generateRandomNode(self, map_, pd, chi):
-    raise NotImplementedError
+def generate_random_node(nmax, nmin, emax, emin):
+    """
+    Creates a random point in the 2D plane bounded by the max and min 
+    boundary positions.
 
-def collision(self, n, e, d):
+    Parameters
+    ----------
+    nmax : float
+        The northernmost boundary (in meters).
+    nmin : float
+        The southernmost boundary (in meters).
+    emax : float
+        The easternmost boundary (in meters).
+    emin : float
+        The westernmost boundary (in meters).
+
+    Returns
+    -------
+    rand : metis.core.Waypoint
+        A Waypoint within the region bounded by the parameters (altitude is at
+        ground level).
     """
-    n, e, d, are arrays of floats.
-    Collision needs access to the mission boundaries and obstacles.
+    point = Waypoint(n=np.random.uniform(low=nmin, high=nmax), e=np.random.uniform(low=emin, high=emax))
+    return Node(point)
+
+def collision(ned, boundaries, obstacles, clearance=Config.clearance):
     """
-    raise NotImplementedError
+    Parameters
+    ----------
+    ned : np.ndarray
+        An n x 3 matrix of north, east, down points. Each row corresponds
+        to one coordinate point. The matrix contains n points.
+    boundaries : shapely.geometry.polygon.Polygon
+        The polygon object representing the boundaries.
+    obstacles : list of metis.core.CircularObstacle
+        The obstacles in the mission.
+
+    Returns
+    -------
+    collides : bool
+        True if the path collides with something in the mission; False 
+        otherwise.
+    """
+    # Check for collision with obstacles
+    for obstacle in obstacles:
+        # first check if the path is entirely above the obstacle
+        if all(-ned[:,2] > obstacle.h + clearance):
+            continue
+        # if it's not, then check if any part of it runs into the obstacle
+        else:
+            dist = np.linalg.norm(ned[:,:2] - obstacle.ned[:,:2], axis=1)
+            if any(dist < obstacle.r + clearance):
+                return True
+
+    # Check for out of boundaries
+    for p in ned:
+        if not boundaries.contains(Point(p.item(1), p.item(0))):
+            return True
+    return False
+
+def down_at_ne(ne, obstacles):
+    """
+    Parameters
+    ----------
+    ne : np.ndarray
+        An n x 2 matrix of north and east points. Each row corresponds to one
+        coordinate point. The matrix therefore contains n points.
+
+    Returns
+    -------
+    d : np.ndarray
+        A n x 1 matrix of down positions, indexed in the same order as the
+        ne points provided as a parameter.
+    """
+    pass
+
+def heading(p0, p1):
+    """
+    Computes the navigational heading from the first waypoint to the second.
+
+    Parameters
+    ----------
+    p0 : metis.rrt.rrt_base.Node
+        The origin node.
+    p1 : metis.rrt.rrt_base.Node
+        The destination node.
+    
+    Returns
+    -------
+    chi : float
+        The heading from the origin to the destination waypoints (in radians).
+
+    Examples
+    --------
+    >>> np.degrees(heading(msg_ned(0,0), msg_ned(10, 0)))
+    0.0
+    >>> np.degrees(heading(msg_ned(0,0), msg_ned(0, 10)))
+    90.0
+    """
+    return np.arctan2((p1.e - p0.e), (p1.n - p0.n))
+
+
+def wrap(chi_c, chi):
+    """ 
+    Wraps an angle relative to another angle.
+
+    Suppose an aircraft is flying at a compass heading of 165 degrees 
+    (2.88 rad) and is then commanded a heading of 270 degrees (-1.57 rad).
+    Since headings, when stored in radians, are represented on an interval 
+    from (-pi, pi], the aircraft will believe that it needs to make a 
+    255 degree left turn from 165 degrees back to -90 degrees when instead
+    it should make 105 degree right turn. This function recognizes that the
+    commanded values are closer to the actual headings and wraps the angle
+    to the closest radian representation of the heading, even if it lies 
+    outside of the interval (-pi, pi].
+
+    Parameters
+    ----------
+    chi_c : double
+        Angle that will be wrapped relative to some reference angle in radians.
+    chi : double
+        Reference angle in radians.
+
+    Returns
+    -------
+    chi_c : double
+        Returns the commanded angle wrapped relative to the reference angle.
+
+    Examples
+    --------
+    >>> wrap(np.radians(170), np.radians(-170))
+    -3.316125578789226
+    >>> wrap(np.radians(185), np.radians(180))
+    3.2288591161895095
+    >>> wrap(np.radians(90), np.radians(160))
+    1.5707963267948966
+    >>> wrap(np.radians(100), np.radians(260))
+    1.7453292519943295
+    >>> wrap(np.radians(100), np.radians(-100))
+    -4.537856055185257
+    """
+    while chi_c - chi > np.pi:
+        chi_c = chi_c - 2.0 * np.pi
+    while chi_c - chi < -np.pi:
+        chi_c = chi_c + 2.0 * np.pi
+    return chi_c
+
+
+def wrap2pi(rad):
+    """
+    Wraps an angle in radians onto an interval from (-pi, pi].
+
+    Parameters
+    ----------
+    rad : float
+        The angle to be wrapped, in radians.
+    
+    Returns
+    -------
+    wrap : float
+        The wrapped angle, in radians.
+
+    Examples
+    --------
+    >>> wrap2pi(np.radians(-180))
+    3.141592653589793
+    >>> wrap2pi(np.radians(180))
+    3.141592653589793
+    >>> wrap2pi(np.radians(-179))
+    -3.12413936106985
+    >>> wrap2pi(np.radians(380))
+    0.3490658503988664
+    """
+    # Map angle (in radians) onto an interval from [0, 2*pi).
+    wrap = np.mod(rad, 2*np.pi)
+    # If angle > pi, wrap around to be on an interval from (-pi, pi].
+    if np.abs(wrap) > np.pi:
+        wrap -= 2*np.pi*np.sign(wrap)
+    return wrap
+
+
+def delta_chi(chi0, chi1):
+    """
+    Calculates the change in heading from chi0 to chi1.
+
+    The sign of the result indicates whether the quickest turn to get to
+    the desired heading is a left or a right turn.
+
+    Parameters
+    ----------
+    chi0 : float
+        The previous heading in radians.
+    chi1 : float
+        The new heading in radians.
+
+    Examples
+    --------
+    >>> np.degrees(delta_chi(np.radians(345), np.radians(185)))
+    -160.0
+    >>> np.degrees(delta_chi(np.radians(-15), np.radians(90)))
+    105.0
+    """
+    return wrap2pi(chi1-chi0)
+
+
+def waypoints2ned(waypoints):
+    """Converts a list of waypoints to a ned matrix.
+
+    Parameters
+    ----------
+    waypoints : list of metis.core.Waypoints
+        A list of waypoints to be converted.
+
+    Returns
+    -------
+    ned : np.ndarray
+        An m x 3 NumPy array of north, east, down points, where there are m
+        coordinate points.
+    """
+    ned = np.zeros((len(waypoints), 3))
+    for i, p in enumerate(waypoints):
+        ned[i] = p.ned
+    return ned

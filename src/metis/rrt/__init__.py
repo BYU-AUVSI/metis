@@ -4,11 +4,10 @@
 
 
 from . import *
-from .rrt_straight import *
-from .rrt_fillet import *
-from .rrt_dubins import *
-
-from .rrt import *
+from .rrt_base import *
+from .rrt_straight import StraightRRT
+from .rrt_fillet import FilletRRT
+from .rrt_dubins import DubinsRRT
 
 def get_rrt(arg):
     if arg is 'straight':
