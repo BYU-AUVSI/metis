@@ -5,29 +5,31 @@ sys.path.append('../src')
 import numpy as np
 
 from metis import rrt
-from metis.messages import msg_ned
+from metis.location import Waypoint, BoundaryPoint, CircularObstacle
+from metis.tools import bounds2poly
 
 def test_stepped_range_linear():
     pass
 
-def test_random_point():
+def test_generate_random_node():
     nmax, nmin = 0.0, -15.3
     emax, emin = 90.66, 0.0
-    n, e = rrt.random_point(nmax, nmin, emax, emin)
-    assert n < nmax and n > nmin
-    assert e < emax and e > emin
+    wpt = rrt.generate_random_node(nmax, nmin, emax, emin)
+    print(wpt.n)
+    assert wpt.n < nmax and wpt.n > nmin
+    assert wpt.e < emax and wpt.e > emin
 
     nmax, nmin = 1804.0, -15.3
     emax, emin = 0.66, -550.0
-    n, e = rrt.random_point(nmax, nmin, emax, emin)
-    assert n < nmax and n > nmin
-    assert e < emax and e > emin
+    wpt = rrt.generate_random_node(nmax, nmin, emax, emin)
+    assert wpt.n < nmax and wpt.n > nmin
+    assert wpt.e < emax and wpt.e > emin
 
 def test_heading():
-    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(2,2,0))) == 45.0
-    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(0,0,0))) == -135.0
-    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(2,0,0))) == -45.0
-    assert np.degrees(rrt.heading(msg_ned(1,1,0), msg_ned(2,1,0))) == 0.0
+    assert np.degrees(rrt.heading(Waypoint(1,1,0), Waypoint(2,2,0))) == 45.0
+    assert np.degrees(rrt.heading(Waypoint(1,1,0), Waypoint(0,0,0))) == -135.0
+    assert np.degrees(rrt.heading(Waypoint(1,1,0), Waypoint(2,0,0))) == -45.0
+    assert np.degrees(rrt.heading(Waypoint(1,1,0), Waypoint(2,1,0))) == 0.0
 
 def test_wrap():
     assert rrt.wrap(np.radians(170), np.radians(-170)) == -3.316125578789226
@@ -41,6 +43,32 @@ def test_wrap2pi():
     assert rrt.wrap2pi(np.radians(180)) == 3.141592653589793
     assert rrt.wrap2pi(np.radians(-179)) == -3.12413936106985
     assert rrt.wrap2pi(np.radians(380)) == 0.3490658503988664
+
+def test_collision():
+    # The reference position
+    ref = Waypoint(0, 0, 0)
+
+    # Waypoints
+    pts1 = [Waypoint(np.cos(n), n, 0) for n in np.linspace(-10, 10)]
+    pts2 = [Waypoint(0, e) for e in np.linspace(6,10)]
+    pts3 = [Waypoint(9, e) for e in np.linspace(-8, 0)]
+    pts4 = [Waypoint(np.cos(n), n, 0) for n in np.linspace(-6, -3)]
+
+    # Boundaries
+    bnd1 = BoundaryPoint(-10, -10)
+    bnd2 = BoundaryPoint(-10, 5)
+    bnd3 = BoundaryPoint(10, 5)
+    bnd4 = BoundaryPoint(10, -10)
+    bnds = [bnd1, bnd2, bnd3, bnd4]
+    boundaries = bounds2poly(bnds)
+
+    # The obstacles
+    ob1 = CircularObstacle(0, 0, 0, 5)
+
+    assert rrt.collision(rrt.waypoints2ned(pts1), boundaries, [ob1], clearance=1) == True
+    assert rrt.collision(rrt.waypoints2ned(pts2), boundaries, [ob1], clearance=1) == True
+    assert rrt.collision(rrt.waypoints2ned(pts3), boundaries, [ob1], clearance=1) == False
+    assert rrt.collision(rrt.waypoints2ned(pts4), boundaries, [ob1], clearance=1) == True
 
 # def test_rrt():
 #     show_animation = True

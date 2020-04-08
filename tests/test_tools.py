@@ -2,8 +2,9 @@ import pytest
 import sys
 sys.path.append('../src')
 
-from metis import GPSWaypoint
-from metis.messages import msg_ned
+import numpy as np
+
+from metis.location import GPSWaypoint
 
 class TestTools:
     def test_FakeInteropElberta(self):
@@ -33,21 +34,21 @@ class TestTools:
         ob2 = GPSWaypoint(39.981556, -111.993697, 0)
 
         # Test waypoints
-        assert pt1.ned_from(ref).to_array() == [-1.9774270580937272, -57.51845492956573, -30.0, 0]
-        assert pt2.ned_from(ref).to_array() == [44.436219158444004, -152.24275217249115, -45.0, 0]
-        assert pt3.ned_from(ref).to_array() == [-44.49958466049114, -252.86395114645126, -45.0, 0]
-        assert pt4.ned_from(ref).to_array() == [-226.93073988523403, -190.0027176375646, -45.0, 0]
-        assert pt5.ned_from(ref).to_array() == [-126.22467709169122, 72.39892740438708, -45.0, 0]
+        assert np.array_equal(pt1.ned_from(ref).ned, np.array([[-1.9774270580937272, -57.51845492956573, -30.0]]))
+        assert np.array_equal(pt2.ned_from(ref).ned, np.array([[44.436219158444004, -152.24275217249115, -45.0]]))
+        assert np.array_equal(pt3.ned_from(ref).ned, np.array([[-44.49958466049114, -252.86395114645126, -45.0]]))
+        assert np.array_equal(pt4.ned_from(ref).ned, np.array([[-226.93073988523403, -190.0027176375646, -45.0]]))
+        assert np.array_equal(pt5.ned_from(ref).ned, np.array([[-126.22467709169122, 72.39892740438708, -45.0]]))
 
         # Test boundaries
-        assert bnd1.ned_from(ref).to_array() == [242.08140457437887, -291.9732487769884, 0.0, 0]
-        assert bnd2.ned_from(ref).to_array() == [-224.59560770270807, 296.7916024552834, 0.0, 0]
-        assert bnd3.ned_from(ref).to_array() == [-619.6553920373733, -297.30244304492277, 0.0, 0]
-        assert bnd4.ned_from(ref).to_array() == [21.163119796055742, -833.6819483428043, 0.0, 0]
+        assert np.array_equal(bnd1.ned_from(ref).ned, np.array([[242.08140457437887, -291.9732487769884, 0.0]]))
+        assert np.array_equal(bnd2.ned_from(ref).ned, np.array([[-224.59560770270807, 296.7916024552834, 0.0]]))
+        assert np.array_equal(bnd3.ned_from(ref).ned, np.array([[-619.6553920373733, -297.30244304492277, 0.0]]))
+        assert np.array_equal(bnd4.ned_from(ref).ned, np.array([[21.163119796055742, -833.6819483428043, 0.0]]))
 
         # Test obstacles
-        assert ob1.ned_from(ref).to_array() == [23.234244610397234, -328.88079281265095, 0.0, 0]
-        assert ob2.ned_from(ref).to_array() == [-165.74794803299733, -283.5326177308099, 0.0, 0]
+        assert np.array_equal(ob1.ned_from(ref).ned, np.array([[23.234244610397234, -328.88079281265095, 0.0]]))
+        assert np.array_equal(ob2.ned_from(ref).ned, np.array([[-165.74794803299733, -283.5326177308099, 0.0]]))
 
 
         
