@@ -3,6 +3,17 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 """
+-----------------------
+WARNING WARNING WARNING
+-----------------------
+THIS FILE IS DEPRECATED.
+
+Files now implementing location information are in metis/location.py.
+
+
+
+
+
 Python representations of ROS messages required for the metis package.
 """
 
