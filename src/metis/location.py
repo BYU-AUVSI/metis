@@ -140,15 +140,18 @@ class Waypoint(NEDPoint):
 
     Parameters
     ----------
-    n : float
-        North coordinate relative to home (in meters).
-    e : float
-        East coordinate relative to home (in meters).
-    d : float
-        Down coordinate relative to home (in meters).
+    n : float, optional
+        North coordinate relative to home (in meters), default 0.
+    e : float, optional
+        East coordinate relative to home (in meters), default 0.
+    d : float, optional
+        Down coordinate relative to home (in meters), default 0.
+    chi : float, optional
+        Desired heading at this waypoint (in radians, (-pi, pi]), default 0.
     """
-    def __init__(self, n=0.0, e=0.0, d=0.0):
+    def __init__(self, n=0.0, e=0.0, d=0.0, chi=0.0):
         super(Waypoint, self).__init__(n=n, e=e, d=d)
+        self.chi = chi
 
 class CircularObstacle(NEDPoint):
     """Represents a circular obstacle, defined by a coordinate, height, and 
