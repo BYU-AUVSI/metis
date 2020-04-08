@@ -59,7 +59,7 @@ class Animation2D(Animation):
     def ne2xy(ne):
         pass
 
-    def add_path(self, waypoints, valid=True):
+    def add_path(self, ned, valid=True):
         """
         Adds colored paths between the list of waypoints received. Or, adds 
         gray paths between the list of nodes received.
@@ -71,7 +71,8 @@ class Animation2D(Animation):
         valid : bool
             Paths are official, not random potential paths (default True).
         """
-        pass
+        self.ax.plot(ned[:,1], ned[:,0])
+        plt.pause(0.000001)
 
     def add_node(self, start, end):
         """

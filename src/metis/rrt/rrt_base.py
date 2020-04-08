@@ -329,33 +329,34 @@ class RRT(object):
         lam : -1 or 1
             Direction going around circle (1 = clockwise, -1 = counterclockwise).
         '''
-        res = 360
-        theta1 = np.arctan2(p_s.item(0) - center.item(0), p_s.item(1) - center.item(1))
-        theta2 = np.arctan2(p_e.item(0) - center.item(0), p_e.item(1) - center.item(1))
-        theta1, theta2 = directional_wrap(theta1, theta2, lam)
-        t = np.linspace(theta1, theta2, res)
-        x = radius*np.cos(t) + center.item(1)
-        y = radius*np.sin(t) + center.item(0)
+        pass
+        # res = 360
+        # theta1 = np.arctan2(p_s.item(0) - center.item(0), p_s.item(1) - center.item(1))
+        # theta2 = np.arctan2(p_e.item(0) - center.item(0), p_e.item(1) - center.item(1))
+        # theta1, theta2 = directional_wrap(theta1, theta2, lam)
+        # t = np.linspace(theta1, theta2, res)
+        # x = radius*np.cos(t) + center.item(1)
+        # y = radius*np.sin(t) + center.item(0)
 
-        # plt.plot(x,y)
-        # plt.axis('equal')
-        # plt.show()
+        # # plt.plot(x,y)
+        # # plt.axis('equal')
+        # # plt.show()
         
-        points = list(zip(x, y))
-        line = LineString(points)
-        return line
+        # points = list(zip(x, y))
+        # line = LineString(points)
+        # return line
 
-        def directional_wrap(self, theta1, theta2, lam):
-            '''Wrap theta1 relative to theta2, given the direction of rotation lambda.
-            (1 = clockwise, -1 = counterclockwise).
-            '''
-            if lam == -1: # Counterclockwise
-                if theta2 < theta1:
-                    theta2 += 2*np.pi
-            if lam == 1: # Clockwise
-                if theta1 < theta2:
-                    theta2 -= 2*np.pi
-            return theta1, theta2
+        # def directional_wrap(self, theta1, theta2, lam):
+        #     '''Wrap theta1 relative to theta2, given the direction of rotation lambda.
+        #     (1 = clockwise, -1 = counterclockwise).
+        #     '''
+        #     if lam == -1: # Counterclockwise
+        #         if theta2 < theta1:
+        #             theta2 += 2*np.pi
+        #     if lam == 1: # Clockwise
+        #         if theta1 < theta2:
+        #             theta2 -= 2*np.pi
+        #     return theta1, theta2
 
     def extend_tree(self, tree, goal, seg_length):
         """

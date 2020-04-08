@@ -29,7 +29,7 @@ class StraightRRT(RRT):
     """
     _logger = _module_logger.getChild('StraightRRT')
 
-    def __init__(self, mission, animate=False, config=straight_config):
+    def __init__(self, mission, animate=True, config=straight_config):
         super(StraightRRT, self).__init__(mission, animate=animate, config=config)
 
     def find_full_path(self, waypoints, connect=False):
@@ -94,7 +94,7 @@ class StraightRRT(RRT):
         # check for if solution at the beginning    
         chi = heading(start_node, end_node)
         if self.flyable_path(start_node, end_node, start_node.chi, chi):
-            self.animation.add_node(start_node, end_node) if self.animation else None
+            self.animation.add_path(self.points_along_path(start_node, end_node)) if self.animation else None
             return [start_node.waypoint, end_node.waypoint]  # Returns the two waypoints as the succesful path
 
         #START NEW TESTING CODE
@@ -329,7 +329,7 @@ class StraightRRT(RRT):
 
         # Add this new node to the tree of viable paths.
         tree.add(new_node)
-        self.animation.add_node(closest, new_node) if self.animation else None
+        self.animation.add_path(self.points_along_path(closest, new_node)) if self.animation else None
 
         # Check to see if the new node can connect to the end node.
         chi = heading(new_node, end)
@@ -338,7 +338,7 @@ class StraightRRT(RRT):
         if self.flyable_path(new_node, end, new_node.chi, chi):
             end_n = Node(end.waypoint, new_node.cost + end.distance(new_node), new_node, True, chi)
             tree.add(end_n)
-            self.animation.add_node(new_node, end_n) if self.animation else None
+            self.animation.add_path(self.points_along_path(new_node, end_n)) if self.animation else None
             return tree, True
         else:
             return tree, False
