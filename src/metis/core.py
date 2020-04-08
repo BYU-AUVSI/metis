@@ -7,12 +7,7 @@ Useful core classes that don't belong in any specific package.
 """
 
 import logging
-import math
 
-from geographiclib.geodesic import Geodesic
-
-from metis.errors import InvalidCallbackError
-from metis.messages import msg_ned
 from metis.plotter import MissionPlotter
 from metis.tools import bounds2poly
 
@@ -31,7 +26,6 @@ class Mission(object):
         home=None,
         obstacles=None,
         boundary_list=None,
-        # boundary_poly=None,
         waypoints=None,
         drop_location=None,
         search_area=None,
@@ -48,12 +42,11 @@ class Mission(object):
         home : metis.GPSWaypoint, optional
             The location of the GPS groundstation, including the 
             groundstation's ground elevation.
-        obstacles : list of metis.messages.msg_ned, optional
-        boundary_list : list of metis.messages.msg_ned, optional
-        # boundary_poly : shapely.geometry.polygon.Polygon, optional
-        waypoints : list of metis.messages.msg_ned, optional
-        drop_location : metis.messages.msg_ned, optional
-        search_area : list of metis.messages.msg_ned, optional
+        obstacles : list of metis.core.CircularObstacle, optional
+        boundary_list : list of metis.core.BoundaryPoint, optional
+        waypoints : list of metis.core.Waypoint, optional
+        drop_location : metis.core.Waypoint, optional
+        search_area : list of metis.core.BoundaryPoint, optional
         """
         # private:
         self._boundary_poly = None
@@ -93,16 +86,12 @@ class Mission(object):
 
     @property
     def boundary_poly(self):
-        self._logger.debug("boundary_poly property called")
+        # self._logger.debug("boundary_poly property called")
         return self._boundary_poly
-
-    @boundary_poly.setter
-    def boundary_poly(self, value):
-        raise ValueError("Attribute is read-only.")
 
     @property
     def boundary_list(self):
-        self._logger.debug("boundary_list property called")
+        # self._logger.debug("boundary_list property called")
         return self._boundary_list
 
     @boundary_list.setter
@@ -110,7 +99,7 @@ class Mission(object):
         if boundaries is not None:
             self._boundary_list = boundaries
             self._boundary_poly = bounds2poly(boundaries)
-            self._logger.debug("boundary_list property set")
+            # self._logger.debug("boundary_list property set")
         else:
             self._boundary_poly = None
 
@@ -125,7 +114,7 @@ class Plan:
             The mission that corresponds to the certain plan.
         clear_previous : bool, optional
             Whether previous plans should be cleared and discarded.
-        waypoints : list of metis.messages.msg_ned
+        waypoints : list of metis.core.Waypoint
             The set of waypoints corresponding to the specified plan.
         """
         self.mission = mission
@@ -148,53 +137,4 @@ class Plan:
         if self.callback:
             self.callback(self)
         else:
-            raise InvalidCallbackError("No callback configured for function 'accept'.")
-
-class GPSWaypoint:
-    def __init__(self, lat, lon, elev):
-        """`
-        A data structure representing a GPS point.
-
-        Parameters
-        ----------
-        lat : float
-            The latitude of the point, expressed in decimal degrees (DD).
-        lon : float
-            The longitude of the point, expressed in decimal degrees (DD).
-        elev : float
-            The elevation of the point, in meters.
-        """
-        self.lat = lat
-        self.lon = lon
-        self.elev = elev
-
-    def ned_from(self, gps2):
-        """
-        Returns the NED position of the this GPS point relative to another 
-        GPS point.
-
-        Parameters
-        ----------
-        gps2 : metis.GPSWaypoint
-            The point to serve as a reference point. NED position is calculated
-            relative to this point.
-
-        Returns
-        -------
-        res : metis.messages.msg_ned
-            A message where the result is the NED position of this point
-            relative to gps2 (the radius property is always 0).
-
-        >>> ref = GPSWaypoint(39.98304881111, -111.9903776, 0)
-        >>> obstacle = GPSWaypoint(39.983258, -111.994228, 0)
-        >>> obstacle.ned_from(ref).to_array()
-        [23.234244610397234, -328.88079281265095, 0.0, 0]
-        """
-        inv = Geodesic.WGS84.Inverse(gps2.lat, gps2.lon, self.lat, self.lon)
-        res = msg_ned(
-            north = inv["s12"] * math.cos(math.radians(inv["azi1"])),
-            east = inv["s12"] * math.sin(math.radians(inv["azi1"])),
-            down = float(-(self.elev - gps2.elev)),
-            radius = 0
-        )
-        return res
+            raise AttributeError("No callback configured for function 'accept'.")

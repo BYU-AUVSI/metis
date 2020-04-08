@@ -6,8 +6,8 @@ import rospy
 from uav_msgs.msg import JudgeMission, NED_pt, NED_list
 from uav_msgs.srv import GetMissionWithId
 
-from metis.messages import msg_ned
-from metis import Mission, GPSWaypoint
+from metis import Mission
+from metis.location import GPSWaypoint, Waypoint, BoundaryPoint, CircularObstacle, convert_point
 from metis import tools
 
 def wypts2msg(waypoints, mission_type):
@@ -39,12 +39,12 @@ def wypts2msg(waypoints, mission_type):
 
 def msg2wypts(message):
     """
-    Converts a ros message to a list of msg_ned classes.
+    Converts a ros message to a list of Waypoint classes.
     """
 
     waypoints = []
     for point in message.waypoint_list:
-        waypoints.append(msg_ned(point.N, point.E, point.D))
+        waypoints.append(Waypoint(point.N, point.E, point.D))
 
     return waypoints
 
@@ -130,13 +130,13 @@ def get_server_data(mission_type, ref_pos):
     mission_type : int
         The mission type number for which data was obtained (number defined 
         in the JudgeMission message)
-    obstacles : list of metis.messages.msg_ned
+    obstacles : list of metis.core.CircularObstacle
         A list of NED messages
-    boundary_list : list of metis.messages.msg_ned
-        A list of all boundary points as msg_ned objects.
+    boundary_list : list of metis.core.BoundaryPoint
+        A list of all boundary points as BoundaryPoint objects.
     boundary_poly : shapely.geometry.polygon.Polygon
         A polygon object that defines the boundaries
-    waypoints : list of metis.messages.msg_ned
+    waypoints : list of metis.core.Waypoint
         A list of NED messages
     """
     # TODO: Move this service proxy to `services.py`
@@ -167,15 +167,15 @@ def _convert_obstacles(msg, ref_pos):
 
     Returns
     -------
-    obstacle_list : list of metis.messages.msg_ned
+    obstacle_list : list of metis.core.CircularObstacle
         A list containing the position and height for each obstacle.
     """
     obstacle_list = []
 
     for i in msg.stationary_obstacles:
-        obs = GPSWaypoint(i.point.latitude, i.point.longitude, i.point.altitude)
+        obs = GPSWaypoint(i.point.latitude, i.point.longitude, i.cylinder_height)
         ned = obs.ned_from(ref_pos)
-        ned.d = i.cylinder_height
+        ned = convert_point(ned, CircularObstacle)
         ned.r = i.cylinder_radius
         obstacle_list.append(ned)
 
@@ -202,7 +202,7 @@ def _convert_waypoints(msg, ref_pos):
 
     Returns
     -------
-    waypoint_list : list of metis.messages.msg_ned
+    waypoint_list : list of metis.core.Waypoint
         List containing the NED position of each waypoint.
     """
     waypoint_list = []
@@ -211,7 +211,7 @@ def _convert_waypoints(msg, ref_pos):
         wpt = GPSWaypoint(i.point.latitude, i.point.longitude, i.point.altitude)
         ned = wpt.ned_from(ref_pos)
         # ned.d -= 22.0 # TODO: For some reason, ground level is -22.0
-        waypoint_list.append(ned)
+        waypoint_list.append(convert_point(ned, Waypoint))
 
     return waypoint_list
 
@@ -232,14 +232,15 @@ def _convert_boundaries(msg, ref_pos):
 
     Returns
     -------
-    list : list of metis.messages.msg_ned
-        A list of all the boundary points as msg_ned objects.
+    list : list of metis.core.BoundaryPoint
+        A list of all the boundary points as BoundaryPoint objects.
     """
     boundary_list = []
 
     for i in msg.boundaries:
         bnd = GPSWaypoint(i.point.latitude, i.point.longitude, i.point.altitude)
-        boundary_list.append(bnd.ned_from(ref_pos))
+        pnt = bnd.ned_from(ref_pos)
+        boundary_list.append(convert_point(pnt, BoundaryPoint))
 
-    boundary_poly = tools.makeBoundaryPoly(boundary_list)
+    boundary_poly = tools.bounds2poly(boundary_list)
     return boundary_list, boundary_poly

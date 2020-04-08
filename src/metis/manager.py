@@ -8,8 +8,8 @@ import warnings
 
 import numpy as np
 
-from metis import Plan, Waypoint, BoundaryPoint, CircularObstacle
-from metis.messages import msg_ned
+from metis import Plan
+from metis.location import Waypoint, BoundaryPoint, CircularObstacle
 from metis.planners import (
     LoiterPlanner,
     LandingPlanner,
@@ -18,7 +18,7 @@ from metis.planners import (
     PayloadPlanner,
     SearchPlanner,
 )
-from metis.rrt import RRT, Config
+from metis.rrt import get_rrt, Config
 
 _module_logger = logging.getLogger(__name__)
 
@@ -54,14 +54,14 @@ class MissionManager(object):
             It is a positive floating point value in meters (default 35).
         """
         self.mission = mission
-        self.default_pos = msg_ned(0., 0., -target_height)
+        self.default_pos = Waypoint(0., 0., -target_height)
         self.planners = {}
         if self.mission:
             self._init_planners(self.mission)
         else:
             warnings.warn("MissionManager created without mission object; no planners are initialized.", RuntimeWarning)
         self.plans = []
-        self.current_pos = msg_ned(0., 0., -target_height)
+        self.current_pos = Waypoint(0., 0., -target_height)
 
     @property
     def target_height(self):
@@ -94,8 +94,9 @@ class MissionManager(object):
         ----------
         planned_points : list of metis.messages.msg_ned
             The points of the mission that must be hit.
-        max_rel_chi : float, optional
-            The tightness of turns that the RRT algorithm should plan for 
+        config : metis.rrt.rrt_base.Config
+            Configuration object that contains, among other thigns, the 
+            tightness of turns that the RRT algorithm should plan for 
             (default (15/16)*pi).
         connect : bool, optional
             Whether RRT should use the `connect` flag.
@@ -107,6 +108,7 @@ class MissionManager(object):
         """
         # rrt = RRT(self.mission.obstacles, self.mission.boundary_list)
         self._logger.critical("RRT MAX REL CHI: " + str(config.max_rel_chi))
+        RRT = get_rrt('straight')
         rrt = RRT(self.mission, config=config)
 
         if self.plans:
@@ -195,8 +197,8 @@ class MissionManager(object):
 
     def plan_objective(self):
         planned_points = self.planners["objective"].plan()
-        config = Config(max_rel_chi=np.radians(60))
-        plan = self._apply_rrt(planned_points, connect=True)
+        config = Config(max_rel_chi=np.radians(60), iterations=3)
+        plan = self._apply_rrt(planned_points, config, connect=True)
         return plan
 
     def plan_offaxis(self):
@@ -224,7 +226,8 @@ class MissionManager(object):
 
     def plan_search(self):
         planned_points = self.planners["search"].plan()
-        plan = self._apply_rrt(planned_points)
+        config = Config(max_rel_chi=np.radians(110), iterations=3)
+        plan = self._apply_rrt(planned_points, config)
         return plan
 
 

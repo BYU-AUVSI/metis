@@ -5,7 +5,7 @@
 from shapely.geometry import Point
 import numpy as np
 
-from metis.messages import msg_ned
+from metis.location import Waypoint
 from metis.planners import Planner
 
 class LoiterPlanner(Planner):
@@ -78,4 +78,4 @@ class LoiterPlanner(Planner):
 
         
 
-        return([msg_ned(n,e,-45.0)])
+        return([Waypoint(n,e,-45.0)])

@@ -6,7 +6,7 @@ import numpy as np
 
 from shapely.geometry import Polygon, LineString, Point
 
-from metis.messages import msg_ned
+from metis.location import Waypoint
 from metis.planners import Planner
 from metis.rrt import heading
 from metis.tools import ft2m
@@ -28,14 +28,14 @@ class LandingPlanner(Planner):
 
         Parameters
         ----------
-        landing_waypoint_list : list of metis.messages.msg_ned
+        landing_waypoint_list : list of metis.core.Waypoint
         curr_altitude : float
         # altitude_threshold : float (optional)
         # altitude_default : float (optional)
 
         Returns
         -------
-        waypoints : list of metis.messages.msg_ned
+        waypoints : list of metis.core.Waypoint
             A list of waypoints
         """
         # landing_wpt = landing_waypoint_list[0]
@@ -69,7 +69,7 @@ class LandingPlanner(Planner):
         #     plt.axis('equal')
         #     plt.show()
 
-        # obstacles is a list of msg_ned
+        # obstacles is a list of CircularObstacle
         obstacles = self.mission.obstacles
         shapes = []
         resolution = 360
@@ -102,7 +102,7 @@ class LandingPlanner(Planner):
         delta_n = entry_distance * np.cos(chi)
         delta_e = entry_distance * np.sin(chi)
 
-        pattern_entry_point = msg_ned(
+        pattern_entry_point = Waypoint(
             north=touchdown_point.n - delta_n,
             east=touchdown_point.e - delta_e,
             down=-entry_altitude

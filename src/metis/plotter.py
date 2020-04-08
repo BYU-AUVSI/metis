@@ -5,7 +5,7 @@
 import numpy as np
 # import rospy
 from matplotlib import pyplot as plt
-from metis.messages import msg_ned
+from metis.location import Waypoint
 # from uav_msgs.msg import JudgeMission, State #,NED_list, NED_pt
 
 # from metis import tools
@@ -85,6 +85,7 @@ class MissionPlotter:
         for obs in obstacles:
             circ = plt.Circle((obs.e, obs.n), obs.r, fill=False, color=color, label=label)
             self.ax.add_artist(circ)
+            self.ax.text(obs.e, obs.n, '{:.1f}'.format(obs.h))
 
     def add_waypoints(self, pointList, label, color='green', size=1, marker='.'):
         """
@@ -93,7 +94,7 @@ class MissionPlotter:
         points = self.NEDListToNEnp(pointList)
         self.wapts = self.ax.scatter(points[:,0], points[:,1], label=label, c=color, s=size, marker=marker)
         for i, point in enumerate(pointList):
-            self.ax.text(point.e, point.n, str(i))
+            self.ax.text(point.e, point.n, str(i) + ': ' + str(-point.d))
 
     def add_pathway(self, pointList, label, ptColor='red', pathColor='cyan'):
         self.nedWaypoints = pointList
@@ -203,16 +204,16 @@ class MissionPlotter:
             e = eventdata.xdata
             n = eventdata.ydata
             d = -0.0
-            r = 0
+            # r = 0
             if self.idxToUpdate >= len(self.nedWaypoints):
                 print(self.nedWaypoints)
                 d = self.nedWaypoints[self.idxToUpdate-1].d
-                self.nedWaypoints.append(msg_ned(n, e, d, r))
+                self.nedWaypoints.append(Waypoint(n, e, d))
                 print(self.nedWaypoints)
             else:
                 a = self.nedWaypoints[self.idxToUpdate-1].to_nparray()
                 b = self.nedWaypoints[self.idxToUpdate].to_nparray()
-                self.nedWaypoints.insert(self.idxToUpdate,msg_ned(n, e, d, r))
+                self.nedWaypoints.insert(self.idxToUpdate,Waypoint(n, e, d))
                 cur = self.nedWaypoints[self.idxToUpdate].to_nparray()
                 dista = np.linalg.norm(cur[0:1]-a[0:1])
                 distb = np.linalg.norm(cur[0:1]-b[0:1])

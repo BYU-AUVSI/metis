@@ -6,7 +6,7 @@ import numpy as np
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
 
-from metis.messages import msg_ned
+from metis.location import Waypoint
 from metis.planners import Planner
 
 class OffaxisPlanner(Planner):
@@ -39,7 +39,7 @@ class OffaxisPlanner(Planner):
         location_point = Point(object_location.n, object_location.e).buffer(clearance)
 
         if location_point.within(self.boundary_poly):
-            waypoint = msg_ned(object_location.n, object_location.e, -altitude)
+            waypoint = Waypoint(object_location.n, object_location.e, -altitude)
             final_waypoints = [waypoint]
         
         else:
@@ -70,15 +70,15 @@ class OffaxisPlanner(Planner):
             direction = 1
 
             if Point(waypoint_n, waypoint_e).within(self.boundary_poly):
-                waypoint = msg_ned(waypoint_n, waypoint_e, -altitude)
+                waypoint = Waypoint(waypoint_n, waypoint_e, -altitude)
             else:
                 direction = -1
                 waypoint_n = object_location.n - norm[line_idx,0]*(dist[line_idx] + clearance)
                 waypoint_e = object_location.e - norm[line_idx,1]*(dist[line_idx] + clearance)
 
-                waypoint = msg_ned(waypoint_n, waypoint_e, -altitude)
+                waypoint = Waypoint(waypoint_n, waypoint_e, -altitude)
             
-            parallel_point = msg_ned(waypoint.n + waypoint_distance*slope[line_idx,0], waypoint.e + waypoint_distance*slope[line_idx,1], altitude)
+            parallel_point = Waypoint(waypoint.n + waypoint_distance*slope[line_idx,0], waypoint.e + waypoint_distance*slope[line_idx,1], altitude)
 
             if Point(parallel_point.n, parallel_point.e).buffer(clearance*.99).within(self.boundary_poly):
                 pass
@@ -86,7 +86,7 @@ class OffaxisPlanner(Planner):
                 parallel_point.n = waypoint.n - waypoint_distance*slope[line_idx,0]
                 parallel_point.e = waypoint.e - waypoint_distance*slope[line_idx,1]
             
-            end_point = msg_ned(waypoint.n + direction*waypoint_distance*norm[line_idx,0], waypoint.e +  direction*waypoint_distance*norm[line_idx,1], altitude)
+            end_point = Waypoint(waypoint.n + direction*waypoint_distance*norm[line_idx,0], waypoint.e +  direction*waypoint_distance*norm[line_idx,1], altitude)
             scale = 1.
             while(not Point(end_point.n, end_point.e).buffer(clearance).within(self.boundary_poly)):
                 end_point.n = waypoint.n + direction*waypoint_distance*norm[line_idx,0]*scale

@@ -6,8 +6,8 @@ import numpy as np
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
 
-from metis.messages import msg_ned
-from metis.tools import makeBoundaryPoly, bounds2poly
+from metis.location import Waypoint, BoundaryPoint
+from metis.tools import bounds2poly
 from metis.planners import Planner
 
 class SearchPlanner(Planner):
@@ -36,7 +36,7 @@ class SearchPlanner(Planner):
         self.waypoint_distance = waypoint_distance
         self.height = height
 
-    def plan(self, current_pos=msg_ned(0.,0.,-100.), clearance=10, visualize=True):
+    def plan(self, current_pos=Waypoint(0.,0.,-100.), clearance=10, visualize=True):
         """
         Creates a lawn mower path over the search area
 
@@ -84,7 +84,7 @@ class SearchPlanner(Planner):
         n_bound = max_n + self.waypoint_distance
         s_bound = min_n - self.waypoint_distance
 
-        search_box = [msg_ned(n_bound, e_bound), msg_ned(s_bound, e_bound), msg_ned(s_bound, w_bound), msg_ned(n_bound, w_bound)]
+        search_box = [BoundaryPoint(n_bound, e_bound), BoundaryPoint(s_bound, e_bound), BoundaryPoint(s_bound, w_bound), BoundaryPoint(n_bound, w_bound)]
         search_box_p = bounds2poly(search_box)
 
         long_axis = 'NS' if (max_n - min_n) > (max_e - min_e) else 'EW'
@@ -106,7 +106,7 @@ class SearchPlanner(Planner):
             print('EW')
             all_points = self.zamboni(x, y)
 
-        all_points = [msg_ned(point[0], point[1], -self.height) for point in all_points]
+        all_points = [Waypoint(point[0], point[1], -self.height) for point in all_points]
 
         # if visualize:
         #     fig, ax = plt.subplots()
@@ -143,7 +143,7 @@ class SearchPlanner(Planner):
             waypoint_circle_large = Point(waypoint.n, waypoint.e).buffer(clearance) # Creates a point with a radius of clearance
             waypoint_circle_small = Point(waypoint.n, waypoint.e).buffer(self.waypoint_distance) # Point with a radius of waypoint_distance
             if waypoint_circle_large.within(self.flight_poly) and waypoint_circle_small.intersects(self.search_boundaries): # Check if the point is too close or far from boundaries
-                final_waypoints.append(msg_ned(waypoint.n, waypoint.e,-self.height))
+                final_waypoints.append(Waypoint(waypoint.n, waypoint.e,-self.height))
 
         # Plot the planned points and all boundaries
         if visualize:

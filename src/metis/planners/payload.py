@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from metis.tools import will_collide#, makeBoundaryPoly, convert
-from metis.messages import msg_ned
+from metis.location import Waypoint
 from metis.planners import Planner
 
 _module_logger = logging.getLogger('METIS')
@@ -203,7 +203,7 @@ class PayloadPlanner(Planner):
             self.waypoints_array[ii+self.supporting_points+1] = self.NED_release_location + (ii+1.0)*np.array([dNorth,dEast,0.0])
         waypointsList = []
         for ii in range(length):
-            waypointsList.append(msg_ned(self.waypoints_array[ii,0],self.waypoints_array[ii,1],self.waypoints_array[ii,2]))
+            waypointsList.append(Waypoint(self.waypoints_array[ii,0],self.waypoints_array[ii,1],self.waypoints_array[ii,2]))
 
         return waypointsList
 

@@ -6,8 +6,6 @@ import numpy as np
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
-from metis.messages import msg_ned
-
 
 def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
     """
@@ -15,7 +13,7 @@ def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
 
 	Parameters
 	----------
-	obstacles : msg_ned
+	obstacles : list of metis.core.CircularObstacle
 		List of obstacles
 	boundaryPoly : Polygon
 		A Polygon object of the boundaries
@@ -40,6 +38,7 @@ def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
             continue
         # then check if runs into obstacle
         else:
+            # dist = np.linalg.norm(ned - obstacle.ned)
             distToPoint = np.sqrt((N - obstacle.n) ** 2 + (E - obstacle.e) ** 2)
             if any(distToPoint < obstacle.r + clearance):
                 return True
@@ -54,24 +53,6 @@ def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
 def down_at_ne(n, e):
     pass
 
-def makeBoundaryPoly(boundariesList):
-    """Makes a list of boundary points into a Polygon object.
-
-    Parameters
-    ----------
-    boundariesList : msg_ned
-        List of boundary points
-
-    Returns
-    ----------
-    boundaries : Polygon
-        Returns the Polygon object of boundaries
-    """
-    pointList = []
-    for point in boundariesList:
-        pointList.append(Point(point.n, point.e))
-    return Polygon([[p.x, p.y] for p in pointList])
-
 
 def bounds2poly(boundaries):
     """
@@ -79,7 +60,7 @@ def bounds2poly(boundaries):
 
     Parameters
     ----------
-    boundaries : list of metis.messages.msg_ned
+    boundaries : list of metis.core.BoundaryPoint
         List of boundary points.
 
     Returns
@@ -87,7 +68,7 @@ def bounds2poly(boundaries):
     boundaries : shapely.geometry.polygon.Polygon
         Returns the Polygon representing the boundaries.
     """
-    return Polygon([[bound.n, bound.e] for bound in boundaries])
+    return Polygon([[bound.e, bound.n] for bound in boundaries])
 
 
 def ft2m(feet):
@@ -105,3 +86,4 @@ def ft2m(feet):
         Length in meters.
     """
     return float(feet / 3.2808)
+    

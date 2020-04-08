@@ -8,7 +8,7 @@ import logging
 import numpy as np
 
 import rospy
-from rosplane_msgs.msg import Waypoint
+from rosplane_msgs.msg import Waypoint as WaypointMsg
 from uav_msgs.msg import JudgeMission, State
 from uav_msgs.srv import (
     PlanMissionPoints,
@@ -20,8 +20,8 @@ from uav_msgs.srv import (
 
 import metis.ros.utils as utils
 from metis import Mission
+from metis.location import Waypoint
 from metis.manager import MissionManager
-from metis.messages import msg_ned
 
 log = logging.getLogger('METIS')
 
@@ -33,7 +33,8 @@ class MissionPlanner(object):
     the path planner, and the various mission planners
     """
 
-    def __init__(self, Va=20):
+    # def __init__(self, Va=20):
+    def __init__(self, Va=15):
         """Creates a new MissionPlanner class with planner objectives
 
         This initializes a new MissionPlanner. The reference latitude, longitude,
@@ -66,8 +67,8 @@ class MissionPlanner(object):
         self._services.append(rospy.Service("review_plan", UploadPath, self.review_plan))
 
         # self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        # self.wp_pub = rospy.Publisher("/waypoint_path", Waypoint, queue_size=10) # This is for real life
-        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10) # This is for simulation
+        self.wp_pub = rospy.Publisher("/waypoint_path", WaypointMsg, queue_size=10) # This is for real life
+        # self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10) # This is for simulation
 
         self.plan = None
         print(self.mission)
@@ -105,7 +106,7 @@ class MissionPlanner(object):
         waypoints = []
 
         for point in self.plan.waypoints:
-            new_point = Waypoint()
+            new_point = WaypointMsg()
             new_point.w = [point.n, point.e, point.d]
             new_point.Va_d = self.Va  # airspeed (m/s)
             new_point.set_current = False  # erases list, sets this as current waypoint
@@ -122,8 +123,9 @@ class MissionPlanner(object):
         return True
 
     def clear_waypoints(self, req):
-        new_point = Waypoint()
-        new_point.w = self.manager.default_pos.to_array(radius=False)
+        new_point = WaypointMsg()
+        pos = self.manager.default_pos
+        new_point.w = [pos.n, pos.e, pos.d]
         new_point.clear_wp_list = True
 
         self.wp_pub.publish(new_point)
@@ -174,7 +176,7 @@ class MissionPlanner(object):
             rospy.loginfo("LOITER PLANNER TASK BEING PLANNED")
             try:
                 pos_msg = rospy.wait_for_message("/state", State, timeout=1)
-                current_pos = msg_ned(pos_msg.position[0], pos_msg.position[1], pos_msg.position[2])
+                current_pos = Waypoint(pos_msg.position[0], pos_msg.position[1], pos_msg.position[2])
             except rospy.ROSException as e:
                 current_pos = self.manager.default_pos
                 rospy.logerr("LOITER - No state message received. Setting current position to the default position.")
