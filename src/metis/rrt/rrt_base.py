@@ -7,7 +7,7 @@ import logging
 import numpy as np
 from shapely.geometry import Point
 
-from metis.location import Waypoint
+from metis.location import Waypoint, convert_point
 from .animation import Animation2D
 
 
@@ -122,10 +122,10 @@ class Tree(object):
         self.nodes.append(node)
 
 
-class Node(object):
+class Node(Waypoint):
     _logger = _module_logger.getChild('Node')
 
-    def __init__(self, waypoint, cost=0., parent=None, connects=False, chi=0.):
+    def __init__(self, n=0.0, e=0.0, d=0.0, chi=0.0, cost=0.0, parent=None, connects=False):
         """
         Parameters
         ----------
@@ -141,52 +141,18 @@ class Node(object):
         chi : float, optional
             Heading in radians (default 0).
         """
-        super(Node, self).__init__()
-        self.waypoint = waypoint
+        super(Node, self).__init__(n, e, d, chi)
         self.cost = cost
         self.parent = parent
         self.connects = connects
-        self.chi = chi
 
     def __eq__(self, other):
         """
         Equality overridden such that as long as the nodes are in exactly the
         same geographic location, they are considered to be the same node.
         """
-        return self.waypoint.ned == other.waypoint.ned
-
-    @property
-    def n(self):
-        return self.waypoint.n
-    
-    @n.setter
-    def n(self, value):
-        self.waypoint.n = value
-
-    @property
-    def e(self):
-        return self.waypoint.e
-    
-    @e.setter
-    def e(self, value):
-        self.waypoint.e = value
-
-    @property
-    def d(self):
-        return self.waypoint.d
-    
-    @d.setter
-    def d(self, value):
-        self.waypoint.d = value
-
-    @property
-    def ned(self):
-        return self.waypoint.ned
-
-    def distance(self, other):
-        if not isinstance(other, self.__class__):
-            raise TypeError('expected type {}, but received {}'.format(type(self), type(other)))
-        return self.waypoint.distance(other.waypoint)
+        return self.ned == other.ned and \
+            self.chi == other.chi
 
 
 class RRT(object):
@@ -306,7 +272,8 @@ class RRT(object):
             down points.
         """
         step_size = self.config.resolution
-        q0 = end.waypoint.ned - start.waypoint.ned
+        # q0 = end.waypoint.ned - start.waypoint.ned
+        q0 = end.ned - start.ned
         points = int(np.ceil(np.linalg.norm(q0)/step_size)) + 1
         n = np.linspace(start.n, end.n, num=points)
         e = np.linspace(start.e, end.e, num=points)
@@ -390,7 +357,8 @@ class RRT(object):
             if type(node) is Waypoint:
                 normalized.append(node)
             elif type(node) is Node:
-                normalized.append(node.waypoint)
+                # normalized.append(node.waypoint)
+                normalized.append(convert_point(node, Waypoint))
             else:
                 raise ValueError('node is not a Node or Waypoint')
         return normalized
@@ -417,8 +385,7 @@ def generate_random_node(nmax, nmin, emax, emin):
         A Waypoint within the region bounded by the parameters (altitude is at
         ground level).
     """
-    point = Waypoint(n=np.random.uniform(low=nmin, high=nmax), e=np.random.uniform(low=emin, high=emax))
-    return Node(point)
+    return Node(n=np.random.uniform(low=nmin, high=nmax), e=np.random.uniform(low=emin, high=emax))
 
 def collision(ned, boundaries, obstacles, clearance=Config.clearance):
     """

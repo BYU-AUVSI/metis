@@ -7,7 +7,7 @@ import logging
 
 import numpy as np
 
-from metis.location import Waypoint
+from metis.location import Waypoint, convert_point
 from .rrt_base import *
 from .animation import Animation2D
 
@@ -86,15 +86,15 @@ class FilletRRT(RRT):
         """
         _logger = _module_logger.getChild("find_path")
 
-        start_node = Node(waypoint=start)
-        end_node = Node(waypoint=end)
+        start_node = convert_point(start, Node)
+        end_node = convert_point(end, Node)
         tree = Tree(root=start_node)
 
         # check for if solution at the beginning    
         chi = heading(start_node, end_node)
         if self.flyable_path(start_node, end_node, start_node.chi, chi):
             self.animation.add_path(self.points_along_path(start_node, end_node)) if self.animation else None
-            return [start_node.waypoint, end_node.waypoint]  # Returns the two waypoints as the succesful path
+            return [convert_point(start_node, Waypoint), convert_point(end_node, Waypoint)]  # Returns the two waypoints as the succesful path
 
         #START NEW TESTING CODE
         # This code attempts to implement the `connect` feature of the straight
@@ -379,9 +379,9 @@ class FilletRRT(RRT):
                 return ned
 
             else:
-                start_node = Node(Waypoint(start_node.item(0), start_node.item(1), start_node.item(2)))
-                mid_node = Node(Waypoint(mid_node.item(0), mid_node.item(1), mid_node.item(2)))
-                last_node = Node(Waypoint(last_node.item(0), last_node.item(1), last_node.item(2)))
+                start_node = Node(start_node.item(0), start_node.item(1), start_node.item(2))
+                mid_node = Node(mid_node.item(0), mid_node.item(1), mid_node.item(2))
+                last_node = Node(last_node.item(0), last_node.item(1), last_node.item(2))
                 ned1 = self.points_along_path(start_node, mid_node)
                 ned2 = self.points_along_path(mid_node, last_node)
 
@@ -439,7 +439,7 @@ class FilletRRT(RRT):
                 connection = new_node.ned - closest.ned
                 L = min(np.linalg.norm(connection), self.config.max_distance)
                 point = closest.ned + L*(connection / np.linalg.norm(connection))
-                new_node = Node(Waypoint(point.item(0), point.item(1), point.item(2)), closest.cost + L, closest, False, chi)
+                new_node = Node(point.item(0), point.item(1), point.item(2), chi, closest.cost + L, closest, False)
             
             # This case is for when the nearest leaf isn't yet at the correct altitude for the ending waypoint
             else:
@@ -456,7 +456,7 @@ class FilletRRT(RRT):
                 L = min(L, self.config.max_distance)
                 tmp = new_node.ned - closest.ned
                 point = closest.ned + L*(tmp/np.linalg.norm(tmp))
-                new_node = Node(Waypoint(point.item(0), point.item(1), point.item(2)), closest.cost + L, closest, False, chi)
+                new_node = Node(point.item(0), point.item(1), point.item(2), chi, closest.cost + L, closest, False)
                 
                 # If we were descending and overshot (or were ascending and overshot), set to final altitude.
                 if (new_node.d > closest.d and new_node.d < end.d) or (new_node.d < closest.d and new_node.d > end.d):
@@ -483,7 +483,7 @@ class FilletRRT(RRT):
 
         # Return the extended tree with the flag of a successful path to ending node
         if self.flyable_path(new_node, end, new_node.chi, chi):
-            end_n = Node(end.waypoint, new_node.cost + end.distance(new_node), new_node, True, chi)
+            end_n = Node(end.n, end.e, end.d, chi, new_node.cost + end.distance(new_node), new_node, True)
             tree.add(end_n)
             self.animation.add_path(self.points_along_path(new_node, end_n)) if self.animation else None
             return tree, True

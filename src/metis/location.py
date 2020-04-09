@@ -205,7 +205,9 @@ def convert_point(point, T):
     T : NEDPoint type (or one of its subclasses)
         The type to convert `point` to.
     """
-    if T not in NEDPoint.__subclasses__():
+    if not issubclass(type(point), NEDPoint):
+        raise ValueError('Type {} is not convertible.'.format(type(point)))
+    if not issubclass(T, NEDPoint):
         raise ValueError('Conversion to type {} is not supported.'.format(T))
     new = T()
     for key in new.__dict__.viewkeys() & point.__dict__.viewkeys():
