@@ -22,6 +22,7 @@ import metis.ros.utils as utils
 from metis import Mission
 from metis.location import Waypoint
 from metis.manager import MissionManager
+from metis.rrt import get_mode
 
 log = logging.getLogger('METIS')
 
@@ -67,12 +68,13 @@ class MissionPlanner(object):
         self._services.append(rospy.Service("review_plan", UploadPath, self.review_plan))
 
         # self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        self.wp_pub = rospy.Publisher("/waypoint_path", WaypointMsg, queue_size=10) # This is for real life
-        # self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", Waypoint, queue_size=10) # This is for simulation
+        # self.wp_pub = rospy.Publisher("/waypoint_path", WaypointMsg, queue_size=10) # This is for real life
+        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", WaypointMsg, queue_size=10) # This is for simulation
 
         self.plan = None
         print(self.mission)
-        rospy.logwarn("Is your home location set correctly (see ref_params in .launch file)?")
+        rospy.logwarn("Is your home location set correctly (see params in interop_client's .launch file)?")
+        rospy.logwarn("Is the waypoint publisher set correctly for flight/simulation (see metis.ros.mission)?")
         self.Va = Va
 
         export = False
@@ -108,13 +110,16 @@ class MissionPlanner(object):
         for point in self.plan.waypoints:
             new_point = WaypointMsg()
             new_point.w = [point.n, point.e, point.d]
+            new_point.chi_d = 0 # Deseired course at this waypoint (rad)
+            if get_mode() is 'dubins':
+                # Desired course valid (dubin paths)
+                new_point.chi_valid = True
+            else:
+                # Desired course invalid (straight or fillet paths)
+                new_point.chi_valid = False
             new_point.Va_d = self.Va  # airspeed (m/s)
             new_point.set_current = False  # erases list, sets this as current waypoint
             new_point.clear_wp_list = False  # removes all waypoints, returns to origin
-
-            new_point.chi_d = 0 # Deseired course at this waypoint (rad)
-            new_point.chi_valid = False # Desired course valid (dubin or fillet paths)
-
             waypoints.append(new_point)
 
         for point in waypoints:

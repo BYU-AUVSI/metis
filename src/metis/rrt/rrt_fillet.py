@@ -16,7 +16,8 @@ _module_logger = logging.getLogger(__name__)
 
 fillet_config = Config(
     clearance=15,
-    min_radius=np.radians(45),
+    min_radius=20,
+    max_rel_chi=np.radians(45),
     iterations=3,
 )
 
@@ -26,7 +27,7 @@ class FilletRRT(RRT):
     It also holds the information concerning the physical boundaries and 
     obstacles in the competition.
     """
-    _logger = _module_logger.getChild('StraightRRT')
+    _logger = _module_logger.getChild('FilletRRT')
 
     def __init__(self, mission, animate=False, config=fillet_config):
         super(FilletRRT, self).__init__(mission, animate=animate, config=config)
@@ -251,7 +252,7 @@ class FilletRRT(RRT):
             down points.
         """
         if not future:
-            return self.points_along_straight(start, end)
+            return points_along_straight(start, end, self.config.resolution)
         else:
             R = self.config.min_radius
             stepSize = self.config.resolution

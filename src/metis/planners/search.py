@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from metis.location import Waypoint, BoundaryPoint
 from metis.tools import bounds2poly
 from metis.planners import Planner
+from metis.rrt import wrap2pi
 
 class SearchPlanner(Planner):
     """
@@ -44,8 +45,6 @@ class SearchPlanner(Planner):
 
         Parameters
         ----------
-        search_boundaries : list of NED class
-            The boundaries that define the search area
         current_pos : NED class
             The current position of the airplane
         clearance : float
@@ -67,18 +66,10 @@ class SearchPlanner(Planner):
         If visualize is true, the code looks like it stops and does not continue executing until the plot is closed.
 
         """
-        search_boundaries = self.mission.search_area
-        self.search_boundaries = bounds2poly(search_boundaries)
+        self.search_boundaries = bounds2poly(self.mission.search_area)
 
-        # Find the box that fits the search area
-        # num_points = len(search_boundaries)
-        # n_pos = np.zeros(num_points)
-        # e_pos = np.zeros(num_points)
-        # for i in np.arange(num_points):
-        #     n_pos[i] = search_boundaries[i].n
-        #     e_pos[i] = search_boundaries[i].e
-        
-        min_n, min_e, max_n, max_e = self.search_boundaries.bounds
+        # Find the box that fits the search area        
+        min_e, min_n, max_e, max_n = self.search_boundaries.bounds
         w_bound = min_e - self.waypoint_distance
         e_bound = max_e + self.waypoint_distance
         n_bound = max_n + self.waypoint_distance
@@ -90,76 +81,49 @@ class SearchPlanner(Planner):
         long_axis = 'NS' if (max_n - min_n) > (max_e - min_e) else 'EW'
 
         x = np.arange(min_e, max_e + self.waypoint_distance, self.waypoint_distance)[::-1]
-        # x = np.append(x, x[-1] + self.waypoint_distance)
         y = np.arange(min_n - self.waypoint_distance, max_n, self.waypoint_distance)[::-1]
-        # y = np.append(y, y[-1] + self.waypoint_distance)
-        # xx, yy = np.meshgrid(x, y, sparse=True)
-        # print(xx, yy)
-        # z = np.sin(xx**2 + yy**2) / (xx**2 + yy**2)
-        # h = plt.contourf(x,y,z)
-        # plt.show()
 
         if long_axis == 'NS':
             print('NS')
-            all_points = self.zamboni(y, x)
+            all_points = self.zamboni(y, x, 'NS')
         else:
             print('EW')
-            all_points = self.zamboni(x, y)
+            all_points = self.zamboni(x, y, 'EW')
 
-        all_points = [Waypoint(point[0], point[1], -self.height) for point in all_points]
-
-        # if visualize:
-        #     fig, ax = plt.subplots()
-        #     for point in all_points:
-        #         ax.scatter(point.e, point.n, c='k')
-        #     for point in self.flight_boundaries:
-        #         ax.scatter(point.e, point.n, c='r')
-        #     for point in search_boundaries:
-        #         ax.scatter(point.e, point.n, c='g')
-        #     plt.show()
-
-        # # Initialize variables for creating the search path
-        # all_points = []
-        # cur_pos = msg_ned(n_bound, w_bound, current_pos.d, -33.0)
-        # direction = 1 # Positive advances the path to the right, negative moves the path to the left. Changes each time it needs to turn around to stay in the search area
-
-        # # Create the lawn mower path
-        # all_points.append(msg_ned(cur_pos.n, cur_pos.e, current_pos.d)) #Start path at the North-East corner of the bounding box
-        # while cur_pos.n >= s_bound: #Stop adding points once we are below the bounding box
-        #     while cur_pos.e >= w_bound and cur_pos.e <= e_bound: #Add points on an East-West or West-East line until we leave the bounding box
-        #         cur_pos.e = cur_pos.e + direction*self.waypoint_distance 
-        #         all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
-        #     direction = -direction #When we leave the bounding box, turn around
-        #     cur_pos.n = cur_pos.n - self.waypoint_distance #Advance path one step in a South direction
-        #     all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
-        #     while cur_pos.e <= w_bound or cur_pos.e >= e_bound: #Bring the path back inside the bounding box area
-        #         cur_pos.e = cur_pos.e + direction*self.waypoint_distance
-        #         all_points.append(msg_ned(cur_pos.n, cur_pos.e, -self.height))
-
+        # all_points = [Waypoint(point[0], point[1], -self.height) for point in all_points]
 
         # Eliminate points that are too close to the flight boundary or too far from the search area
         final_waypoints = []
         for waypoint in all_points:
-            waypoint_circle_large = Point(waypoint.n, waypoint.e).buffer(clearance) # Creates a point with a radius of clearance
-            waypoint_circle_small = Point(waypoint.n, waypoint.e).buffer(self.waypoint_distance) # Point with a radius of waypoint_distance
+            waypoint_circle_large = Point(waypoint.e, waypoint.n).buffer(clearance) # Creates a point with a radius of clearance
+            waypoint_circle_small = Point(waypoint.e, waypoint.n).buffer(self.waypoint_distance) # Point with a radius of waypoint_distance
             if waypoint_circle_large.within(self.flight_poly) and waypoint_circle_small.intersects(self.search_boundaries): # Check if the point is too close or far from boundaries
-                final_waypoints.append(Waypoint(waypoint.n, waypoint.e,-self.height))
+                final_waypoints.append(waypoint)
 
         # Plot the planned points and all boundaries
         if visualize:
             fig, ax = plt.subplots()
+            counter = 1
             for point in final_waypoints:
                 ax.scatter(point.e, point.n, c='k')
+                ax.text(point.e, point.n, str(counter))
+                # ax.text(point.e, point.n, "    " + str(point.chi))
+                counter += 1
             for point in self.flight_boundaries:
                 ax.scatter(point.e, point.n, c='r')
-            for point in search_boundaries:
-                ax.scatter(point.e, point.n, c='g')
+            x, y = self.search_boundaries.exterior.xy
+            ax.plot(y, x)
+            plt.axis('equal')
             plt.show()
+
+            # fig, ax = plt.subplots()            
+            
+            # plt.show()
         
         return final_waypoints
 
 
-    def zamboni(self, long_axis, short_axis):
+    def zamboni(self, long_axis, short_axis, orientation):
         """
         Suppose we have a search as follows:
 
@@ -181,26 +145,24 @@ class SearchPlanner(Planner):
             An array containing the coordinates along the longer axis.
         short_axis : np.ndarry, dtype=float
             An array containing the coordinates along the shorter axis.
+        orientation : str, 'EW' or 'NS'
+            Whether the search area should be traversed east-west or 
+            north-south. 
         """
         turns = np.shape(short_axis)[0] - 1
+
+        if orientation == 'EW':
+            chi = np.radians(-90)
+        else:
+            chi = np.radians(180)
 
         waypoints = []
         direction = 1
         for i in reorder(short_axis):
             for j in long_axis[::direction]:
-                # print(i, j)
-                waypoints.append((i, j))
+                waypoints.append(Waypoint(i, j, -self.height, chi))
             direction = -direction
-
-        # fig, ax = plt.subplots()
-        # counter = 1
-        # for waypoint in waypoints:
-        #     plt.plot(waypoint[1], waypoint[0], 'rx')
-        #     ax.text(waypoint[1], waypoint[0], str(counter))
-        #     counter += 1
-        # x, y = self.search_boundaries.exterior.xy
-        # plt.plot(y, x)
-        # plt.show()
+            chi = -chi
 
         return waypoints
 

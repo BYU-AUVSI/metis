@@ -86,7 +86,7 @@ class MissionManager(object):
         self._logger.info("Plan approved.")
         self.plans.append(plan)
 
-    def _apply_rrt(self, planned_points, config=Config, connect=False):
+    def _apply_rrt(self, planned_points, config=Config, connect=False, rrt_type='fillet'):
         """
         Private function that applies the RRT algorithm to generated paths.
 
@@ -106,9 +106,10 @@ class MissionManager(object):
         plan : metis.core.Plan
             Returns a Plan object representing the final plan.
         """
-        # rrt = RRT(self.mission.obstacles, self.mission.boundary_list)
-        self._logger.critical("RRT MAX REL CHI: " + str(config.max_rel_chi))
-        RRT = get_rrt('straight')
+        # RRT = get_rrt('straight')
+        # RRT = get_rrt('fillet')
+        # RRT = get_rrt('dubins')
+        RRT = get_rrt(rrt_type)
         rrt = RRT(self.mission, config=config)
 
         if self.plans:
@@ -117,6 +118,8 @@ class MissionManager(object):
         else:
             self._logger.info("Planning from origin")
             current_pos = self.default_pos
+            # FIXME: Can we update to get the actual position of the plane? And
+            # get the current heading, too.
 
         planned_points.insert(0, current_pos)
         final_path = rrt.find_full_path(planned_points, connect=connect)
@@ -198,7 +201,7 @@ class MissionManager(object):
     def plan_objective(self):
         planned_points = self.planners["objective"].plan()
         config = Config(max_rel_chi=np.radians(60), iterations=3)
-        plan = self._apply_rrt(planned_points, config, connect=True)
+        plan = self._apply_rrt(planned_points, config, connect=True, rrt_type='dubins')
         return plan
 
     def plan_offaxis(self):
@@ -227,7 +230,7 @@ class MissionManager(object):
     def plan_search(self):
         planned_points = self.planners["search"].plan()
         config = Config(max_rel_chi=np.radians(110), iterations=3)
-        plan = self._apply_rrt(planned_points, config)
+        plan = self._apply_rrt(planned_points, config, rrt_type='fillet')
         return plan
 
 

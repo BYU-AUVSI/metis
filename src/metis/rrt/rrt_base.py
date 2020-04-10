@@ -15,8 +15,11 @@ _module_logger = logging.getLogger(__name__)
 
 class Config(object):
     clearance = 5.0
+    # clearance = 15.0
+    # max_distance = 150.0 # 50.0
     max_distance = 50.0
     min_radius = 20.0
+    # min_radius = 30.0
     max_incline = 0.5
     max_rel_chi = 15*np.pi/16
     # max_rel_chi = np.radians(60)
@@ -34,7 +37,8 @@ class Config(object):
         max_distance : float, optional
             Max distance between each added leaf (default 50.0).
         min_radius : float, optional
-            Minimum turn radius of the aircraft for planning fillet paths (default 20).
+            Minimum turn radius of the aircraft for planning fillet and dubins
+            paths (default 20).
         max_incline : float, optional
             The maximum incline or decline angle of the planned path (default 0.5).
         max_rel_chi : float, optional
@@ -157,9 +161,15 @@ class Node(Waypoint):
 
 class RRT(object):
     """
+    An RRT Interface that should be subclassed.
+
     An RRT object plans plans flyable paths in the mission environment. 
-    It also holds the information concerning the physical boundaries and 
-    obstacles in the competition.
+    To perform this task, it also holds a copy of the information concerning 
+    the physical boundaries and obstacles in the competition.
+    
+    This class models the structure of an RRT planner class. It contains basic
+    reusable functions as well as stubbed functions that ought to be 
+    implemented by subclasses.
     """
     _logger = _module_logger.getChild('RRT')
 
@@ -245,90 +255,12 @@ class RRT(object):
         raise NotImplementedError
 
     def find_path(self, start, end):
-        """
-        mission is already accessible via self
-        """
         raise NotImplementedError
 
     def points_along_path(self, start, end):
         raise NotImplementedError
 
-    def points_along_straight(self, start, end):
-        """
-        Creates a stepped range of values from the starting node to the ending node
-        with difference in step size guaranteed to be less than `self.config.resolution`.
-
-        Parameters
-        ----------
-        start : metis.rrt.rrt_base.Node
-            The starting node to create a range from.
-        end : metis.rrt.rrt_base.Node
-            The ending node to create a range to.
-        
-        Returns
-        -------
-        ned : np.ndarray
-            An m x 3 numpy array, where each row is an array of north, east, 
-            down points.
-        """
-        step_size = self.config.resolution
-        # q0 = end.waypoint.ned - start.waypoint.ned
-        q0 = end.ned - start.ned
-        points = int(np.ceil(np.linalg.norm(q0)/step_size)) + 1
-        n = np.linspace(start.n, end.n, num=points)
-        e = np.linspace(start.e, end.e, num=points)
-        d = np.linspace(start.d, end.d, num=points)
-        ned = np.stack([n, e, d], axis=1)
-        return ned
-
-    def pointsAlongArc(self, p_s, p_e, center, radius, lam):
-        '''
-        Parameters
-        ----------
-        p_s : ned
-            Starting position around circle.
-        p_e : ned
-            Ending position around circle.
-        center : ned
-            Center of circle.
-        radius : float
-            Radius of circle.
-        lam : -1 or 1
-            Direction going around circle (1 = clockwise, -1 = counterclockwise).
-        '''
-        pass
-        # res = 360
-        # theta1 = np.arctan2(p_s.item(0) - center.item(0), p_s.item(1) - center.item(1))
-        # theta2 = np.arctan2(p_e.item(0) - center.item(0), p_e.item(1) - center.item(1))
-        # theta1, theta2 = directional_wrap(theta1, theta2, lam)
-        # t = np.linspace(theta1, theta2, res)
-        # x = radius*np.cos(t) + center.item(1)
-        # y = radius*np.sin(t) + center.item(0)
-
-        # # plt.plot(x,y)
-        # # plt.axis('equal')
-        # # plt.show()
-        
-        # points = list(zip(x, y))
-        # line = LineString(points)
-        # return line
-
-        # def directional_wrap(self, theta1, theta2, lam):
-        #     '''Wrap theta1 relative to theta2, given the direction of rotation lambda.
-        #     (1 = clockwise, -1 = counterclockwise).
-        #     '''
-        #     if lam == -1: # Counterclockwise
-        #         if theta2 < theta1:
-        #             theta2 += 2*np.pi
-        #     if lam == 1: # Clockwise
-        #         if theta1 < theta2:
-        #             theta2 -= 2*np.pi
-        #     return theta1, theta2
-
     def extend_tree(self, tree, goal, seg_length):
-        """
-        mission is already accessible via self
-        """
         raise NotImplementedError
 
     @staticmethod
@@ -345,9 +277,6 @@ class RRT(object):
         return path[::-1]
 
     def smooth_path(self, path):
-        """
-        mission is already accessible via self
-        """
         raise NotImplementedError
 
     @staticmethod
@@ -360,7 +289,7 @@ class RRT(object):
                 # normalized.append(node.waypoint)
                 normalized.append(convert_point(node, Waypoint))
             else:
-                raise ValueError('node is not a Node or Waypoint')
+                raise ValueError('Encountered value that is not a Node or Waypoint')
         return normalized
     
 def generate_random_node(nmax, nmin, emax, emin):
@@ -385,7 +314,132 @@ def generate_random_node(nmax, nmin, emax, emin):
         A Waypoint within the region bounded by the parameters (altitude is at
         ground level).
     """
-    return Node(n=np.random.uniform(low=nmin, high=nmax), e=np.random.uniform(low=emin, high=emax))
+    # _logger = _module_logger.getChild('generate_random_node')
+    rand = Node(n=np.random.uniform(low=nmin, high=nmax), e=np.random.uniform(low=emin, high=emax))
+    return rand
+
+def points_along_straight(start, end, res):
+    """
+    Creates a stepped range of values from the starting node to the ending node
+    with difference in step size guaranteed to be less than `self.config.resolution`.
+
+    Parameters
+    ----------
+    start : metis.rrt.rrt_base.Node
+        The starting node to create a range from.
+    end : metis.rrt.rrt_base.Node
+        The ending node to create a range to.
+    
+    Returns
+    -------
+    ned : np.ndarray
+        An m x 3 numpy array, where each row is an array of north, east, 
+        down points.
+    """
+    step_size = res
+    q0 = end.ned - start.ned
+    points = int(np.ceil(np.linalg.norm(q0)/step_size)) + 1
+    n = np.linspace(start.n, end.n, num=points)
+    e = np.linspace(start.e, end.e, num=points)
+    d = np.linspace(start.d, end.d, num=points)
+    ned = np.stack([n, e, d], axis=1)
+    return ned
+
+def points_along_arc(start, end, center, radius, lam, res):
+    '''
+    Calculates the points along an arc.
+
+    Points along the arc are guaranteed to be spaced by at most `res`
+    distance apart. Note that this function will work even if the starting
+    and ending nodes don't lie on the arc; this is because this function
+    simply calculates an angle from the center to the start/end nodes and uses
+    that angle to create the points along the arc. This function assumes that 
+    the start and end nodes are already on the arc but does not perform any
+    error checking.
+
+    Parameters
+    ----------
+    start : metis.rrt.rrt_base.Node
+        The starting node to create a range from.
+    end : metis.rrt.rrt_base.Node
+        The ending node to create a range to.
+    center : subclass of metis.location.NEDPoint
+        A point specifying the center of the circle forming the arc.
+    radius : float
+        The radius of the circle making up the arc.
+    lam : int
+        Sense of rotation (the direction going around circle). Valid values
+        are (1 = clockwise, -1 = counterclockwise).
+    res : float
+        The maximum distance between the points returned.
+
+    Returns
+    -------
+    ned : np.ndarray
+        An m x 3 numpy array, where each row is an array of north, east, 
+        down points.
+    '''
+    # Headings are all referenced to the NED frame of the vehicle.
+    theta1 = heading(center, start)
+    theta2 = heading(center, end)
+    theta1, theta2 = directional_wrap(theta1, theta2, lam)
+    
+    # Find how many points we need to get a minimum distance step size
+    arc_length = abs(theta1 - theta2) * radius
+    points = int(np.ceil(arc_length/res)) + 1
+
+    # Calculate the ned coordinates for the arc
+    t = np.linspace(theta1, theta2, points)
+    n = radius*np.cos(t) + center.n
+    e = radius*np.sin(t) + center.e
+    d = np.linspace(end.d, end.d, points)
+    
+    ned = np.stack([n, e, d], axis=1)
+    return ned
+
+def directional_wrap(theta1, theta2, lam):
+    '''Wrap theta1 relative to theta2, given the direction of rotation lambda.
+
+    Note that there is no guarantee whether it is theta1 or theta2 that will
+    be adjusted; it is only guaranteed that the returned values will be
+    correct relative to each other, relative to the sense of rotation.
+
+    Parameters
+    ----------
+    theta1 : float
+        Initial angle (in radians).
+    theta2 : float
+        Final angle (in radians).
+    lam : -1 or 1
+        Sense of rotation around circle (1 = clockwise, -1 = counterclockwise).
+
+    Returns
+    -------
+    theta1 : float
+        Angle equivalent to the passed in `theta1` but modified relative to 
+        `theta2` and the direction of rotation.
+    theta2 : float
+        Angle equivalent to the passed in `theta2` but modified relative to 
+        `theta1` and the direction of rotation.
+
+    Raises
+    ------
+    ValueError
+        If `lam` is not either int(-1) or int(1).
+    '''
+    theta1 = wrap(theta1, theta2)
+    
+    # Clockwise
+    if lam == 1:
+        if theta1 > theta2:
+            theta1 -= 2*np.pi
+    # Counter-clockwise
+    elif lam == -1: 
+        if theta2 > theta1:
+            theta2 -= 2*np.pi
+    else:
+        raise ValueError("Direction '{}' not recognized".format(lam))
+    return theta1, theta2
 
 def collision(ned, boundaries, obstacles, clearance=Config.clearance):
     """
@@ -405,6 +459,11 @@ def collision(ned, boundaries, obstacles, clearance=Config.clearance):
         True if the path collides with something in the mission; False 
         otherwise.
     """
+    _logger = _module_logger.getChild('collision')
+    if ned is None:
+        _logger.warning("'ned' is None")
+        return True
+        
     # Check for collision with obstacles
     for obstacle in obstacles:
         # first check if the path is entirely above the obstacle
@@ -414,11 +473,13 @@ def collision(ned, boundaries, obstacles, clearance=Config.clearance):
         else:
             dist = np.linalg.norm(ned[:,:2] - obstacle.ned[:,:2], axis=1)
             if any(dist < obstacle.r + clearance):
+                _logger.warning('Points run through obstacle')
                 return True
 
     # Check for out of boundaries
     for p in ned:
         if not boundaries.contains(Point(p.item(1), p.item(0))):
+            _logger.warning('Points are out of bounds')
             return True
     return False
 
@@ -452,7 +513,8 @@ def heading(p0, p1):
     Returns
     -------
     chi : float
-        The heading from the origin to the destination waypoints (in radians).
+        The heading from the origin to the destination waypoints (in radians)
+        on the interval (-pi, pi].
 
     Examples
     --------
@@ -462,7 +524,6 @@ def heading(p0, p1):
     90.0
     """
     return np.arctan2((p1.e - p0.e), (p1.n - p0.n))
-
 
 def wrap(chi_c, chi):
     """ 
@@ -509,7 +570,6 @@ def wrap(chi_c, chi):
         chi_c = chi_c + 2.0 * np.pi
     return chi_c
 
-
 def wrap2pi(rad):
     """
     Wraps an angle in radians onto an interval from (-pi, pi].
@@ -542,7 +602,6 @@ def wrap2pi(rad):
         wrap -= 2*np.pi*np.sign(wrap)
     return wrap
 
-
 def delta_chi(chi0, chi1):
     """
     Calculates the change in heading from chi0 to chi1.
@@ -565,7 +624,6 @@ def delta_chi(chi0, chi1):
     105.0
     """
     return wrap2pi(chi1-chi0)
-
 
 def waypoints2ned(waypoints):
     """Converts a list of waypoints to a ned matrix.

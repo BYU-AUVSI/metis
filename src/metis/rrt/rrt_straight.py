@@ -16,7 +16,7 @@ _module_logger = logging.getLogger(__name__)
 
 straight_config = Config(
     clearance=15,
-    min_radius=np.radians(45),
+    max_rel_chi=np.radians(45),
     iterations=3,
 )
 
@@ -26,6 +26,8 @@ class StraightRRT(RRT):
     An RRT object plans plans flyable paths in the mission environment. 
     It also holds the information concerning the physical boundaries and 
     obstacles in the competition.
+
+    Extends metis.rrt.rrt_base.RRT.
     """
     _logger = _module_logger.getChild('StraightRRT')
 
@@ -36,6 +38,8 @@ class StraightRRT(RRT):
         """
         Finds a path to all of the waypoints passed in. This path accounts for
         obstacles, boundaries, and all other parameters set in __init__.
+
+        Overrides RRT.find_full_path.
 
         Parameters
         ----------
@@ -247,7 +251,7 @@ class StraightRRT(RRT):
             An m x 3 numpy array, where each row is an array of north, east, 
             down points.
         """
-        return self.points_along_straight(start, end)
+        return points_along_straight(start, end, self.config.resolution)
 
     def extend_tree(self, tree, end):
         """

@@ -9,16 +9,17 @@ import matplotlib.pyplot as plt
 
 
 _module_logger = logging.getLogger(__name__)
-plt.ion()
 
 class Animation(object):
     _logger = _module_logger.getChild('Animation')
 
     def __init__(self, mission, name):
         # mpl.rcParams['legend.fontsize'] = 10
+        plt.ion()
         self.obstacles = mission.obstacles
         self.boundaries = mission.boundary_list
         self.bound_poly = mission.boundary_poly
+        self.waypoints = mission.waypoints
         self.fig, self.ax = plt.subplots(num=name)
         plt.pause(0.001)
 
@@ -48,6 +49,8 @@ class Animation2D(Animation):
         ax = self.ax
         for obstacle in self.obstacles:
             ax.add_artist(plt.Circle((obstacle.e, obstacle.n), obstacle.r, color='r'))
+        for point in self.waypoints:
+            ax.plot(point.e, point.n, 'rx')
         ax.plot(*self.bound_poly.exterior.xy)
         minE, minN, maxE, maxN = self.bound_poly.bounds
         ax.set_xlim((int(1.1*minE), int(1.1*maxE)))
@@ -59,7 +62,7 @@ class Animation2D(Animation):
     def ne2xy(ne):
         pass
 
-    def add_path(self, ned, valid=True):
+    def add_path(self, ned, valid=False):
         """
         Adds colored paths between the list of waypoints received. Or, adds 
         gray paths between the list of nodes received.
@@ -71,7 +74,10 @@ class Animation2D(Animation):
         valid : bool
             Paths are official, not random potential paths (default True).
         """
-        self.ax.plot(ned[:,1], ned[:,0])
+        if valid:
+            self.ax.plot(ned[:,1], ned[:,0], 'k-')
+        else:
+            self.ax.plot(ned[:,1], ned[:,0])
         plt.pause(0.000001)
 
     def add_node(self, start, end):

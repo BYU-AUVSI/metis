@@ -3,6 +3,7 @@
 # Copyright 2019-2020 Sequoia Ploeg
 
 from metis.planners import Planner
+from metis.rrt import heading
 
 class ObjectivePointsPlanner(Planner):
     """The Objective Planner class."""
@@ -27,4 +28,9 @@ class ObjectivePointsPlanner(Planner):
             The objective points that we want to fly through.
 
         """
+        waypoints = self.mission.waypoints
+
+        for way1, way2 in zip(waypoints[:-1], waypoints[1:]):
+            way1.chi = heading(way1, way2)
+
         return self.mission.waypoints
