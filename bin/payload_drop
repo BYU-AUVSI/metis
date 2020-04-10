@@ -80,7 +80,13 @@ class PayloadDrop():
                         # 'cause we couldn't get a real service call to work
                         # subprocess.call("rosservice call /gpio_0_pulse_actuate", shell=True)
                         
-                        self.drop_payload()
+                        #self.drop_payload() <----Use this line if you want to drop the payload using a service
+
+                        self.com.values=[-1.0]*14 #from Trey
+                        self.pub.publish(self.com) #from Trey
+                        rospy.sleep(0.5) #from Trey
+                        self.com.values=[1.0]*14 #from Trey
+                        self.pub.publish(self.com) #from Trey
                         
                         # rospy.ServiceProxy('arm_bomb', std_srvs.srv.Trigger)
                         # rospy.ServiceProxy('actuate_drop_bomb', std_srvs.srv.Trigger)
