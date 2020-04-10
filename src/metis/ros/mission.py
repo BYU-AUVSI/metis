@@ -175,7 +175,7 @@ class MissionPlanner(object):
                 rospy.logerr("PAYLOAD - No state message received. Setting wind to {}".format(wind))
 
             plan = self.manager.plan("payload", wind=wind)
-            # rospy.set_param("DROP_LOCATION", drop_location)
+            rospy.set_param("DROP_LOCATION", plan.params['drop_location'])
 
         elif TASK == JudgeMission.MISSION_TYPE_LOITER:
             rospy.loginfo("LOITER PLANNER TASK BEING PLANNED")

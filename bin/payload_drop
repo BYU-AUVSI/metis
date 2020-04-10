@@ -2,19 +2,38 @@
 
 import rospy
 from rosplane_msgs.msg import Waypoint
+from rosflight_msgs.msg import AuxCommand
 import numpy as np
 import std_srvs.srv
 import subprocess
+from uav_msgs.srv import PayloadDrop as PayloadDropService
 
 class PayloadDrop():
     def __init__(self):
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # the drop waypoint
         self.nextWaypoint = False                               # true if the next waypoint is the drop waypoint
         self.threshold = 2.0                                    # threshold between drop location parameter and rosplane waypoint
-        self.ARMED_AND_READY = False                            # rosparam must be changed in order for bomb to drop
-        rospy.Subscriber('/current_waypoint',Waypoint,self.check)# subscribes to current waypoint from rosplane
+        # self.ARMED_AND_READY = False                            # rosparam must be changed in order for bomb to drop
+        self._sub = rospy.Subscriber('/current_waypoint', Waypoint, self.check)# subscribes to current waypoint from rosplane
+        self.pub = rospy.Publisher('aux_command', AuxCommand, queue_size=1) #from Trey
+        self.com = AuxCommand() #from Trey
+        self.com.type_array = '\0\0\0\0\1\1\1\1\1\1\1\1\1\1' #TODO Change most to zeros later
+        self.com.values = [1.0]*14 #from Trey
+        self.pub.publish(self.com) #from Trey
+        self.s = rospy.Service('drop_payload', PayloadDropService, self.drop_payload)
+
+    def drop_payload():
+        self.com.values=[-1.0]*14 #from Trey
+        self.pub.publish(self.com) #from Trey
+        rospy.sleep(0.5) #from Trey
+        self.com.values=[1.0]*14 #from Trey
+        self.pub.publish(self.com) #from Trey
 
     def check(self,waypoint_msg):
+        """
+        This function is called each time a waypoint message 
+        is received from the /current_waypoint topic.
+        """
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # get the current drop waypoint from the payload planner
         try:
             # if the payload planner hasn't been run yet, the 'DROP_LOCATION' is a string
@@ -38,10 +57,10 @@ class PayloadDrop():
         # `rosparam set /ARMED_AND_READY "true"`
         # this parameter should be set to false to prevent random dropping:
         # `rosparam set /ARMED_AND_READY "false"`
-        self.ARMED_AND_READY = rospy.get_param('ARMED_AND_READY') # get the current value of this rosparam
+        # self.ARMED_AND_READY = rospy.get_param('ARMED_AND_READY') # get the current value of this rosparam
 
 
-        if self.ARMED_AND_READY:
+        if rospy.get_param('ARMED_AND_READY'):
             print("Watch out, I'm armed!!")
         else:
             print("I'm not armed!")
@@ -51,7 +70,7 @@ class PayloadDrop():
             if not (np.linalg.norm(np.subtract(currentWaypoint,self.dropWaypoint)) < self.threshold):
 
                 # if we moved to the waypoint past the drop waypoint and we're armed, drop it!
-                if self.ARMED_AND_READY:
+                if rospy.get_param('ARMED_AND_READY'):
                     ii = 0
                     # send the command 10 times just to be safe
                     while ii < 10:
@@ -59,7 +78,16 @@ class PayloadDrop():
                         print("\n\n\n\n\n  WE HAVE ATTEMPTED PAYLOAD DROP!!!   \n\n\n\n\n")
 
                         # 'cause we couldn't get a real service call to work
-                        subprocess.call("rosservice call /gpio_0_pulse_actuate", shell=True)
+                        # subprocess.call("rosservice call /gpio_0_pulse_actuate", shell=True)
+                        
+                        #self.drop_payload() <----Use this line if you want to drop the payload using a service
+
+                        self.com.values=[-1.0]*14 #from Trey
+                        self.pub.publish(self.com) #from Trey
+                        rospy.sleep(0.5) #from Trey
+                        self.com.values=[1.0]*14 #from Trey
+                        self.pub.publish(self.com) #from Trey
+                        
                         # rospy.ServiceProxy('arm_bomb', std_srvs.srv.Trigger)
                         # rospy.ServiceProxy('actuate_drop_bomb', std_srvs.srv.Trigger)
                         ii += 1
@@ -79,7 +107,31 @@ class PayloadDrop():
 #Run the main planner
 if __name__ == "__main__":
 
-    rospy.init_node('paylod_drop', anonymous=True)
+    rospy.init_node('paylod_drop', anonymous=False)
     paylodDrop = PayloadDrop()
     while not rospy.is_shutdown():
         rospy.spin()
+
+
+
+
+'''
+#!/usr/bin/env python
+import rospy
+from rosflight_msgs.msg import AuxCommand
+def main():
+        rospy.init_node('Dropper') #from Trey
+        pub=rospy.Publisher('aux_command', AuxCommand, queue_size=1) #from Trey
+        com = AuxCommand() #from Trey
+        com.type_array='\0\0\0\0\1\1\1\1\1\1\1\1\1\1' #from Trey
+
+        com.values=[1.0]*14 #from Trey
+        pub.publish(com) #from Trey
+
+        rospy.sleep(0.5) #from Trey
+        com.values=[-1.0]*14 #from Trey
+        rospy.sleep(0.5) #from Trey
+        pub.publish(com) #from Trey
+        rospy.sleep(0.5) #from Trey
+        com.values=[1.0]*14 #from Trey
+        pub.publish(com) #from Trey'''
