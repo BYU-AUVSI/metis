@@ -67,15 +67,13 @@ it ensures that the separation of two waypoints from each other is calculated ac
 
 Metis provides and requires various ROS services in order to function on the BYU system.
 
-## ROS Params Requested by Metis
+## ROS Parameters Requested by Metis
 
-These are currently provided in the .launch file that starts Metis. This may be moved to
-some other globally accessible location, since several other packages also require this
-information and trying to remember to change it in three places is a recipe for disaster.
+These are currently provided in the .launch file that starts the interop client. 
 
-* `ref_lat` Reference latitude (in decimal degrees) for home location.
-* `ref_lon` Reference longitude (in decimal degrees) for home location.
-* `ref_h` Reference altitude (in meters) above sea level for home location.
+* `/interop_client/init_lat` Reference latitude (in decimal degrees) for home location.
+* `/interop_client/init_lon` Reference longitude (in decimal degrees) for home location.
+* `/interop_client/init_h` Reference altitude (in meters) above sea level for home location.
 
 ## ROS Services Required by Metis
 
@@ -245,3 +243,16 @@ To see the mission specified by `FakeInteropElberta.py`, you can run that file (
 ```
 user:~/ros/uas_ws/src/metis/testingCode$ rosservice call /get_mission_with_id "mission_type: 0" 
 ```
+
+
+# Proposed Improvements
+
+The collision checker should return the type of the obstacle being hit;
+obstacle or out-of-bounds, so the planner can react accordingly.
+
+An algorithm that works as follows:
+
+for each waypoint in mission:
+  set it's chi to point toward the next waypoint in the mission
+  ensure that there's no obstacle directly in the direction of chi
+perform rrt dubins

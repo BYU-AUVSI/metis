@@ -64,9 +64,9 @@ def get_reference_position():
         object.
     """
     ref = GPSWaypoint(
-        rospy.get_param("ref_lat"),
-        rospy.get_param("ref_lon"),
-        rospy.get_param("ref_h"),
+        rospy.get_param("/interop_client/init_lat"),
+        rospy.get_param("/interop_client/init_lon"),
+        rospy.get_param("/interop_client/init_h"),
     )
     return ref
 
