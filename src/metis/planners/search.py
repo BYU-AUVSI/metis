@@ -106,19 +106,15 @@ class SearchPlanner(Planner):
             counter = 1
             for point in final_waypoints:
                 ax.scatter(point.e, point.n, c='k')
-                ax.text(point.e, point.n, str(counter))
+                # ax.text(point.e, point.n, str(counter))
                 # ax.text(point.e, point.n, "    " + str(point.chi))
                 counter += 1
             for point in self.flight_boundaries:
                 ax.scatter(point.e, point.n, c='r')
-            x, y = self.search_boundaries.exterior.xy
-            ax.plot(y, x)
+            e, n = self.search_boundaries.exterior.xy
+            ax.plot(e, n)
             plt.axis('equal')
             plt.show()
-
-            # fig, ax = plt.subplots()            
-            
-            # plt.show()
         
         return final_waypoints
 
