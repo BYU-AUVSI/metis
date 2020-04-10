@@ -87,3 +87,18 @@ def ft2m(feet):
     """
     return float(feet / 3.2808)
     
+def m2ft(meters):
+    """
+    Convenience function for converting from meters to feet.
+
+    Parameters
+    ----------
+    meters : float
+        Length in meters.
+
+    Returns
+    -------
+    float
+        Length in feet.
+    """
+    return float(meters * 3.2808)

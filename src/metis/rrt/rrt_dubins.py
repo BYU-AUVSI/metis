@@ -194,6 +194,8 @@ class DubinsRRT(RRT):
         Checks if flying between two points is  possible. It checks for 
         collisions, chi angle, and incline.
 
+        Overrides RRT.flyable_path.
+
         Parameters
         ----------
         start : metis.rrt.rrt_base.Node
