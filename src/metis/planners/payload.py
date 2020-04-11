@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from metis.tools import will_collide#, makeBoundaryPoly, convert
 from metis.location import Waypoint
 from metis.planners import Planner
+from metis.rrt import heading, wrap2pi
 
 _module_logger = logging.getLogger('METIS')
 
@@ -102,8 +103,19 @@ class PayloadPlanner(Planner):
         #     plt.show()
         # self.plot()
 
+        for p1, p2 in zip(self.waypoints[:-1], self.waypoints[1:]):
+            # approach = wrap2pi(heading(p1, p2) + np.pi)
+            approach = heading(p1, p2)
+            print(approach)
+            
+        for point in self.waypoints:
+            point.chi = approach
+            print(point)
 
-        return self.waypoints, drop_output
+        pnts = [self.waypoints[0], self.waypoints[-1]]
+
+        # return self.waypoints, drop_output
+        return pnts, drop_output
 
     def calcClosedParachuteDrop(self):
         """

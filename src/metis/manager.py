@@ -86,7 +86,7 @@ class MissionManager(object):
         self._logger.info("Plan approved.")
         self.plans.append(plan)
 
-    def _apply_rrt(self, planned_points, config=Config, connect=False, rrt_type='fillet'):
+    def _apply_rrt(self, planned_points, config=None, connect=False, rrt_type='fillet'):
         """
         Private function that applies the RRT algorithm to generated paths.
 
@@ -110,7 +110,10 @@ class MissionManager(object):
         # RRT = get_rrt('fillet')
         # RRT = get_rrt('dubins')
         RRT = get_rrt(rrt_type)
-        rrt = RRT(self.mission, config=config)
+        if config:
+            rrt = RRT(self.mission, config=config)
+        else:
+            rrt = RRT(self.mission)
 
         if self.plans:
             self._logger.info("Planning from last waypoint of previous path")
@@ -177,8 +180,7 @@ class MissionManager(object):
         # TODO: Planner needs to plan points from current position to start of
         # approach, and not do an RRT on final.
         # max_rel_chi=10*np.pi/16
-        config = Config(max_rel_chi=np.radians(60))
-        plan = self._apply_rrt(planned_points, config=config)
+        plan = self._apply_rrt(planned_points)
         return plan
 
     def plan_loiter(self, current_pos=None):
@@ -192,22 +194,23 @@ class MissionManager(object):
             is provided, planning is performed from the MissionManager's set
             default position.
         """
-        if current_pos is None:
-            current_pos = self.default_pos
-        planned_points = self.planners["loiter"].plan(current_pos)
-        plan = self._apply_rrt(planned_points)
-        return plan
+        # if current_pos is None:
+        #     current_pos = self.default_pos
+        # planned_points = self.planners["loiter"].plan(current_pos)
+        # plan = self._apply_rrt(planned_points)
+        # return plan
+        raise NotImplementedError
 
     def plan_objective(self):
         planned_points = self.planners["objective"].plan()
-        config = Config(max_rel_chi=np.radians(60), iterations=3)
-        plan = self._apply_rrt(planned_points, config, connect=True, rrt_type='dubins')
+        plan = self._apply_rrt(planned_points, connect=True, rrt_type='dubins')
         return plan
 
     def plan_offaxis(self):
-        planned_points = self.planners["offaxis"].plan()
-        plan = self._apply_rrt(planned_points)
-        return plan
+        # planned_points = self.planners["offaxis"].plan()
+        # plan = self._apply_rrt(planned_points)
+        # return plan
+        raise NotImplementedError
 
     def plan_payload(self, wind=np.array([0.0, 0.0, 0.0])):
         """
@@ -222,8 +225,8 @@ class MissionManager(object):
         planned_points, drop_location = self.planners["payload"].plan(wind)
         # Be more picky about tight turns while performing the payload drop
         # max_rel_chi=10*np.pi/16
-        config = Config(max_rel_chi=np.radians(90))
-        plan = self._apply_rrt(planned_points, config=config)
+        # config = Config(max_rel_chi=np.radians(90))
+        plan = self._apply_rrt(planned_points, rrt_type='dubins')
         plan.params["drop_location"] = drop_location
         return plan
 

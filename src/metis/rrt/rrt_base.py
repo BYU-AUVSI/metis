@@ -15,7 +15,6 @@ _module_logger = logging.getLogger(__name__)
 
 class Config(object):
     clearance = 5.0
-    # clearance = 15.0
     # max_distance = 150.0 # 50.0
     max_distance = 50.0
     min_radius = 20.0

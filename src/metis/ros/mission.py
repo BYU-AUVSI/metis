@@ -107,23 +107,29 @@ class MissionPlanner(object):
 
         waypoints = []
 
+        first = True
         for point in self.plan.waypoints:
             new_point = WaypointMsg()
             new_point.w = [point.n, point.e, point.d]
-            new_point.chi_d = 0 # Deseired course at this waypoint (rad)
-            if get_mode() is 'dubins':
-                # Desired course valid (dubin paths)
+            new_point.chi_d = point.chi # Deseired course at this waypoint (rad)
+            if get_mode() is 'dubins': # Desired course valid (dubin paths)
                 new_point.chi_valid = True
-            else:
-                # Desired course invalid (straight or fillet paths)
+            else: # Desired course invalid (straight or fillet paths)
                 new_point.chi_valid = False
             new_point.Va_d = self.Va  # airspeed (m/s)
-            new_point.set_current = False  # erases list, sets this as current waypoint
-            new_point.clear_wp_list = False  # removes all waypoints, returns to origin
+            if first:
+                new_point.set_current = True  # erases list, sets this as current waypoint
+                new_point.clear_wp_list = True  # removes all waypoints, returns to origin
+                first = False
+            else:
+                new_point.set_current = False  # erases list, sets this as current waypoint
+                new_point.clear_wp_list = False  # removes all waypoints, returns to origin
             waypoints.append(new_point)
 
         for point in waypoints:
             self.wp_pub.publish(point)
+            # import time
+            # time.sleep(5)
         rospy.loginfo("Waypoints sent.")
         return True
 
