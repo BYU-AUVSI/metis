@@ -153,6 +153,9 @@ class Waypoint(NEDPoint):
         super(Waypoint, self).__init__(n=n, e=e, d=d)
         self.chi = chi
 
+    def __repr__(self):
+        return '<Waypoint at n:{:.2f} e:{:.2f} d:{:.2f} chi:{:.2f}>'.format(self.n, self.e, self.d, self.chi)
+
 class CircularObstacle(NEDPoint):
     """Represents a circular obstacle, defined by a coordinate, height, and 
     radius.
