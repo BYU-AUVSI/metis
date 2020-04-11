@@ -23,8 +23,8 @@ straight_config = Config(
 
 class StraightRRT(RRT):
     """
-    An RRT object plans plans flyable paths in the mission environment. 
-    It also holds the information concerning the physical boundaries and 
+    An RRT object plans plans flyable paths in the mission environment.
+    It also holds the information concerning the physical boundaries and
     obstacles in the competition.
 
     Extends metis.rrt.rrt_base.RRT.
@@ -46,7 +46,7 @@ class StraightRRT(RRT):
         waypoints : list of metis.messages.msg_ned
             A list of waypoints.
         connect : bool, optional
-            If true, the path will be generated such that an additional waypoint is created after every primary waypoint to 
+            If true, the path will be generated such that an additional waypoint is created after every primary waypoint to
             force the plane to go through the primary waypoint before beginning a turn
 
         Returns
@@ -80,8 +80,8 @@ class StraightRRT(RRT):
         end : metis.core.Waypoint
             The ending waypoint. Super creative names, I know.
         connect : boolean, optional
-            If True, the path will be generated such that an additional waypoint 
-            is created after every primary waypoint to force the plane to go 
+            If True, the path will be generated such that an additional waypoint
+            is created after every primary waypoint to force the plane to go
             through the primary waypoint before beginning a turn (default False).
 
         Returns
@@ -95,7 +95,7 @@ class StraightRRT(RRT):
         end_node = convert_point(end, Node)
         tree = Tree(root=start_node)
 
-        # check for if solution at the beginning    
+        # check for if solution at the beginning
         chi = heading(start_node, end_node)
         if self.flyable_path(start_node, end_node, start_node.chi, chi):
             self.animation.add_path(self.points_along_path(start_node, end_node)) if self.animation else None
@@ -121,7 +121,7 @@ class StraightRRT(RRT):
         # elif self.flyable_path(obstacles, bound_poly, w1, w2, start_chi, chi, config) and not connect:
         #     _logger.critical("option 2")
         #     return [w1, w2]
-        
+
         #END NEW TESTING CODE
         else:
             solutions = 0
@@ -178,7 +178,7 @@ class StraightRRT(RRT):
         # #         plt.text(e[i], n[i], str(i))
         # #     plt.axis('equal')
         # #     plt.show()
-        
+
         # return bestPath
         # if self.animation:
         #     # plot the last two successful waypoints as a chosen path
@@ -187,7 +187,7 @@ class StraightRRT(RRT):
 
     def flyable_path(self, start, end, chi0, chi1):
         """
-        Checks if flying between two points is  possible. It checks for 
+        Checks if flying between two points is  possible. It checks for
         collisions, chi angle, and incline.
 
         Parameters
@@ -244,11 +244,11 @@ class StraightRRT(RRT):
             The starting node to create a range from.
         end : metis.rrt.rrt_base.Node
             The ending node to create a range to.
-        
+
         Returns
         -------
         ned : np.ndarray
-            An m x 3 numpy array, where each row is an array of north, east, 
+            An m x 3 numpy array, where each row is an array of north, east,
             down points.
         """
         return points_along_straight(start, end, self.config.resolution)
@@ -259,7 +259,7 @@ class StraightRRT(RRT):
         segment_length is available via self.config
         """
         """
-        Extends the passed-in tree. It will continually attempt to add a leaf 
+        Extends the passed-in tree. It will continually attempt to add a leaf
         until it finds a successful one. This is the basic RRT algorithm.
 
         Parameters
@@ -278,7 +278,7 @@ class StraightRRT(RRT):
         """
         _logger = _module_logger.getChild('extend_tree')
         minE, minN, maxE, maxN = self.mission.boundary_poly.bounds
-        
+
         # Loop until we have a path that is viable
         flyable = False
         while not flyable:
@@ -287,7 +287,7 @@ class StraightRRT(RRT):
             new_node = generate_random_node(maxN, minN, maxE, minE)
 
             # *********************************************************************
-            # Find the nearest leaf. Preference given to leaves that are at the 
+            # Find the nearest leaf. Preference given to leaves that are at the
             # correct altitude.
             closest = tree.closest(new_node)
             new_node.d = closest.d
@@ -306,7 +306,7 @@ class StraightRRT(RRT):
                 L = min(np.linalg.norm(connection), self.config.max_distance)
                 point = closest.ned + L*(connection / np.linalg.norm(connection))
                 new_node = Node(point.item(0), point.item(1), point.item(2), chi, closest.cost + L, closest, False)
-            
+
             # This case is for when the nearest leaf isn't yet at the correct altitude for the ending waypoint
             else:
                 hyp = np.sqrt((new_node.n-closest.n)**2 + (new_node.e-closest.e)**2)
@@ -323,11 +323,11 @@ class StraightRRT(RRT):
                 tmp = new_node.ned - closest.ned
                 point = closest.ned + L*(tmp/np.linalg.norm(tmp))
                 new_node = Node(point.item(0), point.item(1), point.item(2), chi, closest.cost + L, closest, False)
-                
+
                 # If we were descending and overshot (or were ascending and overshot), set to final altitude.
                 if (new_node.d > closest.d and new_node.d < end.d) or (new_node.d < closest.d and new_node.d > end.d):
                     new_node.d = end.d
-            
+
             # Check for collision. If we have a flylable path, break out of the loop!
             flyable = self.flyable_path(closest, new_node, closest.chi, new_node.chi)
 

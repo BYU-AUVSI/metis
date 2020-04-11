@@ -18,6 +18,7 @@ class PayloadDrop():
         self.armed_flag = False
         self.current_path_q = 0
         self.current_position = [0, 0, 0]
+        self.drop_wp_redo = True
         self._checksub = rospy.Subscriber('/fixedwing/current_path', Current_Path, self.check)# subscribes to current waypoint from rosplane
         self._statesub = rospy.Subscriber('/state', State, self.stateCallback)# subscribes to current waypoint from rosplane
         self.pub = rospy.Publisher('aux_command', AuxCommand, queue_size=1) #from Trey
@@ -42,21 +43,28 @@ class PayloadDrop():
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # get the current drop waypoint from the payload planner
         self.approachWaypoint = rospy.get_param('APPROACH')     # get the approach waypoint from the payload planner
         current_position = self.current_position                # Current position from State
-        try:
-            # if the payload planner hasn't been run yet, the 'DROP_LOCATION' is a string
-            print(np.array(self.dropWaypoint)[0]) # this fails if the drop wayopint is seen as a string
-        except:
+        if self.drop_wp_redo:
             try:
-                print("dropWaypoint is a string")
-                # if it's seen as a string than make it a list
-                self.dropWaypoint = eval(rospy.get_param('DROP_LOCATION'))
+                # if the payload planner hasn't been run yet, the 'DROP_LOCATION' is a string
+                print(np.array(self.dropWaypoint)[0]) # this fails if the drop wayopint is seen as a string
+                self.drop_wp_redo = False
+                print("drop waypoint = ",self.dropWaypoint)             # payload drop waypoint calculated by payload planner
             except:
-                # if those didn't work just assume it's not there and make the drop far away
-                print("using defualt drop location value!")
-                self.dropWaypoint = [99999.9,9999.9,99999.9]
+                try:
+                    print("dropWaypoint is a string")
+                    # if it's seen as a string than make it a list
+                    self.dropWaypoint = eval(rospy.get_param('DROP_LOCATION'))
+                    self.drop_wp_redo = False
+                    print("drop waypoint = ",self.dropWaypoint)             # payload drop waypoint calculated by payload planner
+                except:
+                    # if those didn't work just assume it's not there and make the drop far away
+                    print("using defualt drop location value!")
+                    self.dropWaypoint = [99999.9,9999.9,99999.9]
+                    self.drop_wp_redo = True
+                    print("drop waypoint = ",self.dropWaypoint)             # payload drop waypoint calculated by payload planner
 
 
-        print("drop waypoint = ",self.dropWaypoint)             # payload drop waypoint calculated by payload planner
+
         print("distance to drop location = ", np.linalg.norm(np.subtract(current_position,self.dropWaypoint)));
 
         # this ros parameter must be changed manually to arm by running:
@@ -67,13 +75,12 @@ class PayloadDrop():
 
         # ON_APPROACH will be set when the plane correctly approaches the drop location.
 
-        print(rospy.get_param('ARMED_AND_READY'))
-        if rospy.get_param('ARMED_AND_READY') and self.armed_flag == False:
+        if rospy.get_param('ARMED_AND_READY'): # and self.armed_flag == False:
             print("Watch out, I'm armed!!")
-            self.armed_flag = True
+            # self.armed_flag = True
         else:
             print("I'm not armed!")
-            self.armed_flag == False
+            # self.armed_flag == False
 
         if self.ON_APPROACH:
             if np.linalg.norm(np.subtract(current_position,self.dropWaypoint)) < self.threshold:
@@ -107,32 +114,32 @@ class PayloadDrop():
                 self.approach_timer += 1
         # check to see if the waypoint we're headed towards is the drop location waypoint
         else:
-            print(current_position, self.approachWaypoint)
-            if np.linalg.norm(np.subtract(current_position,self.approachWaypoint)) < self.threshold*3:
-                self.ON_APPROACH == True
+            print(self.approachWaypoint)
+            if np.linalg.norm(np.subtract(current_position,self.approachWaypoint)) < self.threshold*50:
+                self.ON_APPROACH = True
                 print("ON APPROACH!")
 
-        # if self.approach_timer = self.approach_threshold:
-        #     print("OUT OF RANGE")
-        #     self.ON_APPROACH = False
-        #     self.approach_timer = 0
+        if self.approach_timer == self.approach_threshold:
+            print("OUT OF RANGE")
+            self.ON_APPROACH = False
+            self.approach_timer = 0
 
     def stateCallback(self, state):
         self.current_position = state.position
+        if self.ON_APPROACH:
+            self.approachanddrop()
 
     def check(self, current_path):
-
         new_path_q = current_path.q[0]
         if new_path_q != self.current_path_q:
             self.current_path_q = new_path_q
             self.approachanddrop()
 
 
-
 #Run the main planner
 if __name__ == "__main__":
 
-    rospy.init_node('paylod_drop', anonymous=False)
+    rospy.init_node('payload_drop', anonymous=False)
     paylodDrop = PayloadDrop()
     while not rospy.is_shutdown():
         rospy.spin()

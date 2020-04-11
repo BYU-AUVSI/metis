@@ -108,15 +108,15 @@ class PayloadPlanner(Planner):
             # approach = wrap2pi(heading(p1, p2) + np.pi)
             approach = heading(p1, p2)
             print(approach)
-            
+
         for point in self.waypoints:
             point.chi = approach
             print(point)
 
-        pnts = [self.waypoints[0], self.waypoints[-1]]
+        # pnts = [self.waypoints[0], self.waypoints[-1]]
 
-        # return self.waypoints, drop_output
-        return pnts, drop_output
+        return self.waypoints, drop_output
+        # return pnts, drop_output
 
     def calcClosedParachuteDrop(self):
         """
