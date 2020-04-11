@@ -1,0 +1,387 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright 2020 Sequoia Ploeg
+
+from __future__ import print_function
+import logging
+
+import numpy as np
+
+import rospy
+from rosplane_msgs.msg import Waypoint as WaypointMsg
+from rosplane_msgs.msg import State, Current_Path, Extended_Path, Full_Path
+
+from metis.location import Waypoint
+from metis.rrt.rrt_dubins import DubinsParameters
+
+def increment_wrap(value, length):
+    return (value + 1) % length
+
+class Path(object):
+    """
+    Attributes
+    ----------
+
+    Class Constants
+    ---------------
+    """
+    ORBIT_PATH = 0
+    LINE_PATH = 1
+    CLOCKWISE = 1
+    COUNT_CLOCKWISE = -1
+    
+    def __init__(self):
+        # flag='line' means straight line following, flag='orbit' means orbit following
+        self.path_type = Path.LINE_PATH
+        # desired airspeed along the path
+        self.airspeed = 15.0
+        # origin of the straight path line (r)
+        self.line_origin = np.array([[0.0, 0.0, 0.0]]).T
+        # direction of line -unit vector- (q)
+        self.line_direction = np.array([[1.0, 0.0, 0.0]]).T
+        # center of the orbit (c)
+        self.orbit_center = np.array([[0.0, 0.0, 0.0]]).T
+        # radius of the orbit (rho)
+        self.orbit_radius = 50
+        # orbit direction: 1 or -1
+        self.orbit_direction = Path.CLOCKWISE
+
+        # self.flag_path_changed = True
+        self.halfplane = None
+
+    def to_msg(self):
+        path = Current_Path()
+        path.path_type = self.path_type
+        path.Va_d = self.airspeed
+        path.r = [self.line_origin.item(0), self.line_origin.item(1), self.line_origin.item(2)]
+        path.q = [self.line_direction.item(0), self.line_direction.item(1), self.line_direction.item(2)]
+        path.c = [self.orbit_center.item(0), self.orbit_center.item(1), self.orbit_center.item(2)]
+        path.rho = self.orbit_radius
+        path.lambda_ = self.orbit_direction
+        # print('got here')
+        # setattr(path, 'lambda', self.orbit_direction)
+        # print('but did not get here')
+        return path
+
+class HalfPlane(object):
+    def __init__(self, r, n):
+        """
+        Parameters
+        ----------
+        r : np.ndarray
+            A (3x1) array representing a point defining the half plane.
+        n : np.ndarray
+            A (3x1) array representing a vector normal to the half plane in the
+            direction of the travel.
+        """
+        self.r = r
+        self.n = n
+
+    def inHalfSpace(self, pos):
+        """
+        Parameters
+        ----------
+        pos : np.ndarray
+            A (3x1) array representing the NED position of the vehicle.
+        
+        Returns
+        -------
+        bool
+            True if the half plane has been crossed; False otherwise.
+        """
+        if ((pos-self.r).T).dot(self.n) >= 0:
+            return True
+        else:
+            return False
+
+class PMWaypoint(Waypoint):
+    def __init__(self, n=0.0, e=0.0, d=0.0, chi=0.0, chi_valid=False, Va=0.0):
+        super(PMWaypoint, self).__init__(n=n, e=e, d=d, chi=chi)
+        self.chi_valid = chi_valid
+        self.airspeed = Va
+
+
+class PathManager(object):
+    """
+    Attributes
+    ----------
+    waypoints : list
+        All the current waypoints stored in the path manager.
+    
+    """
+    def __init__(self):
+        super(PathManager, self).__init__()
+
+        self.R_min = rospy.get_param("R_min", 30.0)
+        self.do_fillets = rospy.get_param("do_fillets", True)
+        self.update_rate = rospy.get_param("update_rate", 10.0)
+
+        self.vehicle_state = None
+        self.waypoints = []
+
+        # Here's the path manager's subscribers:
+        self._sub = {
+            'vehicle_state': rospy.Subscriber("state", State, self.vehicle_state_callback),
+            'new_waypoint': rospy.Subscriber("waypoint_path", WaypointMsg, self.new_waypoint_callback),
+        }
+
+        # Here's the path manager's publishers:
+        self._pub = {
+            'current_path': rospy.Publisher("current_path", Current_Path, queue_size=10),
+            'extended_path': rospy.Publisher("extended_path", Extended_Path, queue_size=10),
+            'full_path': rospy.Publisher("full_path", Full_Path, queue_size=10)
+        }
+
+        # self.update_timer = rospy.Timer(rospy.Duration(1.0 / self.update_rate), self.current_path_publish)
+        self.update_timer = rospy.Timer(rospy.Duration(1.0 / 1.0), self.current_path_publish)
+
+        # message sent to path follower
+        self.paths = [Path()]
+        self.ptr_current_path = 0
+
+        # pointers to previous, current, and next waypoints
+        self.ptr_previous = 0
+        self.ptr_current = 1
+        self.ptr_next = 2
+
+    def initialize_pointers(self):
+        self.ptr_previous = 0
+        self.ptr_current = 1
+        self.ptr_next = 2
+
+    def increment_pointers(self):
+        num = len(self.waypoints)
+        self.ptr_previous = increment_wrap(self.ptr_previous, num)
+        self.ptr_current = increment_wrap(self.ptr_current, num)
+        self.ptr_next = increment_wrap(self.ptr_next, num)
+
+    def vehicle_state_callback(self, msg):
+        """
+        This function is automatically called when a state message is received.
+
+        Parameters
+        ----------
+        msg : rosplane_msgs.msg.State
+            The message containing state information about the vehicle.
+        """
+        self.vehicle_state = msg
+
+    def new_waypoint_callback(self, msg):
+        """
+        This function is automatically called when a new waypoint is received.
+
+        Parameters
+        ----------
+        msg : rosplane_msgs.msg.Waypoint
+            The message containing state information about the vehicle.
+        """
+        if msg.clear_wp_list is True:
+            self.waypoints = []
+            self.full_path_publish()
+            return
+
+        if msg.set_current or len(self.waypoints) == 0:
+            currentwp = PMWaypoint()
+            currentwp.n = self.vehicle_state.position[0]
+            currentwp.e = self.vehicle_state.position[1]
+            currentwp.d = msg.w[2] if self.vehicle_state.position[2] > -25 else self.vehicle_state.position[2]
+            currentwp.chi = self.vehicle_state.chi
+            currentwp.chi_valid = msg.chi_valid
+            currentwp.airspeed = msg.Va_d
+
+            self.waypoints = [currentwp]
+            self.initialize_pointers()
+
+        nextwp = PMWaypoint()
+        nextwp.n = msg.w[0]
+        nextwp.e = msg.w[1]
+        nextwp.d = msg.w[2]
+        nextwp.chi = msg.chi_d
+        nextwp.chi_valid = msg.chi_valid
+        nextwp.airspeed = msg.Va_d
+        self.waypoints.append(nextwp)
+        self.full_path_publish()
+
+    def current_path_publish(self, timer):
+        """
+        Checks the current position of the plane against the paths it should
+        be flying and publishes the path the plane is currently on.
+
+        This function is called on a rospy.Timer.
+        """
+        try:
+            rospy.logwarn('a')
+            current_path = self.paths[self.ptr_current_path]
+            rospy.logwarn('b')
+            pos = np.array([[self.vehicle_state.position[0], self.vehicle_state.position[1], self.vehicle_state.position[2]]]).T
+            rospy.logwarn('c0: {}'.format(current_path.halfplane))
+            rospy.logwarn('c1: {}'.format(pos))
+            rospy.logwarn('c2: {}'.format(current_path.halfplane.inHalfSpace(pos)))
+            if current_path.halfplane.inHalfSpace(pos):
+                self.ptr_current_path = increment_wrap(self.ptr_current_path, len(self.paths))
+            rospy.logwarn('d0: {}'.format(self.ptr_current_path))
+            rospy.logwarn('d1: {}'.format(self.paths))
+            rospy.logwarn('d2: {}'.format(self.paths[self.ptr_current_path]))
+            rospy.logwarn('d3: {}'.format(self.paths[self.ptr_current_path].to_msg()))
+            self._pub['current_path'].publish(self.paths[self.ptr_current_path].to_msg())
+            rospy.logwarn('e')
+        except:
+            pass
+
+        if len(self.waypoints) == 0:
+            pass
+        elif len(self.waypoints) == 1:
+            pass
+        elif len(self.waypoints) == 2:
+            pass
+        else:
+            pass
+        print(len(self.waypoints))
+
+    def full_path_publish(self):
+        """
+        Generates the full path and then publishes it to the full_path topic.
+        """
+        self.generate_full_path()
+        pass
+
+    def generate_full_path(self):
+        """
+        Returns
+        -------
+        rosplane_msgs.msg.Full_Path
+            The full path as a rosplane message.
+        """
+        if len(self.waypoints) > 1:
+            paths = []
+            num = len(self.waypoints)
+            
+            for i in range(num):
+                j = increment_wrap(i, num)
+                k = increment_wrap(j, num)
+
+                w_prev = self.waypoints[i]
+                w_curr = self.waypoints[j]
+                w_next = self.waypoints[k]
+                print(w_prev, w_curr, w_next)
+                paths += self.generate_path(w_prev, w_curr, w_next)
+        
+            self.paths = paths
+        else:
+            self.paths = [Path()]
+
+    def generate_path(self, w_prev, w_curr, w_next):
+        """
+        Essentially a factory method for figuring out whether we want to
+        generate line, fillet, or dubins paths for the given waypoints.
+        """
+        if w_prev.chi_valid:
+            return self.generate_dubins_path(w_prev, w_curr)
+        else:
+            if self.do_fillets:
+                return self.generate_fillet_path(w_prev, w_curr, w_next)
+            else:
+                return self.generate_line_path(w_prev, w_curr, w_next)
+
+    def generate_line_path(self, w_prev, w_curr, w_next):
+        """
+        Generates a line from w_prev to w_curr with a halfplane accounted for
+        by w_next.
+        """
+        w_prev = w_prev.ned.reshape(3, 1)
+        w_curr = w_curr.ned.reshape(3, 1)
+        w_next = w_next.ned.reshape(3, 1)
+
+        q_prev = (w_curr - w_prev) / np.linalg.norm(w_curr - w_prev)
+        q_curr = (w_next - w_curr) / np.linalg.norm(w_next - w_curr)
+        
+        halfspace_r = w_curr
+        halfspace_n = (q_prev + q_curr) / np.linalg.norm(q_prev + q_curr)
+
+        path = Path()
+        path.line_origin = w_prev
+        path.line_direction = q_prev
+        path.halfplane = HalfPlane(halfspace_r, halfspace_n)
+        return [path]
+
+    def generate_fillet_path(self, w_prev, w_curr, w_next):
+        """
+        Generates a fillet path from w_prev, arcing by w_curr as informed by
+        w_next.
+        """
+        radius = self.R_min
+
+        w_prev = w_prev.ned.reshape(3, 1)
+        w_curr = w_curr.ned.reshape(3, 1)
+        w_next = w_next.ned.reshape(3, 1)
+
+        q_prev = (w_curr - w_prev) / np.linalg.norm(w_curr - w_prev)
+        q_curr = (w_next - w_curr) / np.linalg.norm(w_next - w_curr)
+
+        rho = np.arccos((-q_prev.T).dot(q_curr))
+
+        paths = [Path()] * 2
+
+        # Calculate the first straight part of the path
+        r = w_prev
+        q = q_prev
+        halfspace_r = w_curr - (self.R_min / np.tan(rho / 2.)) * q_prev
+        halfspace_n = q_prev
+        paths[0].path_type = Path.LINE_PATH
+        paths[0].line_origin = r
+        paths[0].line_direction = q
+        paths[0].halfplane = HalfPlane(halfspace_r, halfspace_n)
+
+        # Calculate the second curved part of the path
+        c = w_curr - (radius / np.sin(rho/2)) * ((q_prev - q_curr) / np.linalg.norm(q_prev - q_curr))
+        rho = radius
+        lam = np.sign(q_prev.item(0)*q_curr.item(1) - q_prev.item(1)*q_curr.item(0))
+        halfspace_r = w_curr + (radius / np.tan(rho/2.)) * q_curr
+        halfspace_n = q_curr
+        paths[1].path_type = Path.ORBIT_PATH
+        paths[1].orbit_center = c
+        paths[1].orbit_radius = radius
+        paths[1].orbit_direction = Path.CLOCKWISE if lam == 1 else Path.COUNT_CLOCKWISE
+        paths[1].halfplane = HalfPlane(halfspace_r, halfspace_n)
+
+        return paths
+
+    def generate_dubins_path(self, w_prev, w_curr):
+        """
+        Generates a dubins path from w_prev to w_curr.
+        """
+        # w_prev = w_prev.ned.reshape(3, 1)
+        # w_curr = w_curr.ned.reshape(3, 1)
+
+        params = DubinsParameters.update(w_prev, w_curr, self.R_min)
+        paths = [Path()] * 3
+
+        # First path is an orbit
+        paths[0].path_type = Path.ORBIT_PATH
+        paths[0].orbit_center = params.cs.ned.T
+        paths[0].orbit_radius = self.R_min
+        paths[0].orbit_direction = Path.CLOCKWISE if params.ds == 1 else Path.COUNT_CLOCKWISE
+        paths[0].halfplane = HalfPlane(params.r1.ned.T, params.n1)
+
+        # Second path is a straight line
+        paths[1].path_type = Path.LINE_PATH
+        paths[1].line_origin = params.r1.ned.T
+        paths[1].line_direction = params.n1
+        paths[1].halfplane = HalfPlane(params.r2.ned.T, params.n1)
+
+        # Final path is another orbit
+        paths[2].path_type = Path.ORBIT_PATH
+        paths[2].orbit_center = params.ce.ned.T
+        paths[2].orbit_radius = self.R_min
+        paths[2].orbit_direction = Path.CLOCKWISE if params.de == 1 else Path.COUNT_CLOCKWISE
+        paths[2].halfplane = HalfPlane(params.r3.ned.T, params.n3)
+
+        return paths
+
+
+if __name__ == "__main__":
+    rospy.init_node('path_manager', anonymous=False)
+    node = PathManager()
+    
+    while not rospy.is_shutdown():
+        rospy.spin()
