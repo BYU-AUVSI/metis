@@ -80,19 +80,23 @@ class Animation2D(Animation):
             self.ax.plot(ned[:,1], ned[:,0])
         plt.pause(0.000001)
 
-    def add_node(self, start, end):
-        """
-        Adds gray paths between the list of nodes received.
-
-        Parameters
-        ----------
-        nodes : list of metis.rrt.rrt_base.Node
-            The nodes to be connected by a potential random path.
-        """
-        self.ax.plot(start.e, start.n, 'rx')
-        self.ax.plot(end.e, end.n, 'rx')
-        self.ax.plot([start.e, end.e], [start.n, end.n])
+    def add_waypoint(self, n, e, d):
+        self.ax.plot(e, n, 'rx')
         plt.pause(0.000001)
+
+    # def add_node(self, start, end):
+    #     """
+    #     Adds gray paths between the list of nodes received.
+
+    #     Parameters
+    #     ----------
+    #     nodes : list of metis.rrt.rrt_base.Node
+    #         The nodes to be connected by a potential random path.
+    #     """
+    #     self.ax.plot(start.e, start.n, 'rx')
+    #     self.ax.plot(end.e, end.n, 'rx')
+    #     self.ax.plot([start.e, end.e], [start.n, end.n])
+    #     plt.pause(0.000001)
 
     def remove_node(self, node):
         pass
