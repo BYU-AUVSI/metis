@@ -16,8 +16,10 @@ class PayloadDrop():
         self.approach_timer = 0                                 # Keeps track of how long ON_APPROACH has been True
         self.approach_threshold = 500                           # Iterations before ON_APPROACH is made False
         self.armed_flag = False
-        self._sub = rospy.Subscriber('/fixedwing/current_path', Current_Path, self.check)# subscribes to current waypoint from rosplane
-        self._sub = rospy.Subscriber('/state', State, self.stateCallback)# subscribes to current waypoint from rosplane
+        self.current_path_q = 0
+        self.current_position = [0, 0, 0]
+        self._checksub = rospy.Subscriber('/fixedwing/current_path', Current_Path, self.check)# subscribes to current waypoint from rosplane
+        self._statesub = rospy.Subscriber('/state', State, self.stateCallback)# subscribes to current waypoint from rosplane
         self.pub = rospy.Publisher('aux_command', AuxCommand, queue_size=1) #from Trey
         self.com = AuxCommand() #from Trey
         self.com.type_array = '\0\0\0\0\1\1\1\1\1\1\1\1\1\1' #TODO Change most to zeros later
@@ -32,7 +34,7 @@ class PayloadDrop():
         self.com.values=[1.0]*14 #from Trey
         self.pub.publish(self.com) #from Trey
 
-    def check(self, state):
+    def approachanddrop(self):
         """
         This function is called each time a state message
         is received from the /state topic.
@@ -65,7 +67,7 @@ class PayloadDrop():
 
         # ON_APPROACH will be set when the plane correctly approaches the drop location.
 
-
+        print(rospy.get_param('ARMED_AND_READY'))
         if rospy.get_param('ARMED_AND_READY') and self.armed_flag == False:
             print("Watch out, I'm armed!!")
             self.armed_flag = True
@@ -105,7 +107,8 @@ class PayloadDrop():
                 self.approach_timer += 1
         # check to see if the waypoint we're headed towards is the drop location waypoint
         else:
-            if np.linalg.norm(np.subtract(current_position,self.approachWaypoint)) < self.threshold:
+            print(current_position, self.approachWaypoint)
+            if np.linalg.norm(np.subtract(current_position,self.approachWaypoint)) < self.threshold*3:
                 self.ON_APPROACH == True
                 print("ON APPROACH!")
 
@@ -116,6 +119,15 @@ class PayloadDrop():
 
     def stateCallback(self, state):
         self.current_position = state.position
+
+    def check(self, current_path):
+
+        new_path_q = current_path.q[0]
+        if new_path_q != self.current_path_q:
+            self.current_path_q = new_path_q
+            self.approachanddrop()
+
+
 
 #Run the main planner
 if __name__ == "__main__":
