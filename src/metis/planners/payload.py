@@ -112,10 +112,10 @@ class PayloadPlanner(Planner):
             point.chi = approach
             print(point)
 
-        pnts = [self.waypoints[0], self.waypoints[-1]]
+        # pnts = [self.waypoints[0], self.waypoints[-1]]
 
-        # return self.waypoints, drop_output
-        return pnts, drop_output
+        return self.waypoints, drop_output
+        # return pnts, drop_output
 
     def calcClosedParachuteDrop(self):
         """

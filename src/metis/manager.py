@@ -213,7 +213,7 @@ class MissionManager(object):
         raise NotImplementedError
 
     def plan_payload(self, wind=np.array([0.0, 0.0, 0.0])):
-        """
+        """ 
         Plans the payload drop portion of the mission.
 
         Parameters
@@ -226,7 +226,8 @@ class MissionManager(object):
         # Be more picky about tight turns while performing the payload drop
         # max_rel_chi=10*np.pi/16
         # config = Config(max_rel_chi=np.radians(90))
-        plan = self._apply_rrt(planned_points, rrt_type='dubins')
+        plan = self._apply_rrt([planned_points[0]], rrt_type='dubins')
+        plan.waypoints += planned_points[1:]
         plan.params["drop_location"] = drop_location
         return plan
 
