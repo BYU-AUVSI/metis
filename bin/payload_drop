@@ -6,7 +6,7 @@ from rosflight_msgs.msg import AuxCommand
 import numpy as np
 import std_srvs.srv
 import subprocess
-from uav_msgs.srv import PayloadDrop as PayloadDropService
+# from uav_msgs.srv import PayloadDrop as PayloadDropService
 
 class PayloadDrop():
     def __init__(self):
@@ -20,9 +20,9 @@ class PayloadDrop():
         self.com.type_array = '\0\0\0\0\1\1\1\1\1\1\1\1\1\1' #TODO Change most to zeros later
         self.com.values = [1.0]*14 #from Trey
         self.pub.publish(self.com) #from Trey
-        self.s = rospy.Service('drop_payload', PayloadDropService, self.drop_payload)
+        # self.s = rospy.Service('drop_payload', PayloadDropService, self.drop_payload)
 
-    def drop_payload():
+    def drop_payload(self):
         self.com.values=[-1.0]*14 #from Trey
         self.pub.publish(self.com) #from Trey
         rospy.sleep(0.5) #from Trey
@@ -34,6 +34,7 @@ class PayloadDrop():
         This function is called each time a waypoint message 
         is received from the /current_waypoint topic.
         """
+        print('payload_drop check')
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # get the current drop waypoint from the payload planner
         try:
             # if the payload planner hasn't been run yet, the 'DROP_LOCATION' is a string
@@ -79,14 +80,8 @@ class PayloadDrop():
 
                         # 'cause we couldn't get a real service call to work
                         # subprocess.call("rosservice call /gpio_0_pulse_actuate", shell=True)
-                        
-                        #self.drop_payload() <----Use this line if you want to drop the payload using a service
 
-                        self.com.values=[-1.0]*14 #from Trey
-                        self.pub.publish(self.com) #from Trey
-                        rospy.sleep(0.5) #from Trey
-                        self.com.values=[1.0]*14 #from Trey
-                        self.pub.publish(self.com) #from Trey
+                        self.drop_payload()
                         
                         # rospy.ServiceProxy('arm_bomb', std_srvs.srv.Trigger)
                         # rospy.ServiceProxy('actuate_drop_bomb', std_srvs.srv.Trigger)
