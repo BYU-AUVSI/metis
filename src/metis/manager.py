@@ -216,7 +216,7 @@ class MissionManager(object):
         raise NotImplementedError
 
     def plan_payload(self, wind=np.array([0.0, 0.0, 0.0])):
-        """
+        """ 
         Plans the payload drop portion of the mission.
 
         Parameters

@@ -82,6 +82,7 @@ class Animation2D(Animation):
 
     def add_waypoint(self, n, e, d):
         self.ax.plot(e, n, 'rx')
+        self.ax.text(e, n, '{:.1f}'.format(-d))
         plt.pause(0.000001)
 
     # def add_node(self, start, end):
