@@ -9,6 +9,7 @@ import numpy as np
 
 import rospy
 from rosplane_msgs.msg import Waypoint as WaypointMsg
+from rosplane_msgs.msg import State
 from uav_msgs.msg import JudgeMission, State
 from uav_msgs.srv import (
     PlanMissionPoints,
@@ -35,7 +36,7 @@ class MissionPlanner(object):
     """
 
     # def __init__(self, Va=20):
-    def __init__(self, Va=15):
+    def __init__(self, Va=18.0):
         """Creates a new MissionPlanner class with planner objectives
 
         This initializes a new MissionPlanner. The reference latitude, longitude,
@@ -67,15 +68,21 @@ class MissionPlanner(object):
         self._services.append(rospy.Service("update_search_params", UpdateSearchParams, self.update_search_params))
         self._services.append(rospy.Service("review_plan", UploadPath, self.review_plan))
 
+        self._sub = {
+            # 'state': rospy.Subscriber("/fixedwing/state", State, self.vehicle_state_callback),
+            'state': rospy.Subscriber("/state", State, self.vehicle_state_callback),
+        }
+
         # self._pub_task = rospy.Publisher("current_task", JudgeMission, queue_size=5)
-        # self.wp_pub = rospy.Publisher("/waypoint_path", WaypointMsg, queue_size=10) # This is for real life
-        self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", WaypointMsg, queue_size=10) # This is for simulation
+        self.wp_pub = rospy.Publisher("/waypoint_path", WaypointMsg, queue_size=10) # This is for real life
+        # self.wp_pub = rospy.Publisher("/fixedwing/waypoint_path", WaypointMsg, queue_size=10) # This is for simulation
 
         self.plan = None
         print(self.mission)
         rospy.logwarn("Is your home location set correctly (see params in interop_client's .launch file)?")
         rospy.logwarn("Is the waypoint publisher set correctly for flight/simulation (see metis.ros.mission)?")
         self.Va = Va
+        self.Va = 18.0
 
         export = False
         if export:
@@ -87,6 +94,13 @@ class MissionPlanner(object):
     def review_plan(self, req):
         if self.plan:
             self.plan.plot()
+        return True
+
+    def vehicle_state_callback(self, req):
+        self.manager.current_pos.n = req.position[0]
+        self.manager.current_pos.e = req.position[1]
+        self.manager.current_pos.d = req.position[2]
+        self.manager.current_pos.chi = req.chi
         return True
 
     def update_path_callback(self, req):
@@ -119,7 +133,7 @@ class MissionPlanner(object):
             new_point.Va_d = self.Va  # airspeed (m/s)
             if first:
                 new_point.set_current = True  # erases list, sets this as current waypoint
-                new_point.clear_wp_list = True  # removes all waypoints, returns to origin
+                new_point.clear_wp_list = False #True  # removes all waypoints, returns to origin
                 first = False
             else:
                 new_point.set_current = False  # erases list, sets this as current waypoint
