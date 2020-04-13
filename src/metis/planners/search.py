@@ -85,12 +85,10 @@ class SearchPlanner(Planner):
 
         if long_axis == 'NS':
             print('NS')
-            all_points = self.zamboni(y, x, 'NS')
+            all_points = self.zamboni(y, x, long_axis)
         else:
             print('EW')
-            all_points = self.zamboni(x, y, 'EW')
-
-        # all_points = [Waypoint(point[0], point[1], -self.height) for point in all_points]
+            all_points = self.zamboni(x, y, long_axis)
 
         # Eliminate points that are too close to the flight boundary or too far from the search area
         final_waypoints = []
@@ -106,7 +104,7 @@ class SearchPlanner(Planner):
             counter = 1
             for point in final_waypoints:
                 ax.scatter(point.e, point.n, c='k')
-                # ax.text(point.e, point.n, str(counter))
+                ax.text(point.e, point.n, str(counter))
                 # ax.text(point.e, point.n, "    " + str(point.chi))
                 counter += 1
             for point in self.flight_boundaries:
@@ -156,9 +154,12 @@ class SearchPlanner(Planner):
         direction = 1
         for i in reorder(short_axis):
             for j in long_axis[::direction]:
-                waypoints.append(Waypoint(i, j, -self.height, chi))
+                if orientation == 'EW':
+                    waypoints.append(Waypoint(i, j, -self.height, chi))
+                else:
+                    waypoints.append(Waypoint(j, i, -self.height, chi))
             direction = -direction
-            chi = -chi
+            chi = wrap2pi(chi + np.pi)
 
         return waypoints
 

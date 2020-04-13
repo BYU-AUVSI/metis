@@ -98,8 +98,8 @@ class DubinsRRT(RRT):
         tree = Tree(root=start_node)
 
         # check for if solution at the beginning    
-        chi = heading(start_node, end_node)
-        if self.flyable_path(start_node, end_node, start_node.chi, chi):
+        # chi = heading(start_node, end_node)
+        if self.flyable_path(start_node, end_node, start_node.chi, end_node.chi):
             self.animation.add_path(self.points_along_path(start_node, end_node, self.config.min_radius, self.config.resolution)) if self.animation else None
             return [convert_point(start_node, Waypoint), convert_point(end_node, Waypoint)]  # Returns the two waypoints as the succesful path
 
@@ -390,8 +390,7 @@ class DubinsRRT(RRT):
             prev_node = smoothed_path[-1]
             considered = path[j]
             next_node = path[j + 1]
-            points = self.points_along_path(prev_node, next_node, self.config.min_radius, self.config.resolution)
-            if collision(points, self.mission.boundary_poly, self.mission.obstacles, self.config.clearance):
+            if not self.flyable_path(prev_node, next_node, prev_node.chi, next_node.chi):
                 smoothed_path.append(considered)
         smoothed_path.append(path[-1])
         # Update costs?

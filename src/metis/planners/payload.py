@@ -7,6 +7,7 @@ import logging
 
 import numpy as np
 import matplotlib.pyplot as plt
+import rospy
 
 from metis.tools import will_collide#, makeBoundaryPoly, convert
 from metis.location import Waypoint
@@ -39,7 +40,7 @@ class PayloadPlanner(Planner):
         """
         super(PayloadPlanner, self).__init__(mission)
         self.dropLocation = mission.drop_location   # location of where on the ground we want to hit (msg_ned)
-        self.wind = wind                            # current wind vector [Wn,We,Wd]
+        self.wind = [0, 0, 0]                           # current wind vector [Wn,We,Wd]
         self.drop_altitude = 34.0                   # altitude for waypoints in meters above 0.0 of ground station
         self.time_delay = 2.5                       # seconds between command to open and baydoor opening
         self.time_to_open_parachute = 1.61          # seconds between baydoor opening and parachute opening
@@ -107,7 +108,7 @@ class PayloadPlanner(Planner):
             # approach = wrap2pi(heading(p1, p2) + np.pi)
             approach = heading(p1, p2)
             print(approach)
-            
+
         for point in self.waypoints:
             point.chi = approach
             print(point)
@@ -216,7 +217,8 @@ class PayloadPlanner(Planner):
         waypointsList = []
         for ii in range(length):
             waypointsList.append(Waypoint(self.waypoints_array[ii,0],self.waypoints_array[ii,1],self.waypoints_array[ii,2]))
-
+        # print([self.waypoints_array[1,0],self.waypoints_array[1,1],self.waypoints_array[1,2]])
+        rospy.set_param("APPROACH", [float(self.waypoints_array[1,0]),float(self.waypoints_array[1,1]),float(self.waypoints_array[1,2])])
         return waypointsList
 
     def plot(self):

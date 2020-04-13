@@ -29,7 +29,7 @@ class MissionManager(object):
     Attributes
     ----------
     target_height : float, optional
-        A default height for the aircraft when not flying waypoints. 
+        A default height for the aircraft when not flying waypoints.
         It is a positive floating point value in meters.
         It is always the same as the height value in `default_pos`;
         modifying `default_pos` will affect `target_height`.
@@ -50,7 +50,7 @@ class MissionManager(object):
         mission : metis.core.Mission
             A Mission object, representing a complete AUVSI mission.
         target_height : float, optional
-            A default height for the aircraft when not flying waypoints. 
+            A default height for the aircraft when not flying waypoints.
             It is a positive floating point value in meters (default 35).
         """
         self.mission = mission
@@ -61,7 +61,7 @@ class MissionManager(object):
         else:
             warnings.warn("MissionManager created without mission object; no planners are initialized.", RuntimeWarning)
         self.plans = []
-        self.current_pos = Waypoint(0., 0., -target_height)
+        self.current_pos = Waypoint(0., 0., -target_height, 0.0)
 
     @property
     def target_height(self):
@@ -95,8 +95,8 @@ class MissionManager(object):
         planned_points : list of metis.messages.msg_ned
             The points of the mission that must be hit.
         config : metis.rrt.rrt_base.Config
-            Configuration object that contains, among other thigns, the 
-            tightness of turns that the RRT algorithm should plan for 
+            Configuration object that contains, among other thigns, the
+            tightness of turns that the RRT algorithm should plan for
             (default (15/16)*pi).
         connect : bool, optional
             Whether RRT should use the `connect` flag.
@@ -106,28 +106,31 @@ class MissionManager(object):
         plan : metis.core.Plan
             Returns a Plan object representing the final plan.
         """
-        # RRT = get_rrt('straight')
+        RRT = get_rrt('straight')
         # RRT = get_rrt('fillet')
         # RRT = get_rrt('dubins')
-        RRT = get_rrt(rrt_type)
-        if config:
-            rrt = RRT(self.mission, config=config)
-        else:
-            rrt = RRT(self.mission)
+        # RRT = get_rrt(rrt_type)
+        # if config:
+        #     rrt = RRT(self.mission, config=config)
+        # else:
+        #     rrt = RRT(self.mission)
+        rrt = RRT(self.mission)
 
-        if self.plans:
-            self._logger.info("Planning from last waypoint of previous path")
-            current_pos = self.plans[-1].last_waypoint
-        else:
-            self._logger.info("Planning from origin")
-            current_pos = self.default_pos
-            # FIXME: Can we update to get the actual position of the plane? And
-            # get the current heading, too.
+        # if self.plans:
+        #     self._logger.info("Planning from last waypoint of previous path")
+        #     current_pos = self.plans[-1].last_waypoint
+        # else:
+        #     self._logger.info("Planning from origin")
+        #     current_pos = self.default_pos
+        #     # FIXME: Can we update to get the actual position of the plane? And
+        #     # get the current heading, too.
+        current_pos = self.current_pos
+        # current_pos = self.default_pos
 
         planned_points.insert(0, current_pos)
         final_path = rrt.find_full_path(planned_points, connect=connect)
         plan = Plan(self.mission, waypoints=final_path, callback=self._approve_plan)
-        return plan        
+        return plan
 
     def plan(self, task, **kwargs):
         """
@@ -169,7 +172,7 @@ class MissionManager(object):
             The set of waypoints defining the landing direction. Raises an
             error if not provided.
         altitude : float, optional
-            The current altitude of the plane in meters; the altitude to plan 
+            The current altitude of the plane in meters; the altitude to plan
             the approach from (default 0).
         """
         if not waypoints:
@@ -221,6 +224,7 @@ class MissionManager(object):
         wind : numpy.array
             An array of length 3 containing the wind as NED.
         """
+        # wind = np.array([0.0, 0.0, 0.0])
         self._logger.info('plan_payload called')
         planned_points, drop_location = self.planners["payload"].plan(wind)
         # Be more picky about tight turns while performing the payload drop
