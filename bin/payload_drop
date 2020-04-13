@@ -11,15 +11,15 @@ from uav_msgs.srv import PayloadDrop as PayloadDropService
 class PayloadDrop():
     def __init__(self):
         self.dropWaypoint = rospy.get_param('DROP_LOCATION')    # the drop waypoint
-        self.threshold = 2.0                                    # m, threshold between drop location parameter and rosplane waypoint
+        self.threshold = 15.0                                    # m, threshold between drop location parameter and rosplane waypoint
         self.ON_APPROACH = False                                # True when the payload drop approach is good
         self.approach_timer = 0                                 # Keeps track of how long ON_APPROACH has been True
-        self.approach_threshold = 500                           # Iterations before ON_APPROACH is made False
+        self.approach_threshold = 5000                           # Iterations before ON_APPROACH is made False
         self.armed_flag = False
         self.current_path_q = 0
         self.current_position = [0, 0, 0]
         self.drop_wp_redo = True
-        self._checksub = rospy.Subscriber('/fixedwing/current_path', Current_Path, self.check)# subscribes to current waypoint from rosplane
+        self._checksub = rospy.Subscriber('/current_path', Current_Path, self.check)# subscribes to current waypoint from rosplane
         self._statesub = rospy.Subscriber('/state', State, self.stateCallback)# subscribes to current waypoint from rosplane
         self.pub = rospy.Publisher('aux_command', AuxCommand, queue_size=1) #from Trey
         self.com = AuxCommand() #from Trey
@@ -114,8 +114,8 @@ class PayloadDrop():
                 self.approach_timer += 1
         # check to see if the waypoint we're headed towards is the drop location waypoint
         else:
-            print(self.approachWaypoint)
-            if np.linalg.norm(np.subtract(current_position,self.approachWaypoint)) < self.threshold*50:
+            # print(self.approachWaypoint)
+            if np.linalg.norm(np.subtract(current_position,self.approachWaypoint)) < self.threshold*10:
                 self.ON_APPROACH = True
                 print("ON APPROACH!")
 

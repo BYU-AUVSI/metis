@@ -217,7 +217,7 @@ class PayloadPlanner(Planner):
         waypointsList = []
         for ii in range(length):
             waypointsList.append(Waypoint(self.waypoints_array[ii,0],self.waypoints_array[ii,1],self.waypoints_array[ii,2]))
-        print([self.waypoints_array[1,0],self.waypoints_array[1,1],self.waypoints_array[1,2]])
+        # print([self.waypoints_array[1,0],self.waypoints_array[1,1],self.waypoints_array[1,2]])
         rospy.set_param("APPROACH", [float(self.waypoints_array[1,0]),float(self.waypoints_array[1,1]),float(self.waypoints_array[1,2])])
         return waypointsList
 
