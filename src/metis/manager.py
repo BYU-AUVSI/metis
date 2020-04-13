@@ -61,7 +61,7 @@ class MissionManager(object):
         else:
             warnings.warn("MissionManager created without mission object; no planners are initialized.", RuntimeWarning)
         self.plans = []
-        self.current_pos = Waypoint(0., 0., -target_height)
+        self.current_pos = Waypoint(0., 0., -target_height, 0.0)
 
     @property
     def target_height(self):
@@ -106,23 +106,26 @@ class MissionManager(object):
         plan : metis.core.Plan
             Returns a Plan object representing the final plan.
         """
-        # RRT = get_rrt('straight')
+        RRT = get_rrt('straight')
         # RRT = get_rrt('fillet')
         # RRT = get_rrt('dubins')
-        RRT = get_rrt(rrt_type)
-        if config:
-            rrt = RRT(self.mission, config=config)
-        else:
-            rrt = RRT(self.mission)
+        # RRT = get_rrt(rrt_type)
+        # if config:
+        #     rrt = RRT(self.mission, config=config)
+        # else:
+        #     rrt = RRT(self.mission)
+        rrt = RRT(self.mission)
 
-        if self.plans:
-            self._logger.info("Planning from last waypoint of previous path")
-            current_pos = self.plans[-1].last_waypoint
-        else:
-            self._logger.info("Planning from origin")
-            current_pos = self.default_pos
-            # FIXME: Can we update to get the actual position of the plane? And
-            # get the current heading, too.
+        # if self.plans:
+        #     self._logger.info("Planning from last waypoint of previous path")
+        #     current_pos = self.plans[-1].last_waypoint
+        # else:
+        #     self._logger.info("Planning from origin")
+        #     current_pos = self.default_pos
+        #     # FIXME: Can we update to get the actual position of the plane? And
+        #     # get the current heading, too.
+        current_pos = self.current_pos
+        # current_pos = self.default_pos
 
         planned_points.insert(0, current_pos)
         final_path = rrt.find_full_path(planned_points, connect=connect)

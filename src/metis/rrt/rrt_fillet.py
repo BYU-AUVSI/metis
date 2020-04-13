@@ -29,7 +29,7 @@ class FilletRRT(RRT):
     """
     _logger = _module_logger.getChild('FilletRRT')
 
-    def __init__(self, mission, animate=False, config=fillet_config):
+    def __init__(self, mission, animate=True, config=fillet_config):
         super(FilletRRT, self).__init__(mission, animate=animate, config=config)
 
     def find_full_path(self, waypoints, connect=False):

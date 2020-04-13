@@ -16,7 +16,9 @@ _module_logger = logging.getLogger(__name__)
 
 straight_config = Config(
     clearance=15,
-    max_rel_chi=np.radians(45),
+    # 120 good for objective and payload
+    # max_rel_chi=np.radians(165),
+    max_rel_chi=15.*np.pi/16.,
     iterations=3,
 )
 
@@ -57,6 +59,19 @@ class StraightRRT(RRT):
         """
         # Avoid modifying the original object
         waypoints_ = self.filter_invalid_waypoints(copy.deepcopy(waypoints))
+
+        if self.animation:
+            for p in waypoints_:
+                self.animation.add_waypoint(p.n, p.e, p.d)
+        # import matplotlib.pyplot as plt
+        # fig, ax = plt.subplots()
+        # count = 1
+        # for p in waypoints_:
+        #     ax.plot(p.e, p.n, 'rx')
+        #     ax.text(p.e, p.n, '{}'.format(count))
+        #     count += 1
+        # plt.show(block=True)
+
 
         # Plan a path for each adjacent set of waypoints and append to full_path
         full_path = []
