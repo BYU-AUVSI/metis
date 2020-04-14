@@ -16,6 +16,8 @@ from .rrt_base import *
 from .rrt_straight import StraightRRT
 from .rrt_fillet import FilletRRT
 from .rrt_dubins import DubinsRRT
+from .rrtstar_straight import StraightRRTStar
+from .rrtstar_dubins import DubinsRRTStar
 
 mode = 'straight'
 
@@ -23,17 +25,19 @@ def get_mode():
     global mode
     return mode
 
+modes = {
+    'straight': StraightRRT,
+    'straightstar': StraightRRTStar,
+    'fillet': FilletRRT,
+    'dubins': DubinsRRT,
+    'dubinsstar': DubinsRRTStar,
+}
+
 def get_rrt(arg=mode):
     global mode
     print(arg.lower())
-    if arg.lower() == 'straight':
-        mode = 'straight'
-        return StraightRRT
-    elif arg.lower() == 'fillet':
-        mode = 'fillet'
-        return FilletRRT
-    elif arg.lower() == 'dubins':
-        mode = 'dubins'
-        return DubinsRRT
+    if arg.lower() in modes.keys():
+        mode = arg.lower()
+        return modes[arg.lower()]
     else:
         raise ValueError("Nonexistent RRT mode '{}' requested.".format(mode))

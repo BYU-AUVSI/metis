@@ -106,7 +106,7 @@ class MissionManager(object):
         plan : metis.core.Plan
             Returns a Plan object representing the final plan.
         """
-        RRT = get_rrt('straight')
+        RRT = get_rrt('dubinsstar')
         # RRT = get_rrt('fillet')
         # RRT = get_rrt('dubins')
         # RRT = get_rrt(rrt_type)

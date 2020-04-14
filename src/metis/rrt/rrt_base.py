@@ -100,7 +100,7 @@ class Tree(object):
         """
         return len(self.nodes)
 
-    def closest(self, node):
+    def closest(self, node, distance=None):
         """
         Finds the node in the tree closest to some other node.
 
@@ -108,6 +108,9 @@ class Tree(object):
         ----------
         node : metis.core.NEDPoint
             A random node we're trying to find the nearest neighbor of.
+        distance : float
+            Finds all neighbors within some distance from the node. If None,
+            returns the single closest node (default None).
         
         Returns
         -------
@@ -115,9 +118,14 @@ class Tree(object):
             The node already stored in the tree that is closest to the passed 
             in node.
         """
-        dists = [child.distance(node) for child in self.nodes]
+        if distance:
+            neighbors = [child for child in self.nodes if child.distance(node, d2=True) <= distance and not child.connects]
+            if len(neighbors) != 0:
+                return neighbors
+        # If no neighbors, do default behavior: find closest.
+        dists = [child.distance(node, d2=True) for child in self.nodes if not child.connects]
         min_idx = np.argmin(dists)
-        return self.nodes[min_idx]
+        return [self.nodes[min_idx]]
 
     def add(self, node):
         if type(node) is not Node:
@@ -145,7 +153,7 @@ class Node(Waypoint):
             Heading in radians (default 0).
         """
         super(Node, self).__init__(n, e, d, chi)
-        self.cost = cost
+        # self.cost = cost
         self.parent = parent
         self.connects = connects
 
@@ -156,6 +164,19 @@ class Node(Waypoint):
         """
         return self.ned == other.ned and \
             self.chi == other.chi
+
+    @property
+    def cost(self, d2=True):
+        if self.parent is None:
+            return 0.0
+
+        return self.parent.cost + self.distance(self.parent, d2=True)
+        # parent = self.parent
+        # cost = 0.0
+        # while parent is not None:
+        #     cost += starter.distance(starter.parent, d2=True)
+        #     starter = starter.parent
+        # return cost
 
 
 class RRT(object):
@@ -260,6 +281,14 @@ class RRT(object):
         raise NotImplementedError
 
     def extend_tree(self, tree, goal, seg_length):
+        """
+        Notes
+        -----
+        Preference for altitude is not implemented, but could be done by 
+        applying a cost penalty to nodes that are at incorrect altitudes.
+        This penalty could be increase with the square of the altitude error,
+        to push preference strongly towards close nodes.
+        """
         raise NotImplementedError
 
     @staticmethod
@@ -285,7 +314,6 @@ class RRT(object):
             if type(node) is Waypoint:
                 normalized.append(node)
             elif type(node) is Node:
-                # normalized.append(node.waypoint)
                 normalized.append(convert_point(node, Waypoint))
             else:
                 raise ValueError('Encountered value that is not a Node or Waypoint')
@@ -523,6 +551,19 @@ def heading(p0, p1):
     90.0
     """
     return np.arctan2((p1.e - p0.e), (p1.n - p0.n))
+
+def pitch(p1, p2):
+    """
+    Calculates the pitch angle travelling from the first waypoint to the second.
+
+    Parameters
+    ----------
+    p1 : subclass instance of metis.location.NEDPoint
+        The first waypoint.
+    p2 : subclass instance of metis.location.NEDPoint
+        The second waypoint.
+    """
+    return np.arctan2((p2.h - p1.h), p2.distance(p1, d2=True))
 
 def wrap(chi_c, chi):
     """ 

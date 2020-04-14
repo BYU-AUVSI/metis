@@ -6,7 +6,7 @@ import numpy as np
 
 from metis.manager import MissionManager
 
-with open('./mis.pkl', 'r') as f:
+with open('./mission.pkl', 'r') as f:
     mission = pickle.load(f)
 
 print(mission)

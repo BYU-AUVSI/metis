@@ -42,11 +42,14 @@ class Mission(object):
         home : metis.GPSWaypoint, optional
             The location of the GPS groundstation, including the 
             groundstation's ground elevation.
-        obstacles : list of metis.core.CircularObstacle, optional
-        boundary_list : list of metis.core.BoundaryPoint, optional
-        waypoints : list of metis.core.Waypoint, optional
-        drop_location : metis.core.Waypoint, optional
-        search_area : list of metis.core.BoundaryPoint, optional
+        obstacles : list of metis.location.CircularObstacle, optional
+        boundary_list : list of metis.location.BoundaryPoint, optional
+            Boundaries that, in the order they are provided, trace out the 
+            perimeter of the flight boundaries.
+        waypoints : list of metis.location.Waypoint, optional
+            List of waypoints in the order they should be traversed.
+        drop_location : metis.location.Waypoint, optional
+        search_area : list of metis.location.BoundaryPoint, optional
         """
         # private:
         self._boundary_poly = None

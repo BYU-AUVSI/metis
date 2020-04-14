@@ -40,6 +40,9 @@ class Animation(object):
         pass
 
 class Animation2D(Animation):
+    colors = ['b', 'g', 'r', 'c', 'm', 'y']
+    color_iter = iter(colors)
+
     def __init__(self, mission):
         # Backends:
         # https://stackoverflow.com/questions/30809316/how-to-create-a-plot-in-matplotlib-without-using-pyplot
@@ -57,6 +60,15 @@ class Animation2D(Animation):
         ax.set_ylim((int(1.1*minN), int(1.1*maxN)))
         ax.set_aspect('equal')  
         plt.pause(0.000001)
+        self.color_iter = iter(self.colors)
+        self.color = next(self.color_iter)
+
+    def new_color(self):
+        try:
+            self.color = next(self.color_iter)
+        except StopIteration:
+            self.color_iter = iter(self.colors)
+            self.color = next(self.color_iter)
 
     @staticmethod
     def ne2xy(ne):
@@ -77,7 +89,7 @@ class Animation2D(Animation):
         if valid:
             self.ax.plot(ned[:,1], ned[:,0], 'k-')
         else:
-            self.ax.plot(ned[:,1], ned[:,0])
+            self.ax.plot(ned[:,1], ned[:,0], self.color)
         plt.pause(0.000001)
 
     def add_waypoint(self, n, e, d):

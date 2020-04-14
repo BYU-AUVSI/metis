@@ -9,6 +9,7 @@ import numpy as np
 
 from metis.location import Waypoint, convert_point
 from .rrt_base import *
+from .rrt_straight import *
 from .animation import Animation2D
 
 
@@ -18,12 +19,13 @@ straight_config = Config(
     clearance=15,
     # 120 good for objective and payload
     # max_rel_chi=np.radians(165),
-    max_rel_chi=15.*np.pi/16.,
+    # max_rel_chi=15.*np.pi/16.,
+    max_rel_chi=np.radians(80),
     iterations=3,
 )
 
 
-class StraightRRT(RRT):
+class StraightRRTStar(StraightRRT):
     """
     An RRT object plans plans flyable paths in the mission environment.
     It also holds the information concerning the physical boundaries and
@@ -34,7 +36,7 @@ class StraightRRT(RRT):
     _logger = _module_logger.getChild('StraightRRT')
 
     def __init__(self, mission, animate=True, config=straight_config):
-        super(StraightRRT, self).__init__(mission, animate=animate, config=config)
+        super(StraightRRTStar, self).__init__(mission, animate=animate, config=config)
 
     def find_full_path(self, waypoints, connect=False):
         """
@@ -63,14 +65,6 @@ class StraightRRT(RRT):
         if self.animation:
             for p in waypoints_:
                 self.animation.add_waypoint(p.n, p.e, p.d)
-        # import matplotlib.pyplot as plt
-        # fig, ax = plt.subplots()
-        # count = 1
-        # for p in waypoints_:
-        #     ax.plot(p.e, p.n, 'rx')
-        #     ax.text(p.e, p.n, '{}'.format(count))
-        #     count += 1
-        # plt.show(block=True)
 
 
         # Plan a path for each adjacent set of waypoints and append to full_path
@@ -79,6 +73,8 @@ class StraightRRT(RRT):
         for way2 in waypoints_[1:]:
             full_path += self.find_path(way1, way2)
             way1 = full_path[-1]
+            if self.animation:
+                self.animation.new_color()
 
         full_path = self.filter_duplicate_waypoints(full_path)
         if self.animation:
@@ -115,35 +111,12 @@ class StraightRRT(RRT):
         start_node = convert_point(start, Node)
         end_node = convert_point(end, Node)
         tree = Tree(root=start_node)
-
+        
         # check for if solution at the beginning
         chi = heading(start_node, end_node)
         if self.flyable_path(start_node, end_node, start_node.chi, chi):
             self.animation.add_path(self.points_along_path(start_node, end_node)) if self.animation else None
             return [convert_point(start_node, Waypoint), convert_point(end_node, Waypoint)]  # Returns the two waypoints as the succesful path
-
-        #START NEW TESTING CODE
-        # This code attempts to implement the `connect` feature of the straight
-        # line paths; namely, placing a node behind each waypoint to ensure it
-        # gets flown through.
-        # q = (w2.nparray - w1.nparray)/np.linalg.norm(w2.nparray - w1.nparray)
-
-        # The two conditions below would REPLACE the currently active condition
-        # above.
-
-        # add_node = w2.nparray + q*config.distance
-        # newmsg = msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
-
-        # if self.flyable_path(obstacles, bound_poly, w1, newmsg, start_chi, chi, config) and connect:
-        #     # return w1, w2, msg_ned(add_node.item(0), add_node.item(1), add_node.item(2))
-        #     _logger.critical("option 1")
-        #     return [w1, w2, newmsg]
-
-        # elif self.flyable_path(obstacles, bound_poly, w1, w2, start_chi, chi, config) and not connect:
-        #     _logger.critical("option 2")
-        #     return [w1, w2]
-
-        #END NEW TESTING CODE
         else:
             solutions = 0
             while solutions < self.config.iterations:
@@ -247,8 +220,10 @@ class StraightRRT(RRT):
                 return False
 
         # Check incline here
-        incline = np.abs( (end.d-start.d) / end.distance(start) )
-        if incline > self.config.max_incline+.01:  #Added fudge factor because of floating point math errors
+        # incline = np.abs( (end.d-start.d) / end.distance(start) )
+        pitch_angle = pitch(start, end)
+        # if incline > self.config.max_incline+.01:  #Added fudge factor because of floating point math errors
+        if pitch_angle > np.radians(25):
             _logger.debug("Incline too steep.")
             return False
 
@@ -310,7 +285,16 @@ class StraightRRT(RRT):
             # *********************************************************************
             # Find the nearest leaf. Preference given to leaves that are at the
             # correct altitude.
-            closest = tree.closest(new_node)[0]
+            neighbors = tree.closest(new_node, 100)
+            # _logger.critical(neighbors)
+            dists = [node.distance(new_node, d2=True) for node in neighbors]
+
+            costs = []
+            for node in neighbors:
+                new_node.parent = node
+                costs.append(new_node.cost)
+
+            closest = neighbors[np.argmin(costs)]
             new_node.d = closest.d
 
             # Need to find way to get more smooth descents and ascents?? not zig zaggy
@@ -320,41 +304,47 @@ class StraightRRT(RRT):
             # *********************************************************************
             # Calculate the new node location
 
-            # If the chosen leaf is at the ending waypoint altitude
-            if(closest.d == end.d):
-                # A new leaf only extends a maximum distance from a previous leaf
-                connection = new_node.ned - closest.ned
-                L = min(np.linalg.norm(connection), self.config.max_distance)
-                point = closest.ned + L*(connection / np.linalg.norm(connection))
-                new_node = Node(point.item(0), point.item(1), point.item(2), chi, closest.cost + L, closest, False)
-
-            # This case is for when the nearest leaf isn't yet at the correct altitude for the ending waypoint
-            else:
-                hyp = np.sqrt((new_node.n-closest.n)**2 + (new_node.e-closest.e)**2)
-                lessInclineWhilePlanning = 0.3
-                if new_node.d > end.d: # Climb
-                    downP = closest.d - hyp * self.config.max_incline * lessInclineWhilePlanning
-                else: # Descend
-                    downP = closest.d + hyp * self.config.max_incline * lessInclineWhilePlanning
-                northP = new_node.n
-                eastP = new_node.e
-                q = np.array([northP - closest.n, eastP - closest.e, downP - closest.d])
-                L = np.linalg.norm(q)
-                L = min(L, self.config.max_distance)
-                tmp = new_node.ned - closest.ned
-                point = closest.ned + L*(tmp/np.linalg.norm(tmp))
-                new_node = Node(point.item(0), point.item(1), point.item(2), chi, closest.cost + L, closest, False)
-
-                # If we were descending and overshot (or were ascending and overshot), set to final altitude.
-                if (new_node.d > closest.d and new_node.d < end.d) or (new_node.d < closest.d and new_node.d > end.d):
-                    new_node.d = end.d
+            # A new leaf only extends a maximum distance from a previous leaf
+            connection = new_node.ned - closest.ned
+            L = min(np.linalg.norm(connection), self.config.max_distance)
+            point = closest.ned + L*(connection / np.linalg.norm(connection))
+            new_node = Node(point.item(0), point.item(1), point.item(2), chi, closest.cost + L, closest, False)
 
             # Check for collision. If we have a flylable path, break out of the loop!
             flyable = self.flyable_path(closest, new_node, closest.chi, new_node.chi)
 
+        dist = new_node.distance(closest, d2=True)
+        max_pitch = np.radians(20)
+        delta_h = dist*np.tan(max_pitch)
+        if new_node.h < end.h: # We're under altitude, climb
+            new_node.h = min(new_node.h + delta_h, end.h)
+        elif new_node.h > end.h: # We're over altitude, descend
+            new_node.h = max(new_node.h - delta_h, end.h)
+        else: # We must be right at altitude
+            new_node.d = end.d
+
         # Add this new node to the tree of viable paths.
         tree.add(new_node)
         self.animation.add_path(self.points_along_path(closest, new_node)) if self.animation else None
+
+        winner = None
+        for node in neighbors:
+            if node.parent is None or node is new_node.parent:
+                continue
+            old_parent = node.parent
+            old_cost = node.cost
+
+            node.parent = new_node
+            new_cost = node.cost
+            chi = heading(new_node, node)
+
+            if self.flyable_path(new_node, node, new_node.chi, chi) and new_cost < old_cost:
+                winner = node
+            else:
+                node.parent = old_parent
+
+        if winner:
+            self.animation.add_path(self.points_along_path(winner, new_node)) if self.animation else None
 
         # Check to see if the new node can connect to the end node.
         chi = heading(new_node, end)

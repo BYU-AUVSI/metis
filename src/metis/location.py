@@ -70,8 +70,24 @@ class NEDPoint(object):
         East coordinate relative to home (in meters).
     d : float
         Down coordinate relative to home (in meters).
+
+    Attributes
+    ----------
+    h : float
+        The positive altitude above the reference location (in meters).
     """
     def __init__(self, n=0.0, e=0.0, d=0.0):
+        """Represents a NED point.
+
+        Parameters
+        ----------
+        n : float
+            North coordinate relative to home (in meters).
+        e : float
+            East coordinate relative to home (in meters).
+        d : float
+            Down coordinate relative to home (in meters).
+        """
         self.ned = np.array([[float(n), float(e), float(d)]])
 
     @property
@@ -98,6 +114,14 @@ class NEDPoint(object):
     def d(self, value):
         self.ned[0,2] = float(value)
 
+    @property
+    def h(self):
+        return -1*self.ned.item(2)
+
+    @h.setter
+    def h(self, value):
+        self.ned[0,2] = -1*float(value)
+
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
             np.allclose(self.ned, other.ned)
@@ -105,7 +129,7 @@ class NEDPoint(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def distance(self, other):
+    def distance(self, other, d2=False):
         """Represents a boundary point.
 
         Parameters
@@ -117,8 +141,15 @@ class NEDPoint(object):
         -------
         dist : float
             The distance from one NED point to another.
+        d2 : bool
+            Whether the distance should be calculated in 2 dimensions or 3;
+            in other words, if altitude change is included in distance. True
+            if only 2D distance is desired; False otherwise (default False).
         """
-        return np.linalg.norm(other.ned - self.ned)
+        if d2:
+            return np.linalg.norm(other.ned[:,:2] - self.ned[:,:2])
+        else:
+            return np.linalg.norm(other.ned - self.ned)
 
 class BoundaryPoint(NEDPoint):
     """Represents a boundary point.
@@ -129,8 +160,6 @@ class BoundaryPoint(NEDPoint):
         North coordinate relative to home (in meters).
     e : float
         East coordinate relative to home (in meters).
-    d : float
-        Down coordinate relative to home (in meters).
     """
     def __init__(self, n=0.0, e=0.0):
         super(BoundaryPoint, self).__init__(n=n, e=e)
