@@ -19,14 +19,14 @@ np.random.seed(150)
 # np.random.seed(1527)
 # np.random.seed(178926053)
 
-straight_obstacles = 30
-dubins_obstacles = 60
+# obstacle_count = 30 # For straight line RRT
+obstacle_count = 60 # For Dubins paths RRT
 
 clearance = 15.0
 obstacles = [
-    # CircularObstacle(n=1000*rand(), e=1000*rand(), d=-200*rand()-100, r=50*rand()+10)
-    CircularObstacle(n=1000*rand(), e=1000*rand(), d=-500, r=50*rand()+10)
-    for i in range(60)
+    CircularObstacle(n=1000*rand(), e=1000*rand(), d=-200*rand()-100, r=50*rand()+10)
+    # CircularObstacle(n=1000*rand(), e=1000*rand(), d=-500, r=50*rand()+10)
+    for i in range(obstacle_count)
 ]
 bounds = [
     BoundaryPoint(0.0, 0.0),
@@ -65,7 +65,8 @@ mission = Mission(
 )
 
 starting_pos = Waypoint(10., 10., -35.0, 0.0)
-RRT = get_rrt('dubinsstar')
+RRT = get_rrt('straightstar')
+# RRT = get_rrt('dubinsstar')
 rrt = RRT(mission)
 waypoints.insert(0, starting_pos)
 final_path = rrt.find_full_path(waypoints, connect=True)

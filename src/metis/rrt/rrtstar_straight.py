@@ -20,7 +20,8 @@ straight_config = Config(
     # 120 good for objective and payload
     # max_rel_chi=np.radians(165),
     # max_rel_chi=15.*np.pi/16.,
-    max_rel_chi=np.radians(80),
+    max_rel_chi=np.radians(90),
+    max_distance=150.0,
     iterations=3,
 )
 
@@ -334,6 +335,8 @@ class StraightRRTStar(StraightRRT):
             old_parent = node.parent
             old_cost = node.cost
 
+            # When checking a new closest, should the rewired node's altitude 
+            # be adjusted as well?
             node.parent = new_node
             new_cost = node.cost
             chi = heading(new_node, node)
@@ -368,9 +371,11 @@ class StraightRRTStar(StraightRRT):
             prev_node = smoothed_path[-1]
             considered = path[j]
             next_node = path[j + 1]
-            points = self.points_along_path(prev_node, next_node)
-            if collision(points, self.mission.boundary_poly, self.mission.obstacles, self.config.clearance):
+            if not self.flyable_path(prev_node, next_node, prev_node.chi, next_node.chi):
                 smoothed_path.append(considered)
+            # points = self.points_along_path(prev_node, next_node)
+            # if collision(points, self.mission.boundary_poly, self.mission.obstacles, self.config.clearance):
+            #     smoothed_path.append(considered)
         smoothed_path.append(path[-1])
         # Update costs?
         return smoothed_path
