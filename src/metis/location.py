@@ -42,7 +42,7 @@ class GPSWaypoint:
 
         Returns
         -------
-        res : metis.core.NEDPoint
+        res : metis.location.NEDPoint
             A message where the result is the NED position of this point
             relative to gps2 (the radius property is always 0).
 
@@ -110,7 +110,7 @@ class NEDPoint(object):
 
         Parameters
         ----------
-        other : metis.core.NEDPoint
+        other : metis.location.NEDPoint
             Another NED point to find the Euclidean distance from.
 
         Returns

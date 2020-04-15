@@ -28,14 +28,14 @@ class LandingPlanner(Planner):
 
         Parameters
         ----------
-        landing_waypoint_list : list of metis.core.Waypoint
+        landing_waypoint_list : list of metis.location.Waypoint
         curr_altitude : float
         # altitude_threshold : float (optional)
         # altitude_default : float (optional)
 
         Returns
         -------
-        waypoints : list of metis.core.Waypoint
+        waypoints : list of metis.location.Waypoint
             A list of waypoints
         """
         # landing_wpt = landing_waypoint_list[0]

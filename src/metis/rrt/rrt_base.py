@@ -14,6 +14,47 @@ from .animation import Animation2D
 _module_logger = logging.getLogger(__name__)
 
 class Config(object):
+    """
+    A configuration object with options that put constraints on various
+    RRT planners. 
+    
+    Since not every RRT planner uses all the options, know which options are
+    applicable for the RRT planner you use.
+
+    Parameters
+    ----------
+    clearance : float, optional
+        The minimum distance between the path and all obstacles (default 5.0).
+    max_distance : float, optional
+        Max distance between each added leaf (default 50.0).
+    min_radius : float, optional
+        Minimum turn radius of the aircraft for planning fillet and dubins
+        paths (default 20).
+    max_incline : float, optional
+        The maximum incline or decline angle of the planned path (default 0.5).
+    max_rel_chi : float, optional
+        The maximum difference in the chi angles of path segments/leaves 
+        (default 15*pi/16).
+    iterations : int, optional
+        The amount of leaves that will be added until a successful path is 
+        found, or how many sets of random points it will add each time until 
+        solution is found (default 50).
+    resolution : float, optional
+        The spacing of points along the path that are checked for collisions. 
+        This method was chosen for ease of use and could be improved later if 
+        wanted. But it should be good enough for our purposes and it runs 
+        quickly (default 0.5).
+    scale_height : float, optional
+        This is a scaling value when finding which leaf is closest to the 
+        randomly chosen new point. This scales the height in the distance 
+        formula so that preference is given to leaves that are closer to the 
+        ending altitude (default 1.5).
+    distance : float, optional
+        In order to fly directly through a primary waypoint, an additional 
+        waypoint is added on the opposite side of the primary waypoint at a 
+        distance of `distance`. This forces the plane to go through the primary 
+        waypoint before beginning a fillet turn (default 15).
+    """
     clearance = 5.0
     # max_distance = 150.0 # 50.0
     max_distance = 50.0
@@ -27,34 +68,17 @@ class Config(object):
     scale_height = 1.5
     distance = 15
 
-    def __init__(self, clearance=clearance, max_distance=max_distance, min_radius=min_radius, max_incline=max_incline, max_rel_chi=max_rel_chi, iterations=iterations, resolution=resolution, scale_height=scale_height, distance=distance):
-        """
-        Parameters
-        ----------
-        clearance : float, optional
-            The minimum distance between the path and all obstacles (default 5.0).
-        max_distance : float, optional
-            Max distance between each added leaf (default 50.0).
-        min_radius : float, optional
-            Minimum turn radius of the aircraft for planning fillet and dubins
-            paths (default 20).
-        max_incline : float, optional
-            The maximum incline or decline angle of the planned path (default 0.5).
-        max_rel_chi : float, optional
-            The maximum difference in the chi angles of path segments/leaves (default 15*pi/16).
-        iterations : int, optional
-            The amount of leaves that will be added until a successful path is found, or
-            how many sets of random points it will add each time until solution is found (default 50).
-        resolution : float, optional
-            The spacing of points along the path that are checked for collisions. This method was chosen for ease of use
-            and could be improved later if wanted. But it should be good enough for our purposes and it runs quickly (default 0.5).
-        scale_height : float, optional
-            This is a scaling value when finding which leaf is closest to the randomly chosen new point. This scales the
-            height in the distance formula so that preference is given to leaves that are closer to the ending altitude (default 1.5).
-        distance : float, optional
-            In order to fly directly through a primary waypoint, an additional waypoint is added on the opposite side of the primary
-            waypoint at a distance of distance. This forces the plane to go through the primary waypoint before beginning a fillet turn (default 15).
-        """
+    def __init__(self, 
+        clearance=clearance, 
+        max_distance=max_distance, 
+        min_radius=min_radius, 
+        max_incline=max_incline, 
+        max_rel_chi=max_rel_chi, 
+        iterations=iterations, 
+        resolution=resolution, 
+        scale_height=scale_height, 
+        distance=distance
+    ):
         self.clearance = clearance
         self.max_distance = max_distance
         self.min_radius = min_radius
@@ -75,7 +99,7 @@ class Tree(object):
 
         Parameters
         ----------
-        root : metis.core.NEDPoint
+        root : metis.rrt.rrt_base.Node
             The root Node of the tree.
         """
         super(Tree, self).__init__()
@@ -106,12 +130,12 @@ class Tree(object):
 
         Parameters
         ----------
-        node : metis.core.NEDPoint
+        node : metis.rrt.rrt_base.Node
             A random node we're trying to find the nearest neighbor of.
         
         Returns
         -------
-        metis.core.NEDPoint
+        metis.rrt.rrt_base.Node
             The node already stored in the tree that is closest to the passed 
             in node.
         """
@@ -242,12 +266,12 @@ class RRT(object):
 
         Parameters
         ----------
-        waypoints : list of metis.core.Waypoint
+        waypoints : list of metis.location.Waypoint
             A list of waypoints to be passed through.
 
         Returns
         -------
-        full_path : list of metis.core.Waypoint
+        full_path : list of metis.location.Waypoint
             The full list of waypoints which outlines a safe path to follow in 
             order to reach all of the waypoints passed in.
         """
@@ -309,7 +333,7 @@ def generate_random_node(nmax, nmin, emax, emin):
 
     Returns
     -------
-    rand : metis.core.Waypoint
+    rand : metis.location.Waypoint
         A Waypoint within the region bounded by the parameters (altitude is at
         ground level).
     """
@@ -449,7 +473,7 @@ def collision(ned, boundaries, obstacles, clearance=Config.clearance):
         to one coordinate point. The matrix contains n points.
     boundaries : shapely.geometry.polygon.Polygon
         The polygon object representing the boundaries.
-    obstacles : list of metis.core.CircularObstacle
+    obstacles : list of metis.location.CircularObstacle
         The obstacles in the mission.
 
     Returns
@@ -629,7 +653,7 @@ def waypoints2ned(waypoints):
 
     Parameters
     ----------
-    waypoints : list of metis.core.Waypoints
+    waypoints : list of metis.location.Waypoints
         A list of waypoints to be converted.
 
     Returns

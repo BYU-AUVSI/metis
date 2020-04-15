@@ -11,6 +11,18 @@ import matplotlib.pyplot as plt
 _module_logger = logging.getLogger(__name__)
 
 class Animation(object):
+    """
+    Animation class provides easy utility for visualizing planner paths in 
+    real-time.
+
+    This class is intended to be subclassed and not used directly.
+
+    Parameters
+    ----------
+    mission : metis.core.Mission
+        A mission object, from which all the details of what should be included
+        on the map are taken.
+    """
     _logger = _module_logger.getChild('Animation')
 
     def __init__(self, mission, name):
@@ -21,41 +33,35 @@ class Animation(object):
         self.bound_poly = mission.boundary_poly
         self.waypoints = mission.waypoints
         self.fig, self.ax = plt.subplots(num=name)
-        plt.pause(0.001)
+        plt.pause(0.000001)
 
-    def drawPath(self, path, color):
-        # """ RRT class function that draws the path between a list of waypoints
-
-        # Parameters
-        # ----------
-        # path : msg_ned
-        #     List of waypoints
-        # color : string
-        #     Desired color in format for matplot (e.g. 'r','y','b',etc.)
-        # """
-        # for i in range(0, len(path) - 1):
-        #     way1 = path[i]
-        #     way2 = path[i + 1]
-        #     self.ax.plot([way1.n, way2.n], [way1.e, way2.e], [-way1.d, -way2.d], color=color)
-        pass
 
 class Animation2D(Animation):
+    """
+    A 2D animation utility for visualizing planner plots in real-time.
+
+    Parameters
+    ----------
+    mission : metis.core.Mission
+        A mission object, from which all the details of what should be included
+        on the map are taken.
+    """
     def __init__(self, mission):
         # Backends:
         # https://stackoverflow.com/questions/30809316/how-to-create-a-plot-in-matplotlib-without-using-pyplot
         super(Animation2D, self).__init__(mission, '2D Animation')
         # nodes is a dictionary from Node to matplotlib Line objects.
         self.nodes = {}
-        ax = self.ax
+        # ax = self.ax
         for obstacle in self.obstacles:
-            ax.add_artist(plt.Circle((obstacle.e, obstacle.n), obstacle.r, color='r'))
+            self.ax.add_artist(plt.Circle((obstacle.e, obstacle.n), obstacle.r, color='r'))
         for point in self.waypoints:
-            ax.plot(point.e, point.n, 'rx')
-        ax.plot(*self.bound_poly.exterior.xy)
+            self.ax.plot(point.e, point.n, 'rx')
+        self.ax.plot(*self.bound_poly.exterior.xy)
         minE, minN, maxE, maxN = self.bound_poly.bounds
-        ax.set_xlim((int(1.1*minE), int(1.1*maxE)))
-        ax.set_ylim((int(1.1*minN), int(1.1*maxN)))
-        ax.set_aspect('equal')  
+        self.ax.set_xlim((int(1.1*minE), int(1.1*maxE)))
+        self.ax.set_ylim((int(1.1*minN), int(1.1*maxN)))
+        self.ax.set_aspect('equal')  
         plt.pause(0.000001)
 
     @staticmethod
@@ -72,7 +78,19 @@ class Animation2D(Animation):
         waypoints : list of metis.messages.msg_ned
             A list of waypoint messages.
         valid : bool
-            Paths are official, not random potential paths (default True).
+            Paths are final, not random potential paths (default False). If
+            True, paths are overlaid in black.
+        
+        Notes
+        -----
+        This function calls `plt.pause` after each invocation. This pauses
+        execution of Python code to update the GUI loop. Performance of 
+        functions that call this routine is therefore impacted as they are
+        interrupted on each invocation to update the plot. Planners that don't
+        include visualization will run much faster than those that do. 
+        However, these visualizations are very useful for debugging. It is
+        therefore suggested to implement planners in such a way that animations
+        can be optionally set to on or off.
         """
         if valid:
             self.ax.plot(ned[:,1], ned[:,0], 'k-')
@@ -80,23 +98,9 @@ class Animation2D(Animation):
             self.ax.plot(ned[:,1], ned[:,0])
         plt.pause(0.000001)
 
-    def add_waypoint(self, n, e, d):
-        self.ax.plot(e, n, 'rx')
-        self.ax.text(e, n, '{:.1f}'.format(-d))
-        plt.pause(0.000001)
-
-    # def add_node(self, start, end):
-    #     """
-    #     Adds gray paths between the list of nodes received.
-
-    #     Parameters
-    #     ----------
-    #     nodes : list of metis.rrt.rrt_base.Node
-    #         The nodes to be connected by a potential random path.
-    #     """
-    #     self.ax.plot(start.e, start.n, 'rx')
-    #     self.ax.plot(end.e, end.n, 'rx')
-    #     self.ax.plot([start.e, end.e], [start.n, end.n])
+    # def add_waypoint(self, n, e, d):
+    #     self.ax.plot(e, n, 'rx')
+    #     self.ax.text(e, n, '{:.1f}'.format(-d))
     #     plt.pause(0.000001)
 
     def remove_node(self, node):

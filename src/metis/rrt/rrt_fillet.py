@@ -71,9 +71,9 @@ class FilletRRT(RRT):
 
         Parameters
         ----------
-        start : metis.core.Waypoint
+        start : metis.location.Waypoint
             The starting waypoint
-        end : metis.core.Waypoint
+        end : metis.location.Waypoint
             The ending waypoint. Super creative names, I know.
         connect : boolean, optional
             If True, the path will be generated such that an additional waypoint 

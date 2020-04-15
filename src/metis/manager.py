@@ -22,9 +22,21 @@ from metis.rrt import get_rrt, Config
 
 _module_logger = logging.getLogger(__name__)
 
+
 class MissionManager(object):
     """
     A manager class that centralizes all path planning processes.
+
+    A MissionManager tracks references to all the planners used to complete a
+    mission. 
+
+    Parameters
+    ----------
+    mission : metis.core.Mission
+        A Mission object, representing a complete AUVSI mission.
+    target_height : float, optional
+        A default height for the aircraft when not flying waypoints.
+        It is a positive floating point value in meters (default 35).
 
     Attributes
     ----------
@@ -38,21 +50,15 @@ class MissionManager(object):
         mission is being performed.
     current_pos : metis.messages.msg_ned
         The current position of the aircraft.
+    planners : dict of metis.planners.Planner or its subclasses
+        A dictionary mapping human-friendly names to mission planners.
+    plans : list of metis.core.Plan
+        A list of all approved plans. Previous plans can therefore be 
+        accessed and reviewed.
     """
     _logger = _module_logger.getChild('RRT')
 
     def __init__(self, mission, target_height=35.):
-        """
-        Initializes the MissionManager.
-
-        Parameters
-        ----------
-        mission : metis.core.Mission
-            A Mission object, representing a complete AUVSI mission.
-        target_height : float, optional
-            A default height for the aircraft when not flying waypoints.
-            It is a positive floating point value in meters (default 35).
-        """
         self.mission = mission
         self.default_pos = Waypoint(0., 0., -target_height)
         self.planners = {}

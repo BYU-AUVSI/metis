@@ -144,14 +144,17 @@ The various missions can be called with the `/plan_path` rosservice call. The ar
 
 The plan_mission service call will return a list of the major waypoints that the aircraft needs to fly through. These may be the drop location and points leading to the drop location, points that create a lawnmower path over the search area, points that allow detection of objects outside the mission area, or objective waypoints given by the interop server.
 
-
 ---
 
-### Planner Notes
+# Warnings
 
-# TODO
-The planner can always plan from the current location if ROS is updating it in the Mission object
-(or MissionManager, forgot which one).
+## Matplotlib is not thread safe!
+Many of the planning operations open a matplotlib plot to allow the monitoring of the planning process.
+ROS, however, runs Metis in a thread. Often it loses its reference to the plot, and all future requests
+or operations that involve matplotlib will result in errors (typically involving Tkinter or Tcl). 
+Since metis is not required for aircraft operation, it can be safely restarted each time this occurs.
+
+### Planner Notes
 
 ## Payload Planner
 
@@ -225,18 +228,6 @@ chmod u+x <filename>
 ```
 
 ---
-
-To see the proper syntax for `rosservice call /plan_path <args>`, simply enter `rosservice call /plan_path` into the terminal and tab complete until it autofills a template for what the message looks like. Doing so will provide the following:
-
-```
-user:~$ rosservice call /plan_path "mission_type: 0
-landing_waypoints:
-  waypoint_list:
-  - N: 0.0
-    E: 0.0
-    D: 0.0
-    task: 0" 
-```
 
 To see the mission specified by `FakeInteropElberta.py`, you can run that file (`python FakeInteropElberta.py`) and then in a separate terminal call 
 

@@ -59,7 +59,7 @@ def get_reference_position():
 
     Returns
     -------
-    ref : metis.core.GPSWaypoint
+    ref : metis.location.GPSWaypoint
         The reference position from the ROS global namespace as a GPSWaypoint 
         object.
     """
@@ -130,13 +130,13 @@ def get_server_data(mission_type, ref_pos):
     mission_type : int
         The mission type number for which data was obtained (number defined 
         in the JudgeMission message)
-    obstacles : list of metis.core.CircularObstacle
+    obstacles : list of metis.location.CircularObstacle
         A list of NED messages
-    boundary_list : list of metis.core.BoundaryPoint
+    boundary_list : list of metis.location.BoundaryPoint
         A list of all boundary points as BoundaryPoint objects.
     boundary_poly : shapely.geometry.polygon.Polygon
         A polygon object that defines the boundaries
-    waypoints : list of metis.core.Waypoint
+    waypoints : list of metis.location.Waypoint
         A list of NED messages
     """
     # TODO: Move this service proxy to `services.py`
@@ -167,7 +167,7 @@ def _convert_obstacles(msg, ref_pos):
 
     Returns
     -------
-    obstacle_list : list of metis.core.CircularObstacle
+    obstacle_list : list of metis.location.CircularObstacle
         A list containing the position and height for each obstacle.
     """
     obstacle_list = []
@@ -202,7 +202,7 @@ def _convert_waypoints(msg, ref_pos):
 
     Returns
     -------
-    waypoint_list : list of metis.core.Waypoint
+    waypoint_list : list of metis.location.Waypoint
         List containing the NED position of each waypoint.
     """
     waypoint_list = []
@@ -232,7 +232,7 @@ def _convert_boundaries(msg, ref_pos):
 
     Returns
     -------
-    list : list of metis.core.BoundaryPoint
+    list : list of metis.location.BoundaryPoint
         A list of all the boundary points as BoundaryPoint objects.
     """
     boundary_list = []

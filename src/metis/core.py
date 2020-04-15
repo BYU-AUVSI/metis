@@ -18,6 +18,26 @@ _module_logger = logging.getLogger(__name__)
 class Mission(object):
     """
     A class containing all the data that comprises a mission.
+    
+    An empty Mission object can be initialized. However, for a Mission
+    object to be useful, its attributes should be set prior to using it as
+    a dataclass.
+
+    Parameters
+    ----------
+    home : metis.GPSWaypoint, optional
+        The location of the GPS groundstation, including the 
+        groundstation's ground elevation.
+    obstacles : list of metis.location.CircularObstacle, optional
+        A list of obstacles.
+    boundary_list : list of metis.location.BoundaryPoint, optional
+        A list of boundaries, in order.
+    waypoints : list of metis.location.Waypoint, optional
+        A list of waypoints to reach, in order.
+    drop_location : metis.location.Waypoint, optional
+        The target drop location the payload should land at.
+    search_area : list of metis.location.BoundaryPoint, optional
+        A list of boundaries, in order.
     """
     _logger = _module_logger.getChild('Mission')
 
@@ -31,23 +51,6 @@ class Mission(object):
         search_area=None,
         offaxis_location=None
     ):
-        """Initializes the Mission object.
-
-        An empty Mission object can be initialized. However, for a Mission
-        object to be useful, its attributes should be set prior to using it as
-        a dataclass.
-
-        Parameters
-        ----------
-        home : metis.GPSWaypoint, optional
-            The location of the GPS groundstation, including the 
-            groundstation's ground elevation.
-        obstacles : list of metis.core.CircularObstacle, optional
-        boundary_list : list of metis.core.BoundaryPoint, optional
-        waypoints : list of metis.core.Waypoint, optional
-        drop_location : metis.core.Waypoint, optional
-        search_area : list of metis.core.BoundaryPoint, optional
-        """
         # private:
         self._boundary_poly = None
         self._boundary_list = None
@@ -114,8 +117,11 @@ class Plan:
             The mission that corresponds to the certain plan.
         clear_previous : bool, optional
             Whether previous plans should be cleared and discarded.
-        waypoints : list of metis.core.Waypoint
+        waypoints : list of metis.location.Waypoint
             The set of waypoints corresponding to the specified plan.
+        callabck : func
+            A function that should be used as the callback when the plan's
+            `approve()` method is called.
         """
         self.mission = mission
         self.clear_previous = clear_previous
@@ -128,12 +134,30 @@ class Plan:
         return self.waypoints[-1]
 
     def plot(self, block=True):
+        """
+        Creates a plot of the mission and its objectives, overlaying
+        the path stored by `Plan`.
+
+        Parameters
+        ----------
+        block : bool, optional
+            Whether the plot should be code-blocking or not (default True).
+        """
         mp = MissionPlotter(self.mission)
         mp.add_pathway(self.waypoints, "Planned pathway")
         mp.show(block=block)
         self.waypoints = mp.getNEDlist()
 
     def accept(self):
+        """
+        Makes a call to the callback method provided when the object was
+        created.
+
+        Raises
+        ------
+        AttributeError
+            If the `Plan` object has no associated callback.
+        """
         if self.callback:
             self.callback(self)
         else:

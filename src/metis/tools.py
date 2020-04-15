@@ -13,7 +13,7 @@ def will_collide(obstacles, boundaryPoly, N, E, D, clearance):
 
 	Parameters
 	----------
-	obstacles : list of metis.core.CircularObstacle
+	obstacles : list of metis.location.CircularObstacle
 		List of obstacles
 	boundaryPoly : Polygon
 		A Polygon object of the boundaries
@@ -56,8 +56,9 @@ def bounds2poly(boundaries):
 
     Parameters
     ----------
-    boundaries : list of metis.core.BoundaryPoint
-        List of boundary points.
+    boundaries : list of metis.location.BoundaryPoint
+        List of boundary points in the order they are arrived at around a 
+        perimeter.
 
     Returns
     -------
