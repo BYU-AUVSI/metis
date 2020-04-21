@@ -215,7 +215,7 @@ class DubinsRRTStar(DubinsRRT):
 
        # Check incline here
         # incline = np.abs( (end.d-start.d) / end.distance(start) )
-        pitch_angle = pitch(start, end)
+        pitch_angle = np.abs(pitch(start, end))
         # if incline > self.config.max_incline+.01:  #Added fudge factor because of floating point math errors
         if pitch_angle > np.radians(25):
             _logger.debug("Incline too steep.")
