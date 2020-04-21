@@ -256,3 +256,15 @@ for each waypoint in mission:
   set it's chi to point toward the next waypoint in the mission
   ensure that there's no obstacle directly in the direction of chi
 perform rrt dubins
+
+## Links to Things To Check Out
+
+- A path planner resource ([PythonRobotics](https://pythonrobotics.readthedocs.io/en/latest/index.html))
+- An article on the difference between RRT and RRT* (on [Medium](https://medium.com/@theclassytim/robotic-path-planning-rrt-and-rrt-212319121378))
+- Paper on Informed RRT* (on the [arxiv](https://arxiv.org/pdf/1404.2334.pdf))
+- Structuring and configuring a Python ROS package ([MIT article](https://duckietown.mit.edu/media/pdfs/1rpRisFoCYUm0XT78j-nAYidlh-cDtLCdEbIaBCnx9ew.pdf))
+- Article on transitioning code from Python 2 to 3 (from [ROS.org](https://wiki.ros.org/UsingPython3))
+- Article outlining changes from ROS 1 to 2 (from [ROS2.org](https://design.ros2.org/articles/changes.html))
+- ROS robot library, not sure if it'll ever be useful ([MoveIt](https://moveit.ros.org/))
+- 3D Collision Avoidance Algorithm ([research paper](https://link.springer.com/article/10.try1007/s10846-019-01037-7), try logging in through the library to access)
+- The Open Motion Planning Library ([OMPL](http://ompl.kavrakilab.org/))
