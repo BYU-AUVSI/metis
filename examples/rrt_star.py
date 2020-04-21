@@ -8,7 +8,7 @@ from numpy.random import rand
 from metis import Mission
 from metis.manager import MissionManager
 from metis.location import Waypoint, BoundaryPoint, CircularObstacle
-from metis.rrt import get_rrt
+from metis.rrt import get_rrt, Animation2D
 
 # np.random.seed(1111)
 np.random.seed(150)
@@ -65,8 +65,14 @@ mission = Mission(
 )
 
 starting_pos = Waypoint(10., 10., -35.0, 0.0)
-RRT = get_rrt('straightstar')
-# RRT = get_rrt('dubinsstar')
+# RRT = get_rrt('straightstar')
+RRT = get_rrt('dubinsstar')
 rrt = RRT(mission)
 waypoints.insert(0, starting_pos)
 final_path = rrt.find_full_path(waypoints, connect=True)
+
+ani = Animation2D(mission)
+for p1, p2 in zip(final_path[:-1], final_path[1:]):
+    ani.add_path(rrt.points_along_path(p1, p2, 30.0, 0.5))
+for way in final_path:
+    ani.add_waypoint(way.n, way.e, way.d)
